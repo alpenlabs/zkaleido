@@ -1,0 +1,13 @@
+[package]
+edition = "2021"
+name = "guest-sp1-fibonacci"
+version = "0.1.0"
+
+[workspace]
+
+[dependencies]
+fibonacci = { path = "../../../examples/fibonacci" }
+strata-sp1-adapter = { path = "../../../crates/sp1", features = ["zkvm"] }
+
+[features]
+mock = ["strata-sp1-adapter/mock"]

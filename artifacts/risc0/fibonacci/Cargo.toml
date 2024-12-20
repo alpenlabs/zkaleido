@@ -1,0 +1,10 @@
+[package]
+edition = "2021"
+name = "guest-risc0-fibonacci"
+version = "0.1.0"
+
+[workspace]
+
+[dependencies]
+fibonacci = { path = "../../../examples/fibonacci" }
+strata-risc0-adapter = { path = "../../../crates/risc0" }

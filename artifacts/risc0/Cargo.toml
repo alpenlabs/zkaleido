@@ -1,0 +1,12 @@
+[package]
+edition = "2021"
+name = "strata-risc0-artifacts"
+version = "0.1.0"
+
+[dependencies]
+
+[build-dependencies]
+risc0-build = "1.1.2"
+
+[package.metadata.risc0]
+methods = ["fibonacci"]
