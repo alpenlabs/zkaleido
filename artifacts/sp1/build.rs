@@ -9,10 +9,35 @@ use sp1_helper::{build_program_with_args, BuildArgs};
 use sp1_sdk::{MockProver, Prover, SP1VerifyingKey};
 
 fn main() {
-    build_program("fibonacci")
+    // String to accumulate the contents of methods.rs file
+    // Start with the necessary use statements
+    let mut methods_file_content = String::from(
+        r#"
+use once_cell::sync::Lazy;
+use std::fs;
+"#,
+    );
+    let sha2_contents = build_program("sha2-chain");
+    let fibonacci_contents = build_program("fibonacci");
+
+    methods_file_content.push_str(&sha2_contents);
+    methods_file_content.push_str(&fibonacci_contents);
+
+    // Write the accumulated methods_file_content to methods.rs in the output directory
+    let out_dir = std::env::var_os("OUT_DIR")
+        .map(PathBuf::from)
+        .expect("OUT_DIR environment variable is not set. Cannot determine output directory.");
+    let methods_path = out_dir.join("methods.rs");
+    fs::write(&methods_path, methods_file_content).unwrap_or_else(|e| {
+        panic!(
+            "Failed to write methods.rs file at {}: {}",
+            methods_path.display(),
+            e
+        )
+    });
 }
 
-fn build_program(program_name: &str) {
+fn build_program(program_name: &str) -> String {
     let features = {
         #[cfg(feature = "mock")]
         {
@@ -38,15 +63,6 @@ fn build_program(program_name: &str) {
     ensure_cache_validity(program_name)
         .expect("Failed to ensure cache validity after building program_name");
 
-    // String to accumulate the contents of methods.rs file
-    // Start with the necessary use statements
-    let mut methods_file_content = String::from(
-        r#"
-use once_cell::sync::Lazy;
-use std::fs;
-"#,
-    );
-
     // Create contents to be written to the file
     let program_name_upper = format!(
         "GUEST_SP1_{}",
@@ -59,6 +75,7 @@ use std::fs;
         .to_str()
         .expect("Failed to convert path to string");
 
+    let mut methods_file_content = String::new();
     let full_path_str = format!("{}/cache/{}", base_path_str, program_name);
     methods_file_content.push_str(&format!(
         r#"
@@ -69,18 +86,7 @@ pub static {0}_VK: Lazy<Vec<u8>> = Lazy::new(||{{ fs::read("{1}.vk").expect("Can
 program_name_upper, full_path_str
         ));
 
-    // Write the accumulated methods_file_content to methods.rs in the output directory
-    let out_dir = std::env::var_os("OUT_DIR")
-        .map(PathBuf::from)
-        .expect("OUT_DIR environment variable is not set. Cannot determine output directory.");
-    let methods_path = out_dir.join("methods.rs");
-    fs::write(&methods_path, methods_file_content).unwrap_or_else(|e| {
-        panic!(
-            "Failed to write methods.rs file at {}: {}",
-            methods_path.display(),
-            e
-        )
-    });
+    methods_file_content
 }
 
 fn is_cache_valid(expected_id: &[u8; 32], paths: &[PathBuf; 4]) -> bool {

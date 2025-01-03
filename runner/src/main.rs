@@ -1,4 +1,4 @@
-use programs::{fibonacci, TestProgram};
+use programs::{fibonacci, sha2, TestProgram};
 
 mod args;
 mod programs;
@@ -18,6 +18,9 @@ fn main() {
         match progam {
             TestProgram::Fibonacci => {
                 fibonacci::make_proofs();
+            }
+            TestProgram::Sha2Chain => {
+                sha2::make_proofs();
             }
         }
     }
