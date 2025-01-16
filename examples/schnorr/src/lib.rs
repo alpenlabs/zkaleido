@@ -1,5 +1,8 @@
 mod prover;
-pub use prover::process_schnorr_sig;
+pub use prover::{process_schnorr_sig, SchnorrSigProver};
+
+mod input;
+pub use input::SchnorrSigInput;
 
 use secp256k1::{schnorr::Signature, Keypair, Message, SecretKey, XOnlyPublicKey, SECP256K1};
 

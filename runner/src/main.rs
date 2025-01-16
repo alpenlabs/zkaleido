@@ -1,4 +1,4 @@
-use programs::{fibonacci, sha2, TestProgram};
+use programs::{fibonacci, schnorr, sha2, TestProgram};
 
 mod args;
 mod programs;
@@ -21,6 +21,9 @@ fn main() {
             }
             TestProgram::Sha2Chain => {
                 sha2::make_proofs();
+            }
+            TestProgram::Schnorr => {
+                schnorr::make_proofs();
             }
         }
     }

@@ -8,12 +8,10 @@ strata-zkvm = { path = "../../crates/zkvm" }
 strata-native-zkvm-adapter = { path = "../../crates/native" }
 
 k256 = "0.13.4"
+rand = { version = "0.8.5", features = ["getrandom", "std_rng"] }
 secp256k1 = { version = "0.29.1", features = ["global-context", "std"] }
 signature = "2.2.0"
 
 [features]
 default = ["rand"]
 rand = ["secp256k1/rand-std"]
-
-[dev-dependencies]
-rand = { version = "0.8.5", features = ["getrandom", "std_rng"] }

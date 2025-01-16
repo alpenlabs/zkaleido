@@ -1,6 +1,6 @@
 use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
 
-use crate::verify_schnorr_sig;
+use crate::{verify_schnorr_sig, SchnorrSigInput};
 
 pub fn process_schnorr_sig(zkvm: &impl ZkVmEnv) {
     let sig = zkvm.read_buf();
@@ -10,12 +10,6 @@ pub fn process_schnorr_sig(zkvm: &impl ZkVmEnv) {
     let result = verify_schnorr_sig(&sig.try_into().unwrap(), &msg, &pk);
 
     zkvm.commit_serde(&result);
-}
-
-pub struct SchnorrSigInput {
-    pub sig: [u8; 64],
-    pub msg: [u8; 32],
-    pub pk: [u8; 32],
 }
 
 pub struct SchnorrSigProver;
@@ -56,11 +50,7 @@ mod tests {
     use strata_native_zkvm_adapter::{NativeHost, NativeMachine};
     use strata_zkvm::ZkVmProver;
 
-    use crate::sign_schnorr_sig;
-
     use super::*;
-    use rand::{rngs::OsRng, Rng};
-    use secp256k1::{SecretKey, SECP256K1};
 
     fn get_native_host() -> NativeHost {
         NativeHost {
@@ -73,18 +63,7 @@ mod tests {
 
     #[test]
     fn test_native() {
-        let msg: [u8; 32] = [(); 32].map(|_| OsRng.gen());
-
-        let sk = SecretKey::new(&mut OsRng);
-        let (pk, _) = sk.x_only_public_key(SECP256K1);
-
-        let sk = *sk.as_ref();
-        let pk = pk.serialize();
-
-        let sig = sign_schnorr_sig(&msg, &sk);
-
-        let input = SchnorrSigInput { sig, msg, pk };
-
+        let input = SchnorrSigInput::new_random();
         let host = get_native_host();
         let receipt = SchnorrSigProver::prove(&input, &host).unwrap();
         let output =

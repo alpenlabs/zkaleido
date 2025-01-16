@@ -6858,6 +6858,7 @@ version = "0.1.0"
 dependencies = [
  "argh",
  "fibonacci",
+ "schnorr",
  "sha2-chain",
  "strata-risc0-adapter",
  "strata-risc0-artifacts",

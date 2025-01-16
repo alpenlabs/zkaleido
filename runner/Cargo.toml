@@ -8,6 +8,7 @@ strata-zkvm.workspace = true
 
 fibonacci.workspace = true
 sha2-chain.workspace = true
+schnorr.workspace = true
 
 argh = "0.1"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
