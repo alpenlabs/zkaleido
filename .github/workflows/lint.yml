@@ -29,13 +29,15 @@ jobs:
       - name: Run clippy on crates/
         run: |
           find crates/ -type f -name "Cargo.toml" \
-          -exec sh -c 'echo "Clippy for {}" && cargo clippy --manifest-path "{}"' \;
+          -exec sh -c \
+          'f="$1"; echo "Clippy for ${f}" && cargo clippy --manifest-path ${f}' shell {} \;
         env:
           RUSTFLAGS: -D warnings
       - name: Run clippy on examples/
         run: |
           find examples/ -type f -name "Cargo.toml" \
-          -exec sh -c 'echo "Clippy for {}" && cargo clippy --manifest-path "{}"' \;
+          -exec sh -c \
+          'f="$1"; echo "Clippy for ${f}" && cargo clippy --manifest-path ${f}' shell {} \;
         env:
           RUSTFLAGS: -D warnings
 
