@@ -61,9 +61,8 @@ mod tests {
     use strata_native_zkvm_adapter::{NativeHost, NativeMachine};
     use strata_zkvm::ZkVmProver;
 
-    use crate::ShaChainProver;
-
     use super::process_sha_chain;
+    use crate::ShaChainProver;
 
     fn get_native_host() -> NativeHost {
         NativeHost {

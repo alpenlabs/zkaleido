@@ -17,7 +17,6 @@ fn sp1_prove() -> ProofReceipt {
 #[cfg(feature = "risc0")]
 fn risc0_prove() -> ProofReceipt {
     use strata_risc0_adapter::Risc0Host;
-
     use strata_risc0_artifacts::GUEST_RISC0_FIBONACCI_ELF;
     let host = Risc0Host::init(&GUEST_RISC0_FIBONACCI_ELF);
     prove(&host)
