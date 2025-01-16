@@ -14,8 +14,8 @@ fn main() {
     let args: Args = argh::from_env();
     let programs = args.programs;
 
-    for progam in programs {
-        match progam {
+    for program in programs {
+        match program {
             TestProgram::Fibonacci => {
                 fibonacci::make_proofs();
             }
