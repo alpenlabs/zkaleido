@@ -9,14 +9,8 @@ fn prove(host: &impl ZkVmHost) -> ProofReceipt {
 #[cfg(feature = "sp1")]
 fn sp1_prove() -> ProofReceipt {
     use strata_sp1_adapter::SP1Host;
-    use strata_sp1_artifacts::{
-        GUEST_SP1_SHA2_CHAIN_ELF, GUEST_SP1_SHA2_CHAIN_PK, GUEST_SP1_SHA2_CHAIN_VK,
-    };
-    let host = SP1Host::new_from_bytes(
-        &GUEST_SP1_SHA2_CHAIN_ELF,
-        &GUEST_SP1_SHA2_CHAIN_PK,
-        &GUEST_SP1_SHA2_CHAIN_VK,
-    );
+    use strata_sp1_artifacts::SHA2_CHAIN_ELF;
+    let host = SP1Host::init(&SHA2_CHAIN_ELF);
     prove(&host)
 }
 
