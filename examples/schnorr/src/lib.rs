@@ -1,4 +1,5 @@
-//! Logic to check block credentials.
+mod prover;
+pub use prover::process_schnorr_sig;
 
 use secp256k1::{schnorr::Signature, Keypair, Message, SecretKey, XOnlyPublicKey, SECP256K1};
 

@@ -4627,6 +4627,8 @@ dependencies = [
  "rand",
  "secp256k1",
  "signature",
+ "strata-native-zkvm-adapter",
+ "strata-zkvm",
 ]
 
 [[package]]
