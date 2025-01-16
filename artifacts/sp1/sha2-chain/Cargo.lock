@@ -186,6 +186,7 @@ name = "guest-sha2-chain"
 version = "0.1.0"
 dependencies = [
  "sha2-chain",
+ "sp1-zkvm",
  "strata-sp1-adapter",
 ]
 
