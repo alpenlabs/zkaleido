@@ -71,6 +71,7 @@ mod tests {
 
         let sk = *sk.as_ref();
         let pk = pk.serialize();
+        dbg!(pk);
 
         let sig = sign_schnorr_sig(&msg, &sk);
         assert!(verify_schnorr_sig(&sig, &msg, &pk));

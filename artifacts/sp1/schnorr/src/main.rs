@@ -9,5 +9,7 @@ use schnorr::process_schnorr_sig;
 use strata_sp1_adapter::Sp1ZkVmEnv;
 
 pub fn main() {
-    process_schnorr_sig(&Sp1ZkVmEnv)
+    println!("cycle-tracker-start: compute");
+    process_schnorr_sig(&Sp1ZkVmEnv);
+    println!("cycle-tracker-end: compute");
 }
