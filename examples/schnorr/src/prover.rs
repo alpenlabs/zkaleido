@@ -1,4 +1,4 @@
-use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
+use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver, ZkVmProverPerf};
 
 use crate::{verify_schnorr_sig, verify_schnorr_sig_k256, SchnorrSigInput};
 
@@ -42,6 +42,8 @@ impl ZkVmProver for SchnorrSigProver {
         H::extract_serde_public_output(public_values)
     }
 }
+
+impl ZkVmProverPerf for SchnorrSigProver {}
 
 #[cfg(test)]
 mod tests {
