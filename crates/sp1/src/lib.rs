@@ -15,5 +15,8 @@ mod env;
 #[cfg(feature = "zkvm")]
 pub use env::Sp1ZkVmEnv;
 
+#[cfg(feature = "perf")]
+pub mod perf;
+
 mod verifier;
 pub use verifier::*;

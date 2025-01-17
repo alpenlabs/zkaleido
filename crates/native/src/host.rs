@@ -29,6 +29,10 @@ impl ZkVmHost for NativeHost {
         Ok(ProofReceipt::new(proof, public_values).try_into()?)
     }
 
+    fn get_elf(&self) -> &[u8] {
+        &[]
+    }
+
     fn get_verification_key(&self) -> VerificationKey {
         VerificationKey::default()
     }
