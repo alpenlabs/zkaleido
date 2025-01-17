@@ -18,7 +18,7 @@ sp1-zkvm = { version = "4.0.0", features = ["verify"], optional = true }
 tracing.workspace = true
 
 [features]
-default = ["perf"]
+default = []
 mock = []
 prover = ["sp1-sdk"]
 zkvm = ["sp1-zkvm"]

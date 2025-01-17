@@ -23,7 +23,12 @@ strata-risc0-artifacts = { path = "../artifacts/risc0", optional = true }
 [features]
 default = ["sp1-mock", "risc0-mock"]
 sp1 = ["strata-sp1-adapter/prover", "strata-sp1-artifacts"]
-sp1-mock = ["sp1", "strata-sp1-adapter/mock", "strata-sp1-artifacts/mock"]
+sp1-mock = [
+    "sp1",
+    "strata-sp1-adapter/mock",
+    "strata-sp1-artifacts/mock",
+    "strata-sp1-adapter/perf",
+]
 
 risc0 = ["strata-risc0-adapter/prover", "strata-risc0-artifacts"]
-risc0-mock = ["risc0", "strata-risc0-adapter/mock"]
+risc0-mock = ["risc0", "strata-risc0-adapter/mock", "strata-risc0-adapter/perf"]

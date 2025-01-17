@@ -14,3 +14,5 @@ pub use verifier::*;
 
 mod env;
 pub use env::Risc0ZkVmEnv;
+
+mod perf;
