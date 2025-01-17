@@ -5,8 +5,6 @@ GIT_TAG ?= $(shell git describe --tags --abbrev=0)
 
 BUILD_PATH = "target"
 
-FUNCTIONAL_TESTS_DIR  = functional-tests
-FUNCTIONAL_TESTS_DATADIR = _dd
 DOCKER_DIR = docker
 DOCKER_DATADIR = .data
 PROVER_PERF_EVAL_DIR  = provers/perf
@@ -34,7 +32,7 @@ help: ## Display this help.
 
 .PHONY: build
 build: ## Build the workspace into the `target` directory.
-	cargo build --workspace --bin "strata-client" --features "$(FEATURES)" --profile "$(PROFILE)"
+	cargo build --workspace --bin "zkvm-runner" --features "$(FEATURES)" --profile "$(PROFILE)"
 
 ##@ Test
 
@@ -55,10 +53,6 @@ cov-unit: ## Run unit tests with coverage.
 cov-report-html: ## Generate an HTML coverage report and open it in the browser.
 	cargo llvm-cov --open --workspace --locked nextest
 
-.PHONY: test-int
-test-int: ## Run integration tests
-	cargo nextest run -p "integration-tests" --status-level=fail --no-capture
-
 .PHONY: mutants-test
 mutants-test: ## Runs `nextest` under `cargo-mutants`. Caution: This can take *really* long to run.
 	cargo mutants --workspace -j2
@@ -78,23 +72,6 @@ prover-clean: ## Cleans up proofs and profiling data generated
 	rm -rf $(PROVER_PERF_EVAL_DIR)/*.trace
 	rm -rf $(PROVER_PROOFS_CACHE_DIR)/*.proof
 
-
-##@ Functional Tests
-.PHONY: ensure-poetry
-ensure-poetry:
-	@if ! command -v poetry &> /dev/null; then \
-		echo "poetry not found. Please install it by the following the instructions from: https://python-poetry.org/docs/#installation" \
-		exit 1; \
-    fi
-
-.PHONY: activate
-activate: ensure-poetry ## Activate poetry environment for integration tests.
-	cd $(FUNCTIONAL_TESTS_DIR) && poetry install --no-root
-
-.PHONY: clean-dd
-clean-dd: ## Remove the data directory used by functional tests.
-	rm -rf $(FUNCTIONAL_TESTS_DIR)/$(FUNCTIONAL_TESTS_DATADIR) 2>/dev/null
-
 .PHONY: clean-cargo
 clean-cargo: ## cargo clean
 	cargo clean 2>/dev/null
@@ -103,12 +80,8 @@ clean-cargo: ## cargo clean
 clean-docker-data: ## Remove docker data files inside /docker/.data
 	rm -rf $(DOCKER_DIR)/$(DOCKER_DATADIR) 2>/dev/null
 
-.PHONY: clean-poetry
-clean-poetry: ## Remove poetry virtual environment
-	cd $(FUNCTIONAL_TESTS_DIR) && rm -rf .venv 2>/dev/null
-
 .PHONY: clean
-clean: clean-dd clean-docker-data clean-cargo clean-poetry ## clean functional tests directory, cargo clean, clean docker data, clean poetry virtual environment
+clean: clean-docker-data clean-cargo  ## cargo clean, clean docker data
 	@echo "\n\033[36m======== CLEAN_COMPLETE ========\033[0m\n"
 
 .PHONY: docker-up
@@ -119,11 +92,6 @@ docker-up: ## docker compose up
 docker-down: ## docker compose down
 	cd $(DOCKER_DIR) && docker compose down && \
 	rm -rf $(DOCKER_DATADIR) 2>/dev/null
-
-
-.PHONY: test-functional
-test-functional: ensure-poetry activate clean-dd ## Runs functional tests.
-	cd $(FUNCTIONAL_TESTS_DIR) && ./run_test.sh
 
 ##@ Code Quality
 
@@ -150,40 +118,25 @@ fmt-check-toml: ensure-taplo ## Runs `taplo` to check that TOML files are proper
 fmt-toml: ensure-taplo ## Runs `taplo` to format TOML files
 	taplo fmt
 
-.PHONY: fmt-check-func-tests
-fmt-check-func-tests: ensure-poetry activate ## Check formatting of python files inside `test` directory.
-	cd $(FUNCTIONAL_TESTS_DIR) && poetry run ruff format --check
-
-.PHONY: fmt-func-tests
-fmt-func-tests: ensure-poetry activate ## Apply formatting of python files inside `test` directory.
-	cd $(FUNCTIONAL_TESTS_DIR) && poetry run ruff format
+define lint-pkg
+	find $(1) -type f -name "Cargo.toml" -exec sh -c \
+	'f="$$1"; echo "Clippy for $${f}" && \
+	cargo clippy --manifest-path $${f} --all-features -- -D warnings' shell {} \; 
+endef
 
 .PHONY: lint-check-ws
 lint-check-ws: ## Checks for lint issues in the workspace.
-	cargo clippy \
-	--workspace \
-	--bin "strata-client" \
-	--lib \
-	--examples \
-	--tests \
-	--benches \
-	--all-features \
-	--no-deps \
-	-- -D warnings
+	$(call lint-pkg,examples) && $(call lint-pkg,crates)
+
+define lint-pkg-fix
+	find $(1) -type f -name "Cargo.toml" -exec sh -c \
+	'f="$$1"; echo "Clippy for $${f}" && \
+	cargo clippy --manifest-path $${f} --all-features --fix -- -D warnings' shell {} \; 
+endef
 
 .PHONY: lint-fix-ws
 lint-fix-ws: ## Lints the workspace and applies fixes where possible.
-	cargo clippy \
-	--workspace \
-	--bin "strata-client" \
-	--lib \
-	--examples \
-	--tests \
-	--benches \
-	--all-features \
-	--fix \
-	--no-deps \
-	-- -D warnings
+	$(call lint-pkg-fix,examples) && $(call lint-pkg-fix,crates)
 
 ensure-codespell:
 	@if ! command -v codespell &> /dev/null; then \
@@ -203,16 +156,8 @@ lint-fix-codespell: ensure-codespell ## Runs `codespell` to fix spelling errors 
 lint-check-toml: ensure-taplo ## Lints TOML files
 	taplo lint
 
-.PHONY: lint-check-func-tests
-lint-check-func-tests: ensure-poetry activate ## Lints the functional tests
-	cd $(FUNCTIONAL_TESTS_DIR) && poetry run ruff check
-
-.PHONY: lint-fix-func-tests
-lint-fix-func-tests: ensure-poetry activate ## Lints the functional tests and applies fixes where possible
-	cd $(FUNCTIONAL_TESTS_DIR) && poetry run ruff check --fix
-
 .PHONY: lint
-lint: fmt-check-ws fmt-check-func-tests fmt-check-toml lint-check-ws lint-check-func-tests lint-check-codespell ## Runs all lints and checks for issues without trying to fix them.
+lint: fmt-check-ws fmt-check-toml lint-check-ws lint-check-codespell ## Runs all lints and checks for issues without trying to fix them.
 	@echo "\n\033[36m======== OK: Lints and Formatting ========\033[0m\n"
 
 .PHONY: lint-fix
@@ -240,7 +185,7 @@ test: ## Runs all tests in the workspace including unit and docs tests.
 	make test-doc
 
 .PHONY: pr
-pr: lint rustdocs test-doc test-unit test-int test-functional ## Runs lints (without fixing), audit, docs, and tests (run this before creating a PR).
+pr: lint rustdocs test-doc test-unit  ## Runs lints (without fixing), audit, docs, and tests (run this before creating a PR).
 	@echo "\n\033[36m======== CHECKS_COMPLETE ========\033[0m\n"
 	@test -z "$$(git status --porcelain)" || echo "WARNNG: You have uncommitted changes"
 	@echo "All good to create a PR!"
