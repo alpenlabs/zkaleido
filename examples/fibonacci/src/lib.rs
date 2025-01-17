@@ -52,9 +52,8 @@ mod tests {
     use strata_native_zkvm_adapter::{NativeHost, NativeMachine};
     use strata_zkvm::ZkVmProver;
 
-    use crate::FibProver;
-
     use super::process_fib;
+    use crate::FibProver;
 
     fn get_native_host() -> NativeHost {
         NativeHost {

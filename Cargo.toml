@@ -1,16 +1,16 @@
 [workspace]
 members = [
-    "crates/native",
-    "crates/risc0",
-    "crates/sp1",
-    "crates/zkvm",
+  "crates/native",
+  "crates/risc0",
+  "crates/sp1",
+  "crates/zkvm",
 
-    # binaries
-    "runner",
+  # binaries
+  "runner",
 
-    # examples
-    "examples/fibonacci",
-    "examples/sha2-chain",
+  # examples
+  "examples/fibonacci",
+  "examples/sha2-chain",
 ]
 
 resolver = "2"
