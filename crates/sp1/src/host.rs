@@ -74,6 +74,10 @@ impl ZkVmHost for SP1Host {
         Ok(public_params)
     }
 
+    fn get_elf(&self) -> &[u8] {
+        &self.proving_key.elf
+    }
+
     fn get_verification_key(&self) -> VerificationKey {
         let verification_key = bincode::serialize(&self.proving_key.vk).unwrap();
         VerificationKey::new(verification_key)

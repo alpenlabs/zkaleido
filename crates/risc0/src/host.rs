@@ -69,6 +69,10 @@ impl ZkVmHost for Risc0Host {
             })
     }
 
+    fn get_elf(&self) -> &[u8] {
+        &self.elf
+    }
+
     fn get_verification_key(&self) -> VerificationKey {
         VerificationKey::new(self.id.as_bytes().to_vec())
     }
