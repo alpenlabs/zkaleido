@@ -1,6 +1,7 @@
-use crate::SP1Host;
 use sp1_sdk::ProverClient;
 use strata_zkvm::{ProofReport, ProofType, ZkVmHost, ZkVmHostPerf, ZkVmInputBuilder, ZkVmResult};
+
+use crate::SP1Host;
 
 impl ZkVmHostPerf for SP1Host {
     fn perf_report<'a>(
