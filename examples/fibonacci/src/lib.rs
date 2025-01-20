@@ -1,4 +1,4 @@
-use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
+use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver, ZkVmProverPerf};
 
 pub fn process_fib(zkvm: &impl ZkVmEnv) {
     // Read an input to the program.
@@ -44,6 +44,8 @@ impl ZkVmProver for FibProver {
         H::extract_serde_public_output(public_values)
     }
 }
+
+impl ZkVmProverPerf for FibProver {}
 
 #[cfg(test)]
 mod tests {

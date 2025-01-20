@@ -18,3 +18,4 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 default = []
 mock = []
 prover = []
+perf = ["prover"]

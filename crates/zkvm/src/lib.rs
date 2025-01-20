@@ -5,6 +5,8 @@ mod env;
 mod errors;
 mod host;
 mod input;
+#[cfg(feature = "perf")]
+mod perf;
 mod proof;
 mod prover;
 
@@ -12,6 +14,8 @@ pub use env::*;
 pub use errors::*;
 pub use host::*;
 pub use input::*;
+#[cfg(feature = "perf")]
+pub use perf::*;
 pub use proof::*;
 pub use prover::*;
 

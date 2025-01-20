@@ -1,3 +1,7 @@
 target/
 elf/
 cache/
+
+*.pb
+*.trace
+*.proof

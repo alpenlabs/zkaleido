@@ -9,3 +9,7 @@ bincode.workspace = true
 borsh.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+
+[features]
+default = ["perf"]
+perf = []

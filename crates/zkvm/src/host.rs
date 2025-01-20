@@ -33,8 +33,11 @@ pub trait ZkVmHost: Send + Sync + Clone + Display + 'static {
         receipt.try_into().map_err(ZkVmError::InvalidProofReceipt)
     }
 
-    /// Reuturns the Verification key for the loaded ELF program
+    /// Returns the Verification key for the loaded program
     fn get_verification_key(&self) -> VerificationKey;
+
+    /// Returns the ELF for the loaded program
+    fn get_elf(&self) -> &[u8];
 
     /// Extracts the public output from the public values using ZkVm's `serde`
     /// serialization/deserialization.

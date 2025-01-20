@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-strata-zkvm = { path = "../../crates/zkvm" }
+strata-zkvm = { path = "../../crates/zkvm", features = ["perf"] }
 strata-native-zkvm-adapter = { path = "../../crates/native" }
