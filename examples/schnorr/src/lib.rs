@@ -3,7 +3,6 @@ pub use prover::{process_schnorr_sig, SchnorrSigProver};
 
 mod input;
 pub use input::SchnorrSigInput;
-
 use secp256k1::{schnorr::Signature, Keypair, Message, SecretKey, XOnlyPublicKey, SECP256K1};
 
 pub fn sign_schnorr_sig(msg: &[u8; 32], sk: &[u8; 32]) -> [u8; 64] {
@@ -52,30 +51,17 @@ pub fn verify_schnorr_sig_k256(sig: &[u8; 64], msg: &[u8; 32], pk: &[u8; 32]) ->
 
 #[cfg(test)]
 mod tests {
-    use rand::{rngs::OsRng, Rng};
-    use secp256k1::{SecretKey, SECP256K1};
 
-    use crate::verify_schnorr_sig_k256;
-
-    use super::{sign_schnorr_sig, verify_schnorr_sig};
+    use super::*;
 
     #[test]
     fn test_schnorr_signature_pass() {
-        let msg: [u8; 32] = [(); 32].map(|_| OsRng.gen());
+        let SchnorrSigInput { sk, pk, msg, sig } = SchnorrSigInput::new_random();
 
         let mut mod_msg = msg;
         mod_msg.swap(1, 2);
 
-        let sk = SecretKey::new(&mut OsRng);
-        let (pk, _) = sk.x_only_public_key(SECP256K1);
-
-        let sk = *sk.as_ref();
-        let pk = pk.serialize();
-        dbg!(pk);
-
-        let sig = sign_schnorr_sig(&msg, &sk);
         assert!(verify_schnorr_sig(&sig, &msg, &pk));
-
         assert!(!verify_schnorr_sig(&sig, &mod_msg, &pk));
 
         let sig = sign_schnorr_sig(&mod_msg, &sk);
@@ -85,20 +71,12 @@ mod tests {
 
     #[test]
     fn test_schnorr_k256_signature_pass() {
-        let msg: [u8; 32] = [(); 32].map(|_| OsRng.gen());
+        let SchnorrSigInput { sk, pk, msg, sig } = SchnorrSigInput::new_random();
 
         let mut mod_msg = msg;
         mod_msg.swap(1, 2);
 
-        let sk = SecretKey::new(&mut OsRng);
-        let (pk, _) = sk.x_only_public_key(SECP256K1);
-
-        let sk = *sk.as_ref();
-        let pk = pk.serialize();
-
-        let sig = sign_schnorr_sig(&msg, &sk);
         assert!(verify_schnorr_sig_k256(&sig, &msg, &pk));
-
         assert!(!verify_schnorr_sig_k256(&sig, &mod_msg, &pk));
 
         let sig = sign_schnorr_sig(&mod_msg, &sk);

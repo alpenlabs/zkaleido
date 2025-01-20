@@ -1,6 +1,6 @@
 use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver, ZkVmProverPerf};
 
-use crate::{verify_schnorr_sig, verify_schnorr_sig_k256, SchnorrSigInput};
+use crate::{verify_schnorr_sig_k256, SchnorrSigInput};
 
 pub fn process_schnorr_sig(zkvm: &impl ZkVmEnv) {
     let sig = zkvm.read_buf();

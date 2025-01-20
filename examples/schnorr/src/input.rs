@@ -8,14 +8,12 @@ pub struct SchnorrSigInput {
     pub sig: [u8; 64],
     pub msg: [u8; 32],
     pub pk: [u8; 32],
+    pub sk: [u8; 32],
 }
 
 impl SchnorrSigInput {
     pub fn new_random() -> Self {
         let msg: [u8; 32] = [(); 32].map(|_| OsRng.gen());
-
-        let mut mod_msg = msg;
-        mod_msg.swap(1, 2);
 
         let sk = SecretKey::new(&mut OsRng);
         let (pk, _) = sk.x_only_public_key(SECP256K1);
@@ -25,6 +23,6 @@ impl SchnorrSigInput {
 
         let sig = sign_schnorr_sig(&msg, &sk);
 
-        SchnorrSigInput { sig, msg, pk }
+        SchnorrSigInput { sig, msg, pk, sk }
     }
 }
