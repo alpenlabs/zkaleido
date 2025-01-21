@@ -146,7 +146,7 @@ async fn post_to_github_pr(
     let client = Client::new();
 
     // Get all comments on the PR
-    const BASE_URL: &str = "https://api.github.com/repos/alpenlabs/strata";
+    const BASE_URL: &str = "https://api.github.com/repos/alpenlabs/zkvm";
     let comments_url = format!("{}/issues/{}/comments", BASE_URL, &args.pr_number);
     let comments_response = client
         .get(&comments_url)
