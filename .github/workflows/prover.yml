@@ -6,6 +6,8 @@ on:
   push:
     branches: [main]
 
+permissions: {}
+
 jobs:
   eval_perf:
     permissions:
@@ -16,10 +18,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@nightly
         with:
           toolchain: nightly-2024-07-27
+
+      - name: Cleanup space
+        uses: ./.github/actions/cleanup # zizmor: ignore[unpinned-uses]
+      - name: Install toolchains
+        uses: ./.github/actions/toolchains # zizmor: ignore[unpinned-uses]
 
       - name: Use Cargo cache
         uses: Swatinem/rust-cache@v2
@@ -32,31 +43,13 @@ jobs:
       - name: Install mold linker
         uses: rui314/setup-mold@v1
 
-      - name: Set up Clang
-        uses: egor-tensin/setup-clang@v1
-        with:
-          version: latest
-          platform: x64
-
-      - name: Install SP1 Toolchain
-        run: |
-          curl -fsSL --proto '=https' --tlsv1.2 https://sp1.succinct.xyz | bash && ~/.sp1/bin/sp1up
-          export PATH=~/.sp1/bin:$PATH
-          cargo prove --version
-
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
       - name: Run performance evaluation
         run: |
-          cargo run --profile prover-ci -- \
+          cargo run --release -- \
           --post-to-gh \
           --github-token "${{ secrets.GITHUB_TOKEN }}" \
           --pr-number "${{ github.event.pull_request.number }}" \
           --commit-hash "${{ github.sha }}" \
-        working-directory: provers/perf
+        working-directory: perf
         env:
           RUSTFLAGS: "-C target-cpu=native -C link-arg=-fuse-ld=lld"
-

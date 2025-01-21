@@ -11,6 +11,9 @@ members = [
   # examples
   "examples/fibonacci",
   "examples/sha2-chain",
+
+  # performance
+  "perf",
 ]
 
 resolver = "2"

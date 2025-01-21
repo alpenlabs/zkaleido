@@ -5,6 +5,9 @@ on:
   workflow_dispatch: # allows manual triggering
 env:
   CARGO_TERM_COLOR: always
+
+permissions: {}
+
 jobs:
   format:
     name: Update nightly Rustc
