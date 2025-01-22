@@ -4620,7 +4620,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "schnorr"
+name = "schnorr-sig-verify"
 version = "0.1.0"
 dependencies = [
  "k256",
@@ -6858,7 +6858,7 @@ version = "0.1.0"
 dependencies = [
  "argh",
  "fibonacci",
- "schnorr",
+ "schnorr-sig-verify",
  "sha2-chain",
  "strata-risc0-adapter",
  "strata-risc0-artifacts",

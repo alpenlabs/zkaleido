@@ -1,12 +1,12 @@
 [package]
-name = "guest-schnorr"
+name = "guest-schnorr-sig-verify"
 version = "0.1.0"
 edition = "2021"
 
 [workspace]
 
 [dependencies]
-schnorr = { path = "../../../examples/schnorr" }
+schnorr-sig-verify = { path = "../../../examples/schnorr-sig-verify" }
 strata-sp1-adapter = { path = "../../../crates/sp1", features = ["zkvm"] }
 sp1-zkvm = "4.0.0"
 

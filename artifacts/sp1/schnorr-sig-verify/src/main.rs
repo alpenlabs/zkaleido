@@ -5,7 +5,7 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use schnorr::process_schnorr_sig;
+use schnorr_sig_verify::process_schnorr_sig;
 use strata_sp1_adapter::Sp1ZkVmEnv;
 
 pub fn main() {

@@ -1,4 +1,4 @@
-use schnorr::{SchnorrSigInput, SchnorrSigProver};
+use schnorr_sig_verify::{SchnorrSigInput, SchnorrSigProver};
 use strata_zkvm::{ProofReceipt, ProofReport, ZkVmHost, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
 
 fn perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
@@ -10,8 +10,8 @@ fn perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
 #[cfg(feature = "sp1")]
 fn sp1_proof_report() -> ProofReport {
     use strata_sp1_adapter::SP1Host;
-    use strata_sp1_artifacts::SCHNORR_ELF;
-    let host = SP1Host::init(&SCHNORR_ELF);
+    use strata_sp1_artifacts::SCHNORR_SIG_VERIFY_ELF;
+    let host = SP1Host::init(&SCHNORR_SIG_VERIFY_ELF);
     perf_report(&host)
 }
 
