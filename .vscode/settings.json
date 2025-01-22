@@ -1,16 +1,19 @@
 {
     "editor.formatOnSave": true,
     "rust-analyzer.checkOnSave": true,
-    "rust-analyzer.check.overrideCommand": [
-        "cargo",
-        "clippy",
-        "--workspace",
+    "rust-analyzer.check.command": "clippy",
+    "rust-analyzer.check.extraArgs": [
         "--all-features",
-        "--benches",
         "--tests",
+        "--benches",
         "--examples",
-        "--message-format=json"
+        "--no-deps"
     ],
+    "rust-analyzer.server.extraEnv": {
+        "RISC0_SKIP_BUILD": "1",
+        "RISC0_SKIP_BUILD_KERNELS": "1",
+        "CARGO_TARGET_DIR": "target/analyzer"
+    },
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
         "artifacts/sp1/Cargo.toml",
