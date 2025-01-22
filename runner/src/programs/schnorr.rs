@@ -8,15 +8,27 @@ fn perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
 }
 
 #[cfg(feature = "sp1")]
-fn sp1_proof_report() -> ProofReport {
+pub fn sp1_schnorr_sig_verify_report() -> ProofReport {
     use strata_sp1_adapter::SP1Host;
     use strata_sp1_artifacts::SCHNORR_SIG_VERIFY_ELF;
     let host = SP1Host::init(&SCHNORR_SIG_VERIFY_ELF);
     perf_report(&host)
 }
 
+#[cfg(feature = "risc0")]
+pub fn risc0_schnorr_sig_verify_report() -> ProofReport {
+    use strata_risc0_adapter::Risc0Host;
+    use strata_risc0_artifacts::GUEST_RISC0_SCHNORR_SIG_VERIFY_ELF;
+    let host = Risc0Host::init(&GUEST_RISC0_SCHNORR_SIG_VERIFY_ELF);
+    perf_report(&host)
+}
+
 pub fn make_proofs() {
     #[cfg(feature = "sp1")]
     let report = sp1_proof_report();
+    println!("{}", report.cycles);
+
+    #[cfg(feature = "risc0")]
+    let report = risc0_proof_report();
     println!("{}", report.cycles);
 }

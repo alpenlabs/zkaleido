@@ -6,6 +6,7 @@ use serde::Serialize;
 use serde_json::json;
 use strata_zkvm::ProofReport;
 pub use zkvm_runner::{risc0_fib_report, risc0_sha_report, sp1_fib_report, sp1_sha_report};
+use zkvm_runner::{risc0_schnorr_sig_verify_report, sp1_schnorr_sig_verify_report};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -87,6 +88,7 @@ fn run_sp1_programs() -> Vec<PerformanceReport> {
 
     reports.push(sp1_fib_report().into());
     reports.push(sp1_sha_report().into());
+    reports.push(sp1_schnorr_sig_verify_report().into());
 
     reports
 }
@@ -99,6 +101,7 @@ fn run_risc0_programs() -> Vec<PerformanceReport> {
 
     reports.push(risc0_fib_report().into());
     reports.push(risc0_sha_report().into());
+    reports.push(risc0_schnorr_sig_verify_report().into());
 
     reports
 }
