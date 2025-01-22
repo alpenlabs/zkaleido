@@ -1,4 +1,9 @@
 use fibonacci::FibProver;
+#[cfg(any(
+    all(feature = "sp1", not(feature = "sp1-mock")),
+    all(feature = "risc0", not(feature = "risc0-mock"))
+))]
+use strata_zkvm::{ProofReceipt, ZkVmHost, ZkVmProver};
 use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProverPerf};
 
 fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
@@ -12,7 +17,6 @@ fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
     all(feature = "risc0", not(feature = "risc0-mock"))
 ))]
 fn fib_proof(host: &impl ZkVmHost) -> ProofReceipt {
-    use strata_zkvm::{ProofReceipt, ZkVmHost, ZkVmProver};
     let input = 5;
     FibProver::prove(&input, host).unwrap()
 }
@@ -37,7 +41,7 @@ pub fn risc0_fib_report() -> ProofReport {
     let host = Risc0Host::init(GUEST_RISC0_FIBONACCI_ELF);
     #[cfg(not(feature = "risc0-mock"))]
     {
-        let proof = sha2_proof(&host);
+        let proof = fib_proof(&host);
         proof.save("fib.risc0.proof").unwrap();
     }
     fib_prover_perf_report(&host)

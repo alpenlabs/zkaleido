@@ -1,4 +1,9 @@
 use sha2_chain::ShaChainProver;
+#[cfg(any(
+    all(feature = "sp1", not(feature = "sp1-mock")),
+    all(feature = "risc0", not(feature = "risc0-mock"))
+))]
+use strata_zkvm::{ProofReceipt, ZkVmHost, ZkVmProver};
 use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProverPerf};
 
 fn sha2_prover_perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
@@ -12,7 +17,6 @@ fn sha2_prover_perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
     all(feature = "risc0", not(feature = "risc0-mock"))
 ))]
 fn sha2_proof(host: &impl ZkVmHost) -> ProofReceipt {
-    use strata_zkvm::{ProofReceipt, ZkVmHost, ZkVmProver};
     let input = 5;
     ShaChainProver::prove(&input, host).unwrap()
 }

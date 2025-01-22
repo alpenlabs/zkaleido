@@ -8,7 +8,6 @@ use args::EvalArgs;
 use clap::Parser;
 use format::{format_header, format_results};
 use github::{format_github_message, post_to_github_pr};
-use programs::{run_risc0_programs, run_sp1_programs};
 use serde::Serialize;
 use strata_zkvm::ProofReport;
 
@@ -19,11 +18,25 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut results_text = vec![format_header(&args)];
 
-    let sp1_reports = run_sp1_programs();
-    results_text.push(format_results(&sp1_reports, "SP1".to_owned()));
+    #[cfg(feature = "sp1")]
+    {
+        let sp1_reports = programs::run_sp1_programs();
+        results_text.push(format_results(&sp1_reports, "SP1".to_owned()));
+        if !sp1_reports.iter().all(|r| r.success) {
+            println!("Some SP1 programs failed. Please check the results below.");
+            std::process::exit(1);
+        }
+    }
 
-    let risc0_reports = run_risc0_programs();
-    results_text.push(format_results(&risc0_reports, "RISC0".to_owned()));
+    #[cfg(feature = "risc0")]
+    {
+        let risc0_reports = programs::run_risc0_programs();
+        results_text.push(format_results(&risc0_reports, "RISC0".to_owned()));
+        if !risc0_reports.iter().all(|r| r.success) {
+            println!("Some Risc0 programs failed. Please check the results below.");
+            std::process::exit(1);
+        }
+    }
 
     // Print results
     println!("{}", results_text.join("\n"));
@@ -32,11 +45,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         // Post to GitHub PR
         let message = format_github_message(&results_text);
         post_to_github_pr(&args, &message).await?;
-    }
-
-    if !sp1_reports.iter().all(|r| r.success) {
-        println!("Some programs failed. Please check the results above.");
-        std::process::exit(1);
     }
 
     Ok(())
