@@ -22,12 +22,3 @@ pub fn risc0_sha_report() -> ProofReport {
     let host = Risc0Host::init(GUEST_RISC0_SHA2_CHAIN_ELF);
     sha2_prover_perf_report(&host)
 }
-
-#[allow(dead_code)]
-pub fn make_proofs() {
-    #[cfg(feature = "risc0")]
-    let _ = risc0_sha_report();
-
-    #[cfg(feature = "sp1")]
-    let _ = sp1_sha_report();
-}

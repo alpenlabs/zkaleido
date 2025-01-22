@@ -63,6 +63,7 @@ sec: ## Check for security advisories on any dependencies.
 
 
 ##@ Prover
+
 .PHONY: prover-eval
 prover-eval: prover-clean ## Generate reports and profiling data for proofs
 	cd $(PROVER_PERF_EVAL_DIR) && cargo run --release -F profiling

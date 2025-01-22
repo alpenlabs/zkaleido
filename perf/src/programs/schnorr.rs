@@ -22,14 +22,3 @@ pub fn risc0_schnorr_sig_verify_report() -> ProofReport {
     let host = Risc0Host::init(GUEST_RISC0_SCHNORR_SIG_VERIFY_ELF);
     perf_report(&host)
 }
-
-#[allow(dead_code)]
-pub fn make_proofs() {
-    #[cfg(feature = "sp1")]
-    let report = sp1_schnorr_sig_verify_report();
-    println!("{}", report.cycles);
-
-    #[cfg(feature = "risc0")]
-    let report = risc0_schnorr_sig_verify_report();
-    println!("{}", report.cycles);
-}
