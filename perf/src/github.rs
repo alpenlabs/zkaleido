@@ -1,4 +1,4 @@
-use reqwest::Client;
+use reqwest::{Client, RequestBuilder};
 use serde_json::json;
 
 use crate::args::EvalArgs;
@@ -12,20 +12,17 @@ pub async fn post_to_github_pr(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new();
 
-    // Get all comments on the PR
     const BASE_URL: &str = "https://api.github.com/repos/alpenlabs/zkvm";
     let comments_url = format!("{}/issues/{}/comments", BASE_URL, &args.pr_number);
-    let comments_response = client
-        .get(&comments_url)
-        .header("Authorization", format!("Bearer {}", &args.github_token))
-        .header("X-GitHub-Api-Version", "2022-11-28")
-        .header("User-Agent", "strata-perf-bot")
+
+    // Get all comments on the PR
+    let comments_response = set_github_headers(client.get(&comments_url), &args.github_token)
         .send()
         .await?;
 
     let comments: Vec<serde_json::Value> = comments_response.json().await?;
 
-    // Look for an existing comment from our bot
+    // Look for an existing comment from the bot
     let bot_comment = comments.iter().find(|comment| {
         comment["user"]["login"]
             .as_str()
@@ -33,42 +30,39 @@ pub async fn post_to_github_pr(
             .unwrap_or(false)
     });
 
-    if let Some(existing_comment) = bot_comment {
-        // Update the existing comment
+    // Depending on whether the bot has already commented, either patch or post
+    let request = if let Some(existing_comment) = bot_comment {
         let comment_url = existing_comment["url"].as_str().unwrap();
-        let response = client
-            .patch(comment_url)
-            .header("Authorization", format!("Bearer {}", &args.github_token))
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header("User-Agent", "strata-perf-bot")
-            .json(&json!({
-                "body": message
-            }))
-            .send()
-            .await?;
-
-        if !response.status().is_success() {
-            return Err(format!("Failed to update comment: {:?}", response.text().await?).into());
-        }
+        client.patch(comment_url)
     } else {
-        // Create a new comment
-        let response = client
-            .post(&comments_url)
-            .header("Authorization", format!("Bearer {}", &args.github_token))
-            .header("X-GitHub-Api-Version", "2022-11-28")
-            .header("User-Agent", "strata-perf-bot")
-            .json(&json!({
-                "body": message
-            }))
-            .send()
-            .await?;
+        client.post(&comments_url)
+    };
 
-        if !response.status().is_success() {
-            return Err(format!("Failed to post comment: {:?}", response.text().await?).into());
-        }
+    // Send the request with the updated or new body
+    let response = set_github_headers(request, &args.github_token)
+        .json(&json!({ "body": message }))
+        .send()
+        .await?;
+
+    // Handle errors uniformly
+    if !response.status().is_success() {
+        let error_msg = if bot_comment.is_some() {
+            "Failed to update comment"
+        } else {
+            "Failed to post comment"
+        };
+        return Err(format!("{}: {:?}", error_msg, response.text().await?).into());
     }
 
     Ok(())
+}
+
+// Helper function to apply common GitHub headers
+fn set_github_headers(builder: RequestBuilder, token: &str) -> RequestBuilder {
+    builder
+        .header("Authorization", format!("Bearer {}", token))
+        .header("X-GitHub-Api-Version", "2022-11-28")
+        .header("User-Agent", "strata-perf-bot")
 }
 
 pub fn format_github_message(results_text: &[String]) -> String {
