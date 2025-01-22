@@ -6,6 +6,7 @@ use serde::Serialize;
 use serde_json::json;
 use strata_zkvm::ProofReport;
 pub use zkvm_runner::{risc0_fib_report, risc0_sha_report, sp1_fib_report, sp1_sha_report};
+use zkvm_runner::{risc0_schnorr_sig_verify_report, sp1_schnorr_sig_verify_report};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -83,24 +84,22 @@ impl From<ProofReport> for PerformanceReport {
 ///
 /// Generates [`PerformanceReport`] for each invocation.
 fn run_sp1_programs() -> Vec<PerformanceReport> {
-    let mut reports = vec![];
-
-    reports.push(sp1_fib_report().into());
-    reports.push(sp1_sha_report().into());
-
-    reports
+    vec![
+        sp1_fib_report().into(),
+        sp1_sha_report().into(),
+        sp1_schnorr_sig_verify_report().into(),
+    ]
 }
 
-/// Runs SP1 programs to generate reports.
+/// Runs Risc0 programs to generate reports.
 ///
 /// Generates [`PerformanceReport`] for each invocation.
 fn run_risc0_programs() -> Vec<PerformanceReport> {
-    let mut reports = vec![];
-
-    reports.push(risc0_fib_report().into());
-    reports.push(risc0_sha_report().into());
-
-    reports
+    vec![
+        risc0_fib_report().into(),
+        risc0_sha_report().into(),
+        risc0_schnorr_sig_verify_report().into(),
+    ]
 }
 
 /// Returns a formatted header for the performance report with basic PR data.
