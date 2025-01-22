@@ -5504,10 +5504,13 @@ dependencies = [
  "anyhow",
  "bincode",
  "clap",
+ "fibonacci",
  "num-format",
  "reqwest",
+ "schnorr-sig-verify",
  "serde",
  "serde_json",
+ "sha2-chain",
  "sp1-sdk",
  "strata-risc0-adapter",
  "strata-risc0-artifacts",
@@ -5516,7 +5519,6 @@ dependencies = [
  "strata-zkvm",
  "time",
  "tokio",
- "zkvm-runner",
 ]
 
 [[package]]

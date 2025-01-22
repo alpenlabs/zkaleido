@@ -1,16 +1,20 @@
 pub mod args;
 pub mod format;
 pub mod github;
+pub mod programs;
 
 use anyhow::Result;
 use args::EvalArgs;
 use clap::Parser;
 use format::{format_header, format_results};
 use github::{format_github_message, post_to_github_pr};
+use programs::{
+    fibonacci::{risc0_fib_report, sp1_fib_report},
+    schnorr::{risc0_schnorr_sig_verify_report, sp1_schnorr_sig_verify_report},
+    sha2::{risc0_sha_report, sp1_sha_report},
+};
 use serde::Serialize;
 use strata_zkvm::ProofReport;
-pub use zkvm_runner::{risc0_fib_report, risc0_sha_report, sp1_fib_report, sp1_sha_report};
-use zkvm_runner::{risc0_schnorr_sig_verify_report, sp1_schnorr_sig_verify_report};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
