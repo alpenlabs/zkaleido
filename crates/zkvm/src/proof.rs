@@ -1,6 +1,10 @@
+use std::{fs::File, path::Path};
+
 use arbitrary::Arbitrary;
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
+
+use crate::{ZkVmError, ZkVmResult};
 
 /// Macro to define a newtype wrapper around `Vec<u8>` with common implementations.
 macro_rules! define_byte_wrapper {
@@ -94,6 +98,18 @@ impl ProofReceipt {
     /// Returns the public values associated with the proof.
     pub fn public_values(&self) -> &PublicValues {
         &self.public_values
+    }
+
+    /// Saves the proof to a path.
+    pub fn save(&self, path: impl AsRef<Path>) -> ZkVmResult<()> {
+        bincode::serialize_into(File::create(path).expect("failed to open file"), self)
+            .map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))
+    }
+
+    /// Loads a proof from a path.
+    pub fn load(path: impl AsRef<Path>) -> ZkVmResult<Self> {
+        bincode::deserialize_from(File::open(path).expect("failed to open file"))
+            .map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))
     }
 }
 

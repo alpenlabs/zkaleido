@@ -32,12 +32,15 @@ tokio = { version = "1.39.0", features = ["full"] }
 
 [features]
 default = ["sp1-mock", "risc0-mock"]
-sp1 = ["strata-sp1-adapter/prover", "strata-sp1-artifacts"]
-sp1-mock = [
-  "sp1",
-  "strata-sp1-adapter/mock",
-  "strata-sp1-artifacts/mock",
+sp1 = [
+  "strata-sp1-adapter/prover",
+  "strata-sp1-artifacts",
   "strata-sp1-adapter/perf",
 ]
-risc0 = ["strata-risc0-adapter/prover", "strata-risc0-artifacts"]
-risc0-mock = ["risc0", "strata-risc0-adapter/mock", "strata-risc0-adapter/perf"]
+sp1-mock = ["sp1", "strata-sp1-adapter/mock", "strata-sp1-artifacts/mock"]
+risc0 = [
+  "strata-risc0-adapter/prover",
+  "strata-risc0-artifacts",
+  "strata-risc0-adapter/perf",
+]
+risc0-mock = ["risc0", "strata-risc0-adapter/mock"]
