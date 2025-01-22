@@ -5,11 +5,6 @@ GIT_TAG ?= $(shell git describe --tags --abbrev=0)
 
 BUILD_PATH = "target"
 
-DOCKER_DIR = docker
-DOCKER_DATADIR = .data
-PROVER_PERF_EVAL_DIR  = provers/perf
-PROVER_PROOFS_CACHE_DIR  = provers/tests/proofs
-
 # Cargo profile for builds. Default is for local builds, CI uses an override.
 PROFILE ?= release
 
@@ -18,9 +13,6 @@ CARGO_INSTALL_EXTRA_FLAGS ?=
 
 # List of features to use for building
 FEATURES ?=
-
-# The docker image name
-DOCKER_IMAGE_NAME ?=
 
 ##@ Help
 
@@ -64,35 +56,31 @@ sec: ## Check for security advisories on any dependencies.
 
 ##@ Prover
 
-.PHONY: prover-eval
-prover-eval: prover-clean ## Generate reports and profiling data for proofs
-	cd $(PROVER_PERF_EVAL_DIR) && cargo run --release -F profiling
+.PHONY: report
+report: prover-clean ## Generate proof report for programs
+	cargo run --release
+
+.PHONY: report-sp1
+report-sp1: prover-clean ## Generate SP1 proof report for programs
+	cargo run --release --no-default-features -F sp1-mock,all-programs
+
+.PHONY: report-risc0
+report-risc0: prover-clean ## Generate Risc0 proof report for programs
+	cargo run --release --no-default-features -F risc0-mock,all-programs
+
+.PHONY: proof-sp1-fibonacci
+proof-sp1-fibonacci: prover-clean ## Generate SP1 Groth16 proof for fibonacci program
+	cargo run --release --no-default-features -F sp1,fibonacci
+
+.PHONY: proof-risc0-fibonacci
+proof-risc0-fibonacci: prover-clean ## Generate Risc0 Groth16 proof for fibonacci program
+	cargo run --release --no-default-features -F sp1,fibonacci
+
 
 .PHONY: prover-clean
 prover-clean: ## Cleans up proofs and profiling data generated
-	rm -rf $(PROVER_PERF_EVAL_DIR)/*.trace
-	rm -rf $(PROVER_PROOFS_CACHE_DIR)/*.proof
-
-.PHONY: clean-cargo
-clean-cargo: ## cargo clean
-	cargo clean 2>/dev/null
-
-.PHONY: clean-docker-data
-clean-docker-data: ## Remove docker data files inside /docker/.data
-	rm -rf $(DOCKER_DIR)/$(DOCKER_DATADIR) 2>/dev/null
-
-.PHONY: clean
-clean: clean-docker-data clean-cargo  ## cargo clean, clean docker data
-	@echo "\n\033[36m======== CLEAN_COMPLETE ========\033[0m\n"
-
-.PHONY: docker-up
-docker-up: ## docker compose up
-	cd $(DOCKER_DIR) && docker compose up -d
-
-.PHONY: docker-down
-docker-down: ## docker compose down
-	cd $(DOCKER_DIR) && docker compose down && \
-	rm -rf $(DOCKER_DATADIR) 2>/dev/null
+	rm -rf *.trace
+	rm -rf *.proof
 
 ##@ Code Quality
 
