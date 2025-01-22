@@ -8,11 +8,7 @@ use args::EvalArgs;
 use clap::Parser;
 use format::{format_header, format_results};
 use github::{format_github_message, post_to_github_pr};
-use programs::{
-    fibonacci::{risc0_fib_report, sp1_fib_report},
-    schnorr::{risc0_schnorr_sig_verify_report, sp1_schnorr_sig_verify_report},
-    sha2::{risc0_sha_report, sp1_sha_report},
-};
+use programs::{run_risc0_programs, run_sp1_programs};
 use serde::Serialize;
 use strata_zkvm::ProofReport;
 
@@ -65,26 +61,4 @@ impl From<ProofReport> for PerformanceReport {
             success: true,
         }
     }
-}
-
-/// Runs SP1 programs to generate reports.
-///
-/// Generates [`PerformanceReport`] for each invocation.
-fn run_sp1_programs() -> Vec<PerformanceReport> {
-    vec![
-        sp1_fib_report().into(),
-        sp1_sha_report().into(),
-        sp1_schnorr_sig_verify_report().into(),
-    ]
-}
-
-/// Runs Risc0 programs to generate reports.
-///
-/// Generates [`PerformanceReport`] for each invocation.
-fn run_risc0_programs() -> Vec<PerformanceReport> {
-    vec![
-        risc0_fib_report().into(),
-        risc0_sha_report().into(),
-        risc0_schnorr_sig_verify_report().into(),
-    ]
 }

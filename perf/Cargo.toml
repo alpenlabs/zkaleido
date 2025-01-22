@@ -7,9 +7,9 @@ version = "0.1.0"
 strata-zkvm.workspace = true
 
 # examples
-fibonacci.workspace = true
-sha2-chain.workspace = true
-schnorr-sig-verify.workspace = true
+fibonacci = { workspace = true, optional = true }
+sha2-chain = { workspace = true, optional = true }
+schnorr-sig-verify = { workspace = true, optional = true }
 
 # sp1
 strata-sp1-adapter = { path = "../crates/sp1", optional = true }
@@ -31,7 +31,7 @@ time = "0.3.26"
 tokio = { version = "1.39.0", features = ["full"] }
 
 [features]
-default = ["sp1-mock", "risc0-mock"]
+default = ["sp1-mock", "risc0-mock", "all-programs"]
 sp1 = [
   "strata-sp1-adapter/prover",
   "strata-sp1-artifacts",
@@ -44,3 +44,8 @@ risc0 = [
   "strata-risc0-adapter/perf",
 ]
 risc0-mock = ["risc0", "strata-risc0-adapter/mock"]
+all-programs = ["fibonacci", "sha2-chain", "schnorr-sig-verify"]
+
+fibonacci = ["dep:fibonacci"]
+sha2-chain = ["dep:sha2-chain"]
+schnorr-sig-verify = ["dep:schnorr-sig-verify"]
