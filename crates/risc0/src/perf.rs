@@ -12,7 +12,7 @@ impl ZkVmHostPerf for Risc0Host {
     ) -> ZkVmResult<ProofReport> {
         let executor = default_executor();
 
-        std::env::set_var("RISC0_PPROF_OUT", format!("{}.pb", report_name));
+        std::env::set_var("RISC0_PPROF_OUT", format!("{}.risc0.trace", report_name));
 
         // TODO: handle error
         let session_info = executor.execute(input, self.get_elf()).unwrap();
