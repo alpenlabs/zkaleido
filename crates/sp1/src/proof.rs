@@ -50,7 +50,7 @@ impl TryFrom<SP1ProofReceipt> for ProofReceipt {
     fn try_from(value: SP1ProofReceipt) -> Result<Self, Self::Error> {
         let sp1_receipt = value.as_ref();
 
-        // If there's a Groth16 representation, just re-use its bytes;
+        // If there's a Groth16 representation, just reuse its bytes;
         // otherwise, serialize the entire proof.
         let proof_bytes = match sp1_receipt.proof.clone().try_as_groth_16() {
             Some(_) => sp1_receipt.bytes(),

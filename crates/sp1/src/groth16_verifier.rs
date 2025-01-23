@@ -18,30 +18,20 @@ pub fn verify_groth16(receipt: &ProofReceipt, vkey_hash: &[u8; 32]) -> ZkVmResul
     .map_err(|e| ZkVmError::ProofVerificationError(e.to_string()))
 }
 
-// // NOTE: SP1 prover runs in release mode only; therefore run the tests on release mode only
-// #[cfg(test)]
-// mod tests {
+#[cfg(test)]
+mod tests {
+    use strata_zkvm::ProofReceipt;
 
-//     use sp1_sdk::SP1ProofWithPublicValues;
-//     use strata_primitives::buf::Buf32;
+    use crate::verify_groth16;
 
-//     use super::*;
+    #[test]
+    fn test_groth16_verification() {
+        let vk_hex = "00bf077c28baa685b0a9ec0b8d47eb51bc98f5c048f5aa386ea156fe24995a35";
+        let vk: [u8; 32] = hex::decode(vk_hex).unwrap().try_into().unwrap();
+        let proof_file = format!("./proofs/fibonacci_sp1_0x{}.proof.bin", vk_hex);
 
-//     #[test]
-//     fn test_groth16_verification() {
-//         let sp1_vkey_hash = "0x00efb1120491119751e75bc55bc95b64d33f973ecf68fcf5cbff08506c5788f9";
-//         let vk_buf32: Buf32 = sp1_vkey_hash.parse().unwrap();
-//         let vk_hash_str = hex::encode(vk_buf32.as_bytes());
-//         let vk_hash_str = format!("0x{}", vk_hash_str);
-//         assert_eq!(sp1_vkey_hash, vk_hash_str);
-
-//         let sp1_proof_with_public_values =
-//             SP1ProofWithPublicValues::load("tests/proofs/proof-groth16.bin").unwrap();
-
-//         let proof = Proof::new(sp1_proof_with_public_values.bytes());
-//         let sp1_public_inputs = sp1_proof_with_public_values.public_values.to_vec();
-
-//         verify_groth16(&proof, &vk_buf32.0, &sp1_public_inputs)
-//             .expect("proof verification must succeed");
-//     }
-// }
+        let receipt = ProofReceipt::load(proof_file).unwrap();
+        let res = verify_groth16(&receipt, &vk);
+        assert!(res.is_ok(), "groth16 proof verification must succeed");
+    }
+}
