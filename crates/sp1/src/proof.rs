@@ -48,10 +48,19 @@ impl TryFrom<&ProofReceipt> for SP1ProofReceipt {
 impl TryFrom<SP1ProofReceipt> for ProofReceipt {
     type Error = ZkVmProofError;
     fn try_from(value: SP1ProofReceipt) -> Result<Self, Self::Error> {
-        let proof = Proof::new(
-            bincode::serialize(&value.0.proof).map_err(|e| ZkVmProofError::DataFormat(e.into()))?,
-        );
-        let public_values = PublicValues::new(value.0.public_values.to_vec());
+        let sp1_receipt = value.as_ref();
+
+        // If there's a Groth16 representation, just re-use its bytes;
+        // otherwise, serialize the entire proof.
+        let proof_bytes = match sp1_receipt.proof.clone().try_as_groth_16() {
+            Some(_) => sp1_receipt.bytes(),
+            None => bincode::serialize(&sp1_receipt.proof)
+                .map_err(|e| ZkVmProofError::DataFormat(e.into()))?,
+        };
+
+        let proof = Proof::new(proof_bytes);
+        let public_values = PublicValues::new(sp1_receipt.public_values.to_vec());
+
         Ok(ProofReceipt::new(proof, public_values))
     }
 }
