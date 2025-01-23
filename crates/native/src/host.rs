@@ -50,7 +50,7 @@ impl ZkVmHost for NativeHost {
     }
 }
 
-impl fmt::Display for NativeHost {
+impl fmt::Debug for NativeHost {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "native")
     }

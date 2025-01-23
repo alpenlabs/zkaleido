@@ -1,17 +1,15 @@
 [package]
+edition = "2021"
 name = "zkvm-runner"
 version = "0.1.0"
-edition = "2021"
 
 [dependencies]
 strata-zkvm.workspace = true
 
+# examples
 fibonacci.workspace = true
 sha2-chain.workspace = true
 schnorr-sig-verify.workspace = true
-
-argh = "0.1"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 
 # sp1
 strata-sp1-adapter = { path = "../crates/sp1", optional = true }
@@ -21,15 +19,28 @@ strata-sp1-artifacts = { path = "../artifacts/sp1", optional = true }
 strata-risc0-adapter = { path = "../crates/risc0", optional = true }
 strata-risc0-artifacts = { path = "../artifacts/risc0", optional = true }
 
+anyhow = "1.0.83"
+clap = { version = "4.5.9", features = ["derive"] }
+bincode = "1.3.3"
+num-format = "0.4.4"
+reqwest = { version = "0.12.4", features = ["json"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0.94"
+sp1-sdk = "4.0.0"
+time = "0.3.26"
+tokio = { version = "1.39.0", features = ["full"] }
+
 [features]
 default = ["sp1-mock", "risc0-mock"]
-sp1 = ["strata-sp1-adapter/prover", "strata-sp1-artifacts"]
-sp1-mock = [
-  "sp1",
-  "strata-sp1-adapter/mock",
-  "strata-sp1-artifacts/mock",
+sp1 = [
+  "strata-sp1-adapter/prover",
+  "strata-sp1-artifacts",
   "strata-sp1-adapter/perf",
 ]
-
-risc0 = ["strata-risc0-adapter/prover", "strata-risc0-artifacts"]
-risc0-mock = ["risc0", "strata-risc0-adapter/mock", "strata-risc0-adapter/perf"]
+sp1-mock = ["sp1", "strata-sp1-adapter/mock", "strata-sp1-artifacts/mock"]
+risc0 = [
+  "strata-risc0-adapter/prover",
+  "strata-risc0-artifacts",
+  "strata-risc0-adapter/perf",
+]
+risc0-mock = ["risc0", "strata-risc0-adapter/mock"]

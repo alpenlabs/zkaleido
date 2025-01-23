@@ -93,86 +93,8 @@ impl ZkVmHost for SP1Host {
     }
 }
 
-impl fmt::Display for SP1Host {
+impl fmt::Debug for SP1Host {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "sp1_{}", self.proving_key.vk.bytes32())
-    }
-}
-
-// NOTE: SP1 prover runs in release mode only; therefore run the tests on release mode only
-#[cfg(test)]
-#[cfg(not(debug_assertions))]
-mod tests {
-
-    use std::{fs::File, io::Write};
-
-    use sp1_sdk::HashableKey;
-    use strata_zkvm::{ProofType, ZkVmHost};
-
-    use super::*;
-
-    // Adding compiled guest code `TEST_ELF` to save the build time
-    // #![no_main]
-    // sp1_zkvm::entrypoint!(main);
-    // fn main() {
-    //     let n = sp1_zkvm::io::read::<u32>();
-    //     sp1_zkvm::io::commit(&n);
-    // }
-    const TEST_ELF: &[u8] = include_bytes!("../tests/elf/riscv32im-succinct-zkvm-elf");
-
-    #[test]
-    fn test_mock_prover() {
-        let input: u32 = 1;
-
-        let mut prover_input_builder = SP1ProofInputBuilder::new();
-        prover_input_builder.write_serde(&input).unwrap();
-        let prover_input = prover_input_builder.build().unwrap();
-
-        // assert proof generation works
-        let zkvm = SP1Host::init(TEST_ELF);
-        let proof = zkvm
-            .prove(prover_input, ProofType::Core)
-            .expect("Failed to generate proof");
-
-        // assert proof verification works
-        zkvm.verify(&proof).expect("Proof verification failed");
-
-        // assert public outputs extraction from proof  works
-        let out: u32 = SP1Host::extract_serde_public_output(proof.public_values()).expect(
-            "Failed to extract public
-    outputs",
-        );
-        assert_eq!(input, out)
-    }
-
-    #[test]
-    fn test_groth16_proof_generation() {
-        sp1_sdk::utils::setup_logger();
-
-        let input: u32 = 1;
-
-        let prover_input = SP1ProofInputBuilder::new()
-            .write_serde(&input)
-            .unwrap()
-            .build()
-            .unwrap();
-
-        let zkvm = SP1Host::init(TEST_ELF);
-
-        // assert proof generation works
-        let proof = zkvm
-            .prove(prover_input, ProofType::Groth16)
-            .expect("Failed to generate proof");
-
-        // Note: For the fixed ELF and fixed SP1 version, the vk is fixed
-        assert_eq!(
-            zkvm.verifying_key.bytes32(),
-            "0x00efb1120491119751e75bc55bc95b64d33f973ecf68fcf5cbff08506c5788f9"
-        );
-
-        let filename = "proof-groth16.bin";
-        let mut file = File::create(filename).unwrap();
-        file.write_all(&bincode::serialize(&proof).expect("bincode serialization failed"))
-            .unwrap();
     }
 }

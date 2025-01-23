@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::fmt::Debug;
 
 use borsh::BorshDeserialize;
 use serde::{de::DeserializeOwned, Serialize};
@@ -9,7 +9,7 @@ use crate::{
 };
 
 /// A trait implemented by the prover ("host") of a zkVM program.
-pub trait ZkVmHost: Send + Sync + Clone + Display + 'static {
+pub trait ZkVmHost: Send + Sync + Clone + Debug + 'static {
     type Input<'a>: ZkVmInputBuilder<'a>;
 
     type ZkVmProofReceipt: TryInto<ProofReceipt, Error = ZkVmProofError>

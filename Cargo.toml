@@ -12,9 +12,6 @@ members = [
   "examples/fibonacci",
   "examples/sha2-chain",
   "examples/schnorr-sig-verify",
-
-  # performance
-  "perf",
 ]
 
 resolver = "2"

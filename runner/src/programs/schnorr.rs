@@ -1,9 +1,12 @@
 use schnorr_sig_verify::{SchnorrSigInput, SchnorrSigProver};
-use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProverPerf};
+use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
 
 fn perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
     let input = SchnorrSigInput::new_random();
     let report_name = "schnorr".to_string();
+    let proof_file_name = format!("{}_{:?}.proof", report_name, host);
+    let proof = SchnorrSigProver::prove(&input, host).unwrap();
+    proof.save(proof_file_name).unwrap();
     SchnorrSigProver::perf_report(&input, host, report_name).unwrap()
 }
 
@@ -21,15 +24,4 @@ pub fn risc0_schnorr_sig_verify_report() -> ProofReport {
     use strata_risc0_artifacts::GUEST_RISC0_SCHNORR_SIG_VERIFY_ELF;
     let host = Risc0Host::init(GUEST_RISC0_SCHNORR_SIG_VERIFY_ELF);
     perf_report(&host)
-}
-
-#[allow(dead_code)]
-pub fn make_proofs() {
-    #[cfg(feature = "sp1")]
-    let report = sp1_schnorr_sig_verify_report();
-    println!("{}", report.cycles);
-
-    #[cfg(feature = "risc0")]
-    let report = risc0_schnorr_sig_verify_report();
-    println!("{}", report.cycles);
 }

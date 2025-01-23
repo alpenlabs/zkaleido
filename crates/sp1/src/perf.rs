@@ -12,7 +12,7 @@ impl ZkVmHostPerf for SP1Host {
     ) -> ZkVmResult<ProofReport> {
         let client = ProverClient::from_env();
 
-        std::env::set_var("TRACE_FILE", format!("{}.trace", report_name));
+        std::env::set_var("TRACE_FILE", format!("{}.sp1.trace", report_name));
 
         let (_, report) = client.execute(self.get_elf(), &input).run().unwrap();
 

@@ -1,9 +1,12 @@
 use sha2_chain::ShaChainProver;
-use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProverPerf};
+use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
 
 fn sha2_prover_perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
     let input = 5;
     let report_name = "sha2".to_string();
+    let proof_file_name = format!("{}_{:?}.proof", report_name, host);
+    let proof = ShaChainProver::prove(&input, host).unwrap();
+    proof.save(proof_file_name).unwrap();
     ShaChainProver::perf_report(&input, host, report_name).unwrap()
 }
 
@@ -12,6 +15,7 @@ pub fn sp1_sha_report() -> ProofReport {
     use strata_sp1_adapter::SP1Host;
     use strata_sp1_artifacts::SHA2_CHAIN_ELF;
     let host = SP1Host::init(SHA2_CHAIN_ELF);
+
     sha2_prover_perf_report(&host)
 }
 
@@ -21,13 +25,4 @@ pub fn risc0_sha_report() -> ProofReport {
     use strata_risc0_artifacts::GUEST_RISC0_SHA2_CHAIN_ELF;
     let host = Risc0Host::init(GUEST_RISC0_SHA2_CHAIN_ELF);
     sha2_prover_perf_report(&host)
-}
-
-#[allow(dead_code)]
-pub fn make_proofs() {
-    #[cfg(feature = "risc0")]
-    let _ = risc0_sha_report();
-
-    #[cfg(feature = "sp1")]
-    let _ = sp1_sha_report();
 }
