@@ -93,7 +93,7 @@ impl ZkVmHost for SP1Host {
     }
 }
 
-impl fmt::Display for SP1Host {
+impl fmt::Debug for SP1Host {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "sp1_{}", self.proving_key.vk.bytes32())
     }

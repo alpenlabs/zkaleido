@@ -86,7 +86,7 @@ impl ZkVmHost for Risc0Host {
     }
 }
 
-impl fmt::Display for Risc0Host {
+impl fmt::Debug for Risc0Host {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "risc0_{}", encode(self.id.as_bytes()))
     }
