@@ -1,11 +1,7 @@
 use sp1_verifier::{Groth16Verifier, GROTH16_VK_BYTES};
-use strata_zkvm::{Proof, ZkVmError, ZkVmResult};
+use strata_zkvm::{ProofReceipt, ZkVmError, ZkVmResult};
 
-pub fn verify_groth16(
-    proof: &Proof,
-    vkey_hash: &[u8; 32],
-    committed_values_raw: &[u8],
-) -> ZkVmResult<()> {
+pub fn verify_groth16(receipt: &ProofReceipt, vkey_hash: &[u8; 32]) -> ZkVmResult<()> {
     let vk_hash_str = hex::encode(vkey_hash);
     let vk_hash_str = format!("0x{}", vk_hash_str);
 
@@ -14,8 +10,8 @@ pub fn verify_groth16(
     // Skipped for now because `load_groth16_proof_from_bytes` is not available outside of the
     // crate
     Groth16Verifier::verify(
-        proof.as_bytes(),
-        committed_values_raw,
+        receipt.proof().as_bytes(),
+        receipt.public_values().as_bytes(),
         &vk_hash_str,
         &GROTH16_VK_BYTES,
     )

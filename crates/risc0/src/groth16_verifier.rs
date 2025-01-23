@@ -1,26 +1,23 @@
 use risc0_zkvm::{Groth16Receipt, MaybePruned, ReceiptClaim};
 use sha2::Digest;
-use strata_zkvm::{Proof, ZkVmResult};
+use strata_zkvm::{ProofReceipt, ZkVmResult};
 
-pub fn verify_groth16(
-    proof: &Proof,
-    verification_key: &[u8; 32],
-    public_params_raw: &[u8],
-) -> ZkVmResult<()> {
-    let public_params_hash: [u8; 32] = sha2::Sha256::digest(public_params_raw).into();
+pub fn verify_groth16(receipt: &ProofReceipt, verification_key: &[u8; 32]) -> ZkVmResult<()> {
+    let public_params_hash: [u8; 32] =
+        sha2::Sha256::digest(receipt.public_values().as_bytes()).into();
     let public_params_digest = risc0_zkvm::sha::Digest::from_bytes(public_params_hash);
 
     let claim = ReceiptClaim::ok(
         risc0_zkvm::sha::Digest::from_bytes(*verification_key),
-        MaybePruned::from(public_params_raw.to_vec()),
+        MaybePruned::from(receipt.public_values().as_bytes().to_vec()),
     );
 
     let claim = MaybePruned::from(claim);
 
     let receipt = Groth16Receipt::new(
-        proof.as_bytes().into(), // Actual Groth16 Proof(A, B, C)
-        claim,                   // Includes both digest and elf
-        public_params_digest,    // This is not actually used underneath
+        receipt.proof().as_bytes().into(), // Actual Groth16 Proof(A, B, C)
+        claim,                             // Includes both digest and elf
+        public_params_digest,              // This is not actually used underneath
     );
 
     // Map the verification error to ZkVmResult and return the result
