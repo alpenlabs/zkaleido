@@ -20,7 +20,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(feature = "sp1")]
     {
-        let sp1_reports = programs::run_sp1_programs();
+        let sp1_reports = programs::run_sp1_programs(&args.programs);
         results_text.push(format_results(&sp1_reports, "SP1".to_owned()));
         if !sp1_reports.iter().all(|r| r.success) {
             println!("Some SP1 programs failed. Please check the results below.");
@@ -30,7 +30,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(feature = "risc0")]
     {
-        let risc0_reports = programs::run_risc0_programs();
+        let risc0_reports = programs::run_risc0_programs(&args.programs);
         results_text.push(format_results(&risc0_reports, "RISC0".to_owned()));
         if !risc0_reports.iter().all(|r| r.success) {
             println!("Some Risc0 programs failed. Please check the results below.");

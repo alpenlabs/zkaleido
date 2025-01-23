@@ -58,23 +58,23 @@ sec: ## Check for security advisories on any dependencies.
 
 .PHONY: report
 report: prover-clean ## Generate proof report for programs
-	cargo run --release
+	cargo run --release -- --programs fibonacci,sha2-chain,schnorr-sig-verify
 
 .PHONY: report-sp1
 report-sp1: prover-clean ## Generate SP1 proof report for programs
-	cargo run --release --no-default-features -F sp1-mock,all-programs
+	cargo run --release --no-default-features -F sp1-mock -- --programs fibonacci,sha2-chain,schnorr-sig-verify
 
 .PHONY: report-risc0
 report-risc0: prover-clean ## Generate Risc0 proof report for programs
-	cargo run --release --no-default-features -F risc0-mock,all-programs
+	cargo run --release --no-default-features -F risc0-mock -- --programs fibonacci,sha2-chain,schnorr-sig-verify
 
 .PHONY: proof-sp1-fibonacci
 proof-sp1-fibonacci: prover-clean ## Generate SP1 Groth16 proof for fibonacci program
-	cargo run --release --no-default-features -F sp1,fibonacci
+	cargo run --release --no-default-features -F sp1 -- --programs fibonacci
 
 .PHONY: proof-risc0-fibonacci
 proof-risc0-fibonacci: prover-clean ## Generate Risc0 Groth16 proof for fibonacci program
-	cargo run --release --no-default-features -F sp1,fibonacci
+	cargo run --release --no-default-features -F risc0 -- --programs fibonacci
 
 
 .PHONY: prover-clean

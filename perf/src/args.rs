@@ -1,5 +1,7 @@
 use clap::{command, Parser};
 
+use crate::programs::GuestProgram;
+
 /// Flags for CLI invocation being parsed.
 #[derive(Parser, Clone)]
 #[command(about = "Evaluate the performance of SP1 on programs.")]
@@ -19,4 +21,9 @@ pub struct EvalArgs {
     /// The commit hash.
     #[arg(long, default_value = "local_commit")]
     pub commit_hash: String,
+
+    /// Programs to run (comma-delimited).
+    /// e.g. `--programs fibonacci,sha2-chain,schnorr-sig-verify`
+    #[arg(long, value_enum, value_delimiter = ',')]
+    pub programs: Vec<GuestProgram>,
 }
