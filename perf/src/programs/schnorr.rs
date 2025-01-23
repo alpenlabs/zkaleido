@@ -1,10 +1,10 @@
 use schnorr_sig_verify::{SchnorrSigInput, SchnorrSigProver};
-use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProverPerf};
 #[cfg(any(
     all(feature = "sp1", not(feature = "sp1-mock")),
     all(feature = "risc0", not(feature = "risc0-mock"))
 ))]
 use strata_zkvm::{ProofReceipt, ZkVmHost, ZkVmProver};
+use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProverPerf};
 
 fn perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
     let input = SchnorrSigInput::new_random();

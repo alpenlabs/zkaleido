@@ -28,30 +28,10 @@ Currently, the repository supports the following ZKVMs:
 
 ## Usage
 
-### Building ELFs and Artifacts
-To build the ELFs and other artifacts for different adapters, use the following command:
+### Generating report of cycle count of different programs
 
 ```bash
-cargo build --release
-```
-
-This will compile the repository and generate the required ELF binaries and other artifacts.
-
----
-
-### Running a Program
-To run a program, specify the program name using the `-p` flag:
-
-```bash
-RUST_LOG=info cargo run -- -p <PROGRAM_NAME>
-```
-
-- Replace `<PROGRAM_NAME>` with the name of the program you wish to execute.
-- Logs will be displayed based on the `RUST_LOG` environment variable.
-
-Example:
-```bash
-RUST_LOG=info cargo run -- -p fibonacci
+make report
 ```
 
 ---
