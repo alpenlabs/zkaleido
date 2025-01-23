@@ -5467,30 +5467,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "strata-provers-perf"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bincode",
- "clap",
- "fibonacci",
- "num-format",
- "reqwest",
- "schnorr-sig-verify",
- "serde",
- "serde_json",
- "sha2-chain",
- "sp1-sdk",
- "strata-risc0-adapter",
- "strata-risc0-artifacts",
- "strata-sp1-adapter",
- "strata-sp1-artifacts",
- "strata-zkvm",
- "time",
- "tokio",
-]
-
-[[package]]
 name = "strata-risc0-adapter"
 version = "0.1.0"
 dependencies = [
@@ -6821,4 +6797,28 @@ dependencies = [
  "sha2",
  "sha3",
  "subtle",
+]
+
+[[package]]
+name = "zkvm-runner"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bincode",
+ "clap",
+ "fibonacci",
+ "num-format",
+ "reqwest",
+ "schnorr-sig-verify",
+ "serde",
+ "serde_json",
+ "sha2-chain",
+ "sp1-sdk",
+ "strata-risc0-adapter",
+ "strata-risc0-artifacts",
+ "strata-sp1-adapter",
+ "strata-sp1-artifacts",
+ "strata-zkvm",
+ "time",
+ "tokio",
 ]

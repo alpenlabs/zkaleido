@@ -6,7 +6,7 @@ members = [
   "crates/zkvm",
 
   # binaries
-  "perf",
+  "runner",
 
   # examples
   "examples/fibonacci",
