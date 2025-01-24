@@ -3,11 +3,10 @@ use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
 
 fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
     let input = 5;
-    let report_name = "fibonacci".to_string();
-    let proof_file_name = format!("{}_{:?}.proof", report_name, host);
+    let proof_file_name = format!("{}_{:?}.proof", FibProver::name(), host);
     let proof = FibProver::prove(&input, host).unwrap();
     proof.save(proof_file_name).unwrap();
-    FibProver::perf_report(&input, host, report_name).unwrap()
+    FibProver::perf_report(&input, host).unwrap()
 }
 
 #[cfg(feature = "sp1")]

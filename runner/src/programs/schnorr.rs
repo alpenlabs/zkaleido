@@ -3,11 +3,10 @@ use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
 
 fn perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
     let input = SchnorrSigInput::new_random();
-    let report_name = "schnorr".to_string();
-    let proof_file_name = format!("{}_{:?}.proof", report_name, host);
+    let proof_file_name = format!("{}_{:?}.proof", SchnorrSigProver::name(), host);
     let proof = SchnorrSigProver::prove(&input, host).unwrap();
     proof.save(proof_file_name).unwrap();
-    SchnorrSigProver::perf_report(&input, host, report_name).unwrap()
+    SchnorrSigProver::perf_report(&input, host).unwrap()
 }
 
 #[cfg(feature = "sp1")]

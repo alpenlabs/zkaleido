@@ -19,11 +19,7 @@ pub trait ZkVmHostPerf: ZkVmHost {
 }
 
 pub trait ZkVmProverPerf: ZkVmProver {
-    fn perf_report<'a, H>(
-        input: &'a Self::Input,
-        host: &H,
-        report_name: String,
-    ) -> ZkVmResult<ProofReport>
+    fn perf_report<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<ProofReport>
     where
         H: ZkVmHostPerf,
         H::Input<'a>: ZkVmInputBuilder<'a>,
@@ -32,6 +28,6 @@ pub trait ZkVmProverPerf: ZkVmProver {
         let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
 
         // Get the proof report
-        host.perf_report(zkvm_input, Self::proof_type(), report_name)
+        host.perf_report(zkvm_input, Self::proof_type(), Self::name())
     }
 }
