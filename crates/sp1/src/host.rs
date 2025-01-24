@@ -66,6 +66,27 @@ impl ZkVmHost for SP1Host {
         Ok(proof_info.into())
     }
 
+    fn execute<'a>(
+        &self,
+        prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
+    ) -> ZkVmResult<(PublicValues, u64)> {
+        let client = ProverClient::from_env();
+
+        if std::env::var("ZKVM_PROFILING_DUMP")
+            .map(|v| v == "1" || v.to_lowercase() == "true")
+            .unwrap_or(false)
+        {
+            std::env::set_var("TRACE_FILE", "sp1.trace");
+        }
+
+        let (output, report) = client.execute(self.get_elf(), &prover_input).run().unwrap();
+
+        let public_values = PublicValues::new(output.to_vec());
+        let total_cycles = report.total_instruction_count();
+
+        Ok((public_values, total_cycles))
+    }
+
     fn extract_serde_public_output<T: Serialize + DeserializeOwned>(
         public_values: &PublicValues,
     ) -> ZkVmResult<T> {

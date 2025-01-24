@@ -33,6 +33,12 @@ pub trait ZkVmHost: Send + Sync + Clone + Debug + 'static {
         receipt.try_into().map_err(ZkVmError::InvalidProofReceipt)
     }
 
+    /// Executes the guest code within the VM, generating and returning [`ProofReceipt`].
+    fn execute<'a>(
+        &self,
+        input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
+    ) -> ZkVmResult<(PublicValues, u64)>;
+
     /// Returns the Verification key for the loaded program
     fn get_verification_key(&self) -> VerificationKey;
 

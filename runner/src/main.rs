@@ -64,7 +64,7 @@ pub struct PerformanceReport {
 impl From<ProofReport> for PerformanceReport {
     fn from(value: ProofReport) -> Self {
         PerformanceReport {
-            program: value.report_name,
+            program: value.name,
             cycles: value.cycles,
             success: true,
         }
