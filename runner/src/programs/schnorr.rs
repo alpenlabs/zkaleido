@@ -3,9 +3,7 @@ use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
 
 fn perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
     let input = SchnorrSigInput::new_random();
-    let proof_file_name = format!("{}_{:?}.proof", SchnorrSigProver::name(), host);
-    let proof = SchnorrSigProver::prove(&input, host).unwrap();
-    proof.save(proof_file_name).unwrap();
+    SchnorrSigProver::prove(&input, host).unwrap();
     SchnorrSigProver::perf_report(&input, host).unwrap()
 }
 

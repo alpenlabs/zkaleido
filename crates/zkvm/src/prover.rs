@@ -33,8 +33,16 @@ pub trait ZkVmProver {
         // Use the host to prove.
         let receipt = host.prove(zkvm_input, Self::proof_type())?;
 
-        // Process output to see if we are getting the expected output.
+        // Process output to see if we are getting the expected type.
         let _ = Self::process_output::<H>(receipt.public_values())?;
+
+        if std::env::var("ZKVM_PROOF_DUMP")
+            .map(|v| v == "1" || v.to_lowercase() == "true")
+            .unwrap_or(false)
+        {
+            let receipt_name = format!("{}_{:?}.proof", Self::name(), host);
+            receipt.save(receipt_name).unwrap();
+        }
 
         Ok(receipt)
     }

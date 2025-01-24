@@ -1,12 +1,9 @@
-use schnorr_sig_verify::SchnorrSigProver;
 use sha2_chain::ShaChainProver;
 use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
 
 fn sha2_prover_perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
     let input = 5;
-    let proof_file_name = format!("{}_{:?}.proof", SchnorrSigProver::name(), host);
-    let proof = ShaChainProver::prove(&input, host).unwrap();
-    proof.save(proof_file_name).unwrap();
+    ShaChainProver::prove(&input, host).unwrap();
     ShaChainProver::perf_report(&input, host).unwrap()
 }
 

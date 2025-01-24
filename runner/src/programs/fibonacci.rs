@@ -3,9 +3,7 @@ use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
 
 fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
     let input = 5;
-    let proof_file_name = format!("{}_{:?}.proof", FibProver::name(), host);
-    let proof = FibProver::prove(&input, host).unwrap();
-    proof.save(proof_file_name).unwrap();
+    FibProver::prove(&input, host).unwrap();
     FibProver::perf_report(&input, host).unwrap()
 }
 
