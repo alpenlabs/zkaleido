@@ -70,7 +70,8 @@ impl ZkVmHost for Risc0Host {
             .map(|v| v == "1" || v.to_lowercase() == "true")
             .unwrap_or(false)
         {
-            std::env::set_var("RISC0_PPROF_OUT", "risc0.trace");
+            let profiling_file_name = format!("{:?}.trace_profile", self);
+            std::env::set_var("RISC0_PPROF_OUT", profiling_file_name);
         }
 
         // TODO: handle error

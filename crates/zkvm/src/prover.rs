@@ -64,15 +64,6 @@ pub trait ZkVmProver {
         let (_, cycles) = host.execute(zkvm_input)?;
         let execution_time = start.elapsed().as_millis();
 
-        if std::env::var("ZKVM_PROFILING_DUMP")
-            .map(|v| v == "1" || v.to_lowercase() == "true")
-            .unwrap_or(false)
-        {
-            let from = format!("{:?}.profle", host);
-            let to = format!("{}_{:?}.profile", Self::name(), host);
-            std::fs::rename(from, to).unwrap();
-        }
-
         let _ = Self::prove(input, host)?;
         let proving_time = start.elapsed().as_millis();
 

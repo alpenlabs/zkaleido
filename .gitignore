@@ -2,6 +2,5 @@ target/
 elf/
 cache/
 
-*.pb
-*.trace
+*.trace_profile
 *.proof

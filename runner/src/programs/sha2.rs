@@ -3,7 +3,6 @@ use strata_zkvm::{ProofReport, ZkVmHost, ZkVmProver};
 
 fn sha2_prover_perf_report(host: &impl ZkVmHost) -> ProofReport {
     let input = 5;
-    ShaChainProver::prove(&input, host).unwrap();
     ShaChainProver::perf_report(&input, host).unwrap()
 }
 

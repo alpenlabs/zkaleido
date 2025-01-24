@@ -76,10 +76,15 @@ impl ZkVmHost for SP1Host {
             .map(|v| v == "1" || v.to_lowercase() == "true")
             .unwrap_or(false)
         {
-            std::env::set_var("TRACE_FILE", "sp1.trace");
+            let profiling_file_name = format!("{:?}.trace_profile", self);
+            std::env::set_var("TRACE_FILE", profiling_file_name);
         }
 
         let (output, report) = client.execute(self.get_elf(), &prover_input).run().unwrap();
+
+        // Remove the variable after execution to avoid duplication of trace generation in perf
+        // report
+        std::env::remove_var("TRACE_FILE");
 
         let public_values = PublicValues::new(output.to_vec());
         let total_cycles = report.total_instruction_count();

@@ -23,7 +23,6 @@ pub trait ZkVmHost: Send + Sync + Clone + Debug + 'static {
         proof_type: ProofType,
     ) -> ZkVmResult<Self::ZkVmProofReceipt>;
 
-    /// Executes the guest code within the VM, generating and returning [`ProofReceipt`].
     fn prove<'a>(
         &self,
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
@@ -33,7 +32,12 @@ pub trait ZkVmHost: Send + Sync + Clone + Debug + 'static {
         receipt.try_into().map_err(ZkVmError::InvalidProofReceipt)
     }
 
-    /// Executes the guest code within the VM, generating and returning [`ProofReceipt`].
+    /// Executes the guest code within the VM.
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * `PublicValues` - The public values generated during proof execution.
+    /// * `u64` - The cycle count for the execution
     fn execute<'a>(
         &self,
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
