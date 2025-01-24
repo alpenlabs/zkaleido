@@ -18,6 +18,10 @@ impl ZkVmProver for SchnorrSigProver {
     type Input = SchnorrSigInput;
     type Output = bool;
 
+    fn name() -> String {
+        "schnorr_sig_verify".to_string()
+    }
+
     fn proof_type() -> ProofType {
         ProofType::Core
     }

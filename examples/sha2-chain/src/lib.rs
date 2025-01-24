@@ -33,6 +33,10 @@ impl ZkVmProver for ShaChainProver {
     type Input = u32;
     type Output = [u8; 32];
 
+    fn name() -> String {
+        "sha2_chain".to_string()
+    }
+
     fn proof_type() -> strata_zkvm::ProofType {
         ProofType::Core
     }

@@ -24,6 +24,10 @@ impl ZkVmProver for FibProver {
     type Input = u32;
     type Output = i32;
 
+    fn name() -> String {
+        "fibonacci".to_owned()
+    }
+
     fn proof_type() -> strata_zkvm::ProofType {
         ProofType::Groth16
     }

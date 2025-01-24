@@ -7,6 +7,8 @@ pub trait ZkVmProver {
     type Input;
     type Output;
 
+    fn name() -> String;
+
     fn proof_type() -> ProofType;
 
     /// Prepares the input for the zkVM.
