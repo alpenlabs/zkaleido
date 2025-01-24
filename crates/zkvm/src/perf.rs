@@ -3,8 +3,10 @@ use crate::{ProofType, ZkVmHost, ZkVmInputBuilder, ZkVmProver, ZkVmResult};
 /// A proof report containing a performance stats about proof generation.
 #[derive(Debug, Clone)]
 pub struct ProofReport {
+    pub name: String,
     pub cycles: u64,
-    pub report_name: String,
+    pub execution_time: u128,
+    pub proving_time: u128,
 }
 
 /// An extension trait that supports performance report for [`ZkVmHost`].
@@ -28,6 +30,7 @@ pub trait ZkVmProverPerf: ZkVmProver {
         let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
 
         // Get the proof report
+        // TODO: Ideally we should not send name of the prover to the host
         host.perf_report(zkvm_input, Self::proof_type(), Self::name())
     }
 }
