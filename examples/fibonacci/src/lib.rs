@@ -25,7 +25,7 @@ impl ZkVmProver for FibProver {
     type Output = i32;
 
     fn proof_type() -> strata_zkvm::ProofType {
-        ProofType::Core
+        ProofType::Groth16
     }
 
     fn prepare_input<'a, B>(input: &'a Self::Input) -> ZkVmInputResult<B::Input>

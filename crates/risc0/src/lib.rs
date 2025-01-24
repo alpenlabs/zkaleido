@@ -9,8 +9,8 @@ pub use input::Risc0ProofInputBuilder;
 #[cfg(feature = "prover")]
 mod proof;
 
-mod verifier;
-pub use verifier::*;
+mod groth16_verifier;
+pub use groth16_verifier::*;
 
 mod env;
 pub use env::Risc0ZkVmEnv;

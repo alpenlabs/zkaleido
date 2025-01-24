@@ -18,5 +18,5 @@ pub use env::Sp1ZkVmEnv;
 #[cfg(feature = "perf")]
 pub mod perf;
 
-mod verifier;
-pub use verifier::*;
+mod groth16_verifier;
+pub use groth16_verifier::*;

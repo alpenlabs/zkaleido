@@ -1,6 +1,6 @@
 use risc0_zkvm::{guest::env, serde::from_slice};
 use serde::{de::DeserializeOwned, Serialize};
-use strata_zkvm::{Proof, ZkVmEnv};
+use strata_zkvm::{ProofReceipt, ZkVmEnv};
 
 use crate::verify_groth16;
 
@@ -31,13 +31,8 @@ impl ZkVmEnv for Risc0ZkVmEnv {
         env::verify(vk, public_values).expect("verification failed")
     }
 
-    fn verify_groth16_proof(
-        &self,
-        proof: &Proof,
-        verification_key: &[u8; 32],
-        public_params_raw: &[u8],
-    ) {
-        verify_groth16(proof, verification_key, public_params_raw).unwrap();
+    fn verify_groth16_receipt(&self, receipt: &ProofReceipt, verification_key: &[u8; 32]) {
+        verify_groth16(receipt, verification_key).unwrap();
     }
 
     fn read_verified_serde<T: DeserializeOwned>(&self, vk_digest: &[u32; 8]) -> T {
