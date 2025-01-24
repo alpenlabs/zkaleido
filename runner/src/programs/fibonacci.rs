@@ -1,9 +1,8 @@
 use fibonacci::FibProver;
-use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
+use strata_zkvm::{ProofReport, ZkVmHost, ZkVmProver};
 
-fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
+fn fib_prover_perf_report(host: &impl ZkVmHost) -> ProofReport {
     let input = 5;
-    FibProver::prove(&input, host).unwrap();
     FibProver::perf_report(&input, host).unwrap()
 }
 

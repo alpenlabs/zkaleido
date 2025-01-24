@@ -1,9 +1,8 @@
 use schnorr_sig_verify::{SchnorrSigInput, SchnorrSigProver};
-use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
+use strata_zkvm::{ProofReport, ZkVmHost, ZkVmProver};
 
-fn perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
+fn perf_report(host: &impl ZkVmHost) -> ProofReport {
     let input = SchnorrSigInput::new_random();
-    SchnorrSigProver::prove(&input, host).unwrap();
     SchnorrSigProver::perf_report(&input, host).unwrap()
 }
 

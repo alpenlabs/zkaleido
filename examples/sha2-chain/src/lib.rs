@@ -1,5 +1,5 @@
 use sha2::{Digest, Sha256};
-use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver, ZkVmProverPerf};
+use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
 
 const MESSAGE_TO_HASH: &str = "Hello, world!";
 
@@ -57,8 +57,6 @@ impl ZkVmProver for ShaChainProver {
         H::extract_serde_public_output(public_values)
     }
 }
-
-impl ZkVmProverPerf for ShaChainProver {}
 
 #[cfg(test)]
 mod tests {
