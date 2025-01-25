@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name = "strata-sp1-adapter"
+name = "zkaleido-sp1-adapter"
 version = "0.1.0"
 
 [dependencies]

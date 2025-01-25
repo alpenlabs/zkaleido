@@ -18,7 +18,7 @@ resolver = "2"
 
 [workspace.dependencies]
 zkaleido = { path = "zkaleido" }
-strata-native-zkvm-adapter = { path = "adapters/native" }
+zkaleido-native-adapter = { path = "adapters/native" }
 
 fibonacci = { path = "examples/fibonacci" }
 sha2-chain = { path = "examples/sha2-chain" }

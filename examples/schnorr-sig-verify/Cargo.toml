@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 zkaleido = { path = "../../zkaleido" }
-strata-native-zkvm-adapter = { path = "../../adapters/native" }
+zkaleido-native-adapter = { path = "../../adapters/native" }
 
 k256 = "0.13.4"
 rand = { version = "0.8.5", features = [

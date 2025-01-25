@@ -830,7 +830,7 @@ name = "guest-risc0-schnorr-sig-verify"
 version = "0.1.0"
 dependencies = [
  "schnorr-sig-verify",
- "strata-risc0-adapter",
+ "zkaleido-risc0-adapter",
 ]
 
 [[package]]
@@ -1996,8 +1996,8 @@ dependencies = [
  "rand",
  "secp256k1",
  "signature",
- "strata-native-zkvm-adapter",
  "zkaleido",
+ "zkaleido-native-adapter",
 ]
 
 [[package]]
@@ -2187,31 +2187,6 @@ name = "stable_deref_trait"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a8f112729512f8e442d81f95a8a7ddf2b7c6b8a1a6f509a95864142b30cab2d3"
-
-[[package]]
-name = "strata-native-zkvm-adapter"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "borsh",
- "serde",
- "tracing",
- "zkaleido",
-]
-
-[[package]]
-name = "strata-risc0-adapter"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "borsh",
- "hex",
- "risc0-zkvm",
- "serde",
- "sha2",
- "tracing-subscriber 0.3.19",
- "zkaleido",
-]
 
 [[package]]
 name = "subtle"
@@ -3002,6 +2977,31 @@ dependencies = [
  "borsh",
  "serde",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "zkaleido-native-adapter"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "borsh",
+ "serde",
+ "tracing",
+ "zkaleido",
+]
+
+[[package]]
+name = "zkaleido-risc0-adapter"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "borsh",
+ "hex",
+ "risc0-zkvm",
+ "serde",
+ "sha2",
+ "tracing-subscriber 0.3.19",
+ "zkaleido",
 ]
 
 [[patch.unused]]

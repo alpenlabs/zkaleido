@@ -314,7 +314,7 @@ version = "0.1.0"
 dependencies = [
  "schnorr-sig-verify",
  "sp1-zkvm",
- "strata-sp1-adapter",
+ "zkaleido-sp1-adapter",
 ]
 
 [[package]]
@@ -659,8 +659,8 @@ dependencies = [
  "rand",
  "secp256k1",
  "signature",
- "strata-native-zkvm-adapter",
  "zkaleido",
+ "zkaleido-native-adapter",
 ]
 
 [[package]]
@@ -828,33 +828,6 @@ checksum = "d91ed6c858b01f942cd56b37a94b3e0a1798290327d1236e4d9cf4eaca44d29d"
 dependencies = [
  "base64ct",
  "der",
-]
-
-[[package]]
-name = "strata-native-zkvm-adapter"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "borsh",
- "serde",
- "tracing",
- "zkaleido",
-]
-
-[[package]]
-name = "strata-sp1-adapter"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "borsh",
- "hex",
- "serde",
- "sha2",
- "sp1-primitives",
- "sp1-verifier",
- "sp1-zkvm",
- "tracing",
- "zkaleido",
 ]
 
 [[package]]
@@ -1048,4 +1021,31 @@ dependencies = [
  "borsh",
  "serde",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "zkaleido-native-adapter"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "borsh",
+ "serde",
+ "tracing",
+ "zkaleido",
+]
+
+[[package]]
+name = "zkaleido-sp1-adapter"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "borsh",
+ "hex",
+ "serde",
+ "sha2",
+ "sp1-primitives",
+ "sp1-verifier",
+ "sp1-zkvm",
+ "tracing",
+ "zkaleido",
 ]

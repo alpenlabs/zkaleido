@@ -7,8 +7,8 @@ version = "0.1.0"
 
 [dependencies]
 fibonacci = { path = "../../../examples/fibonacci" }
-strata-sp1-adapter = { path = "../../../adapters/sp1", features = ["zkvm"] }
+zkaleido-sp1-adapter = { path = "../../../adapters/sp1", features = ["zkvm"] }
 sp1-zkvm = "4.0.0"
 
 [features]
-mock = ["strata-sp1-adapter/mock"]
+mock = ["zkaleido-sp1-adapter/mock"]

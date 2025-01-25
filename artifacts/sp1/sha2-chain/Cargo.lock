@@ -187,7 +187,7 @@ version = "0.1.0"
 dependencies = [
  "sha2-chain",
  "sp1-zkvm",
- "strata-sp1-adapter",
+ "zkaleido-sp1-adapter",
 ]
 
 [[package]]
@@ -510,8 +510,8 @@ name = "sha2-chain"
 version = "0.1.0"
 dependencies = [
  "sha2",
- "strata-native-zkvm-adapter",
  "zkaleido",
+ "zkaleido-native-adapter",
 ]
 
 [[package]]
@@ -579,33 +579,6 @@ name = "spin"
 version = "0.9.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6980e8d7511241f8acf4aebddbb1ff938df5eebe98691418c4468d0b72a96a67"
-
-[[package]]
-name = "strata-native-zkvm-adapter"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "borsh",
- "serde",
- "tracing",
- "zkaleido",
-]
-
-[[package]]
-name = "strata-sp1-adapter"
-version = "0.1.0"
-dependencies = [
- "bincode",
- "borsh",
- "hex",
- "serde",
- "sha2",
- "sp1-primitives",
- "sp1-verifier",
- "sp1-zkvm",
- "tracing",
- "zkaleido",
-]
 
 [[package]]
 name = "substrate-bn-succinct"
@@ -786,4 +759,31 @@ dependencies = [
  "borsh",
  "serde",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "zkaleido-native-adapter"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "borsh",
+ "serde",
+ "tracing",
+ "zkaleido",
+]
+
+[[package]]
+name = "zkaleido-sp1-adapter"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "borsh",
+ "hex",
+ "serde",
+ "sha2",
+ "sp1-primitives",
+ "sp1-verifier",
+ "sp1-zkvm",
+ "tracing",
+ "zkaleido",
 ]
