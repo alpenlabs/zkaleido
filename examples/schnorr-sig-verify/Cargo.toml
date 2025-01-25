@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-strata-zkvm = { path = "../../crates/zkvm" }
-strata-native-zkvm-adapter = { path = "../../crates/native" }
+strata-zkvm = { path = "../../zkvm" }
+strata-native-zkvm-adapter = { path = "../../adapters/native" }
 
 k256 = "0.13.4"
 rand = { version = "0.8.5", features = [

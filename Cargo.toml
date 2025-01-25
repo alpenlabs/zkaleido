@@ -1,9 +1,9 @@
 [workspace]
 members = [
-  "crates/native",
-  "crates/risc0",
-  "crates/sp1",
-  "crates/zkvm",
+  "adapters/native",
+  "adapters/risc0",
+  "adapters/sp1",
+  "zkvm",
 
   # binaries
   "runner",
@@ -17,8 +17,8 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-strata-zkvm = { path = "crates/zkvm" }
-strata-native-zkvm-adapter = { path = "crates/native" }
+strata-zkvm = { path = "zkvm" }
+strata-native-zkvm-adapter = { path = "adapters/native" }
 
 fibonacci = { path = "examples/fibonacci" }
 sha2-chain = { path = "examples/sha2-chain" }

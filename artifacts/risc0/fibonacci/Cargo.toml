@@ -7,4 +7,4 @@ version = "0.1.0"
 
 [dependencies]
 fibonacci = { path = "../../../examples/fibonacci" }
-strata-risc0-adapter = { path = "../../../crates/risc0" }
+strata-risc0-adapter = { path = "../../../adapters/risc0" }

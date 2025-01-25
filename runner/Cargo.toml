@@ -12,11 +12,11 @@ sha2-chain.workspace = true
 schnorr-sig-verify.workspace = true
 
 # sp1
-strata-sp1-adapter = { path = "../crates/sp1", optional = true }
+strata-sp1-adapter = { path = "../adapters/sp1", optional = true }
 strata-sp1-artifacts = { path = "../artifacts/sp1", optional = true }
 
 # risc0
-strata-risc0-adapter = { path = "../crates/risc0", optional = true }
+strata-risc0-adapter = { path = "../adapters/risc0", optional = true }
 strata-risc0-artifacts = { path = "../artifacts/risc0", optional = true }
 
 anyhow = "1.0.83"
