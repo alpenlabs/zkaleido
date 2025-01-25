@@ -1,6 +1,6 @@
-# ZKVM Adapters Repository
+# Zkaleido
 
-This repository provides adapters for various ZKVMs (Zero-Knowledge Virtual Machines) to ensure a unified interface and enable the reuse of guest logic across multiple ZKVM implementations. By writing the code once, we aim to support multiple ZKVMs seamlessly.
+This repository provides the core traits as well as adapters for various ZKVMs (Zero-Knowledge Virtual Machines) to ensure a unified interface and enable the reuse of guest logic across multiple ZKVM implementations. By writing the code once, we aim to support multiple ZKVMs seamlessly.
 
 ## Supported ZKVMs
 
@@ -14,9 +14,11 @@ Currently, the repository supports the following ZKVMs:
 
 ## Repository Structure
 
-- **`crates/`**  
-  Contains core traits and ZKVM-specific adapters to standardize proof generation and verification.  
-  Each adapter implements core interfaces to interact with the underlying ZKVM.
+- **`zkaleido/`**  
+  Contains core traits to standardize proof generation and verification.  
+
+- **`adapters/`**  
+  Contains ZKVM-specific adapters. Each adapter implements core interfaces to interact with the underlying ZKVM.
 
 - **`examples/`**  
   Contains guest logic for different programs. These programs demonstrate how to use the adapters for various ZKVMs.
