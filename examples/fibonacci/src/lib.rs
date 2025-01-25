@@ -1,4 +1,4 @@
-use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver, ZkVmProverPerf};
+use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
 
 pub fn process_fib(zkvm: &impl ZkVmEnv) {
     // Read an input to the program.
@@ -24,6 +24,10 @@ impl ZkVmProver for FibProver {
     type Input = u32;
     type Output = i32;
 
+    fn name() -> String {
+        "fibonacci".to_owned()
+    }
+
     fn proof_type() -> strata_zkvm::ProofType {
         ProofType::Groth16
     }
@@ -44,8 +48,6 @@ impl ZkVmProver for FibProver {
         H::extract_serde_public_output(public_values)
     }
 }
-
-impl ZkVmProverPerf for FibProver {}
 
 #[cfg(test)]
 mod tests {

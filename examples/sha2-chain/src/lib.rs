@@ -1,5 +1,5 @@
 use sha2::{Digest, Sha256};
-use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver, ZkVmProverPerf};
+use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
 
 const MESSAGE_TO_HASH: &str = "Hello, world!";
 
@@ -33,6 +33,10 @@ impl ZkVmProver for ShaChainProver {
     type Input = u32;
     type Output = [u8; 32];
 
+    fn name() -> String {
+        "sha2_chain".to_string()
+    }
+
     fn proof_type() -> strata_zkvm::ProofType {
         ProofType::Core
     }
@@ -53,8 +57,6 @@ impl ZkVmProver for ShaChainProver {
         H::extract_serde_public_output(public_values)
     }
 }
-
-impl ZkVmProverPerf for ShaChainProver {}
 
 #[cfg(test)]
 mod tests {

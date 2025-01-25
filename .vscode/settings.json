@@ -16,8 +16,8 @@
     },
     "rust-analyzer.linkedProjects": [
         "Cargo.toml",
-        "artifacts/sp1/Cargo.toml",
-        "artifacts/risc0/Cargo.toml"
+        // "artifacts/sp1/Cargo.toml",
+        // "artifacts/risc0/Cargo.toml"
     ],
     "rust-analyzer.diagnostics.enable": true,
     "todohighlight.isEnable": true,

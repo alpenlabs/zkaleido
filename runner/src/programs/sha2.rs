@@ -1,13 +1,9 @@
 use sha2_chain::ShaChainProver;
-use strata_zkvm::{ProofReport, ZkVmHostPerf, ZkVmProver, ZkVmProverPerf};
+use strata_zkvm::{ProofReport, ZkVmHost, ZkVmProver};
 
-fn sha2_prover_perf_report(host: &impl ZkVmHostPerf) -> ProofReport {
+fn sha2_prover_perf_report(host: &impl ZkVmHost) -> ProofReport {
     let input = 5;
-    let report_name = "sha2".to_string();
-    let proof_file_name = format!("{}_{:?}.proof", report_name, host);
-    let proof = ShaChainProver::prove(&input, host).unwrap();
-    proof.save(proof_file_name).unwrap();
-    ShaChainProver::perf_report(&input, host, report_name).unwrap()
+    ShaChainProver::perf_report(&input, host).unwrap()
 }
 
 #[cfg(feature = "sp1")]

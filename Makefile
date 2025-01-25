@@ -14,6 +14,12 @@ CARGO_INSTALL_EXTRA_FLAGS ?=
 # List of features to use for building
 FEATURES ?=
 
+# List of programs
+PROGRAMS ?= fibonacci,sha2-chain,schnorr-sig-verify
+
+# ZkVm to use
+ZKVM ?= sp1
+
 ##@ Help
 
 .PHONY: help
@@ -57,29 +63,24 @@ sec: ## Check for security advisories on any dependencies.
 ##@ Prover
 
 .PHONY: report
-report: prover-clean ## Generate proof report for programs
-	cargo run --release -- --programs fibonacci,sha2-chain,schnorr-sig-verify
+report: prover-clean ## Generate proof report for programs for all supported ZkVm
+	cargo run --release -- --programs $(PROGRAMS)
 
 .PHONY: report-sp1
-report-sp1: prover-clean ## Generate SP1 proof report for programs
-	cargo run --release --no-default-features -F sp1-mock -- --programs fibonacci,sha2-chain,schnorr-sig-verify
+report-sp1: prover-clean ## Generate SP1 proof report for given programs
+	cargo run --release --no-default-features -F sp1-mock -- --programs $(PROGRAMS)
 
 .PHONY: report-risc0
-report-risc0: prover-clean ## Generate Risc0 proof report for programs
-	cargo run --release --no-default-features -F risc0-mock -- --programs fibonacci,sha2-chain,schnorr-sig-verify
+report-risc0: prover-clean ## Generate Risc0 proof report for given programs
+	cargo run --release --no-default-features -F risc0-mock -- --programs $(PROGRAMS)
 
-.PHONY: proof-sp1-fibonacci
-proof-sp1-fibonacci: prover-clean ## Generate SP1 Groth16 proof for fibonacci program
-	cargo run --release --no-default-features -F sp1 -- --programs fibonacci
-
-.PHONY: proof-risc0-fibonacci
-proof-risc0-fibonacci: prover-clean ## Generate Risc0 Groth16 proof for fibonacci program
-	cargo run --release --no-default-features -F risc0 -- --programs fibonacci
-
+.PHONY: proof
+proof: ## Generate proof for the given program using the given ZkVm
+	ZKVM_PROOF_DUMP=1 cargo run --release --no-default-features -F $(ZKVM) -- --programs $(PROGRAMS)
 
 .PHONY: prover-clean
 prover-clean: ## Cleans up proofs and profiling data generated
-	rm -rf *.trace
+	rm -rf *.trace_profile
 	rm -rf *.proof
 
 ##@ Code Quality
