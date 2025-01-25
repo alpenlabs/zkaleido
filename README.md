@@ -147,11 +147,10 @@ This will remove all `.trace_profile` and `.proof` files from the current direct
 
 5. **Generate and dump Risc0 Proof**
    ```bash
-  make proof ZKVM=risc0 PROGRAMS=fibonacci
+   make proof ZKVM=risc0 PROGRAMS=fibonacci
    ```
 
-
-5. **Clean Up Generated Data:**
+6. **Clean Up Generated Data:**
    ```bash
    make prover-clean
    ```
@@ -161,7 +160,7 @@ This will remove all `.trace_profile` and `.proof` files from the current direct
 
 ## Adding Support for New ZKVMs
 To add support for a new ZKVM:
-1. Create a new adapter in the `crates/` directory.
+1. Create a new adapter in the `adapters/` directory.
 2. Implement the core traits required to interface with the ZKVM.
 3. Extend the artifact generation logic in `artifacts/` as needed.
 

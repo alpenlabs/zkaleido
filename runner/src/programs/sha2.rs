@@ -8,8 +8,8 @@ fn sha2_prover_perf_report(host: &impl ZkVmHost) -> ProofReport {
 
 #[cfg(feature = "sp1")]
 pub fn sp1_sha_report() -> ProofReport {
-    use zkaleido_sp1_adapter::SP1Host;
     use strata_sp1_artifacts::SHA2_CHAIN_ELF;
+    use zkaleido_sp1_adapter::SP1Host;
     let host = SP1Host::init(SHA2_CHAIN_ELF);
 
     sha2_prover_perf_report(&host)

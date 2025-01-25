@@ -53,8 +53,8 @@ impl ZkVmProver for FibProver {
 mod tests {
     use std::sync::Arc;
 
-    use zkaleido_native_adapter::{NativeHost, NativeMachine};
     use zkaleido::ZkVmProver;
+    use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
     use super::process_fib;
     use crate::FibProver;

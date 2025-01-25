@@ -27,10 +27,10 @@ jobs:
         with:
           cache-on-failure: true
       # Currently, sp1 and risc0 guest builds are skipped when it is invoked under clippy.
-      # This makes the whole build of clippy fail, so we run clippy on crates and examples.
-      - name: Run clippy on crates/
+      # This makes the whole build of clippy fail, so we run clippy on adapters and examples.
+      - name: Run clippy on adapters/
         run: |
-          find crates/ -type f -name "Cargo.toml" \
+          find adapters/ -type f -name "Cargo.toml" \
           -exec sh -c \
           'f="$1"; echo "Clippy for ${f}" && \
           cargo clippy --manifest-path ${f} --all-features -- -D warnings' shell {} \;

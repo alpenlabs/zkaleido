@@ -30,8 +30,7 @@ help: ## Display this help.
 
 .PHONY: build
 build: ## Build the workspace into the `target` directory.
-	cargo build --workspace --bin "zkvm-runner" --features "$(FEATURES)" --profile "$(PROFILE)"
-
+	cargo build --workspace --bin "zkaleido-runner" --features "$(FEATURES)" --profile "$(PROFILE)"
 ##@ Test
 
 UNIT_TEST_ARGS := --locked --workspace -E 'kind(lib)' -E 'kind(bin)' -E 'kind(proc-macro)'
@@ -116,7 +115,7 @@ endef
 
 .PHONY: lint-check-ws
 lint-check-ws: ## Checks for lint issues in the workspace.
-	$(call lint-pkg,examples) && $(call lint-pkg,crates)
+	$(call lint-pkg,examples) && $(call lint-pkg,adapters)
 
 define lint-pkg-fix
 	find $(1) -type f -name "Cargo.toml" -exec sh -c \
@@ -126,7 +125,7 @@ endef
 
 .PHONY: lint-fix-ws
 lint-fix-ws: ## Lints the workspace and applies fixes where possible.
-	$(call lint-pkg-fix,examples) && $(call lint-pkg-fix,crates)
+	$(call lint-pkg-fix,examples) && $(call lint-pkg-fix,adapters)
 
 ensure-codespell:
 	@if ! command -v codespell &> /dev/null; then \
