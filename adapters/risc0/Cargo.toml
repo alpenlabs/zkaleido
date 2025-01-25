@@ -4,7 +4,7 @@ name = "strata-risc0-adapter"
 version = "0.1.0"
 
 [dependencies]
-strata-zkvm.workspace = true
+zkaleido.workspace = true
 
 bincode.workspace = true
 borsh.workspace = true

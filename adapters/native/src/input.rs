@@ -1,4 +1,4 @@
-use strata_zkvm::{AggregationInput, ProofReceipt, ZkVmInputBuilder, ZkVmInputResult};
+use zkaleido::{AggregationInput, ProofReceipt, ZkVmInputBuilder, ZkVmInputResult};
 
 use crate::env::NativeMachine;
 

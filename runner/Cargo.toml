@@ -4,7 +4,7 @@ name = "zkvm-runner"
 version = "0.1.0"
 
 [dependencies]
-strata-zkvm.workspace = true
+zkaleido.workspace = true
 
 # examples
 fibonacci.workspace = true

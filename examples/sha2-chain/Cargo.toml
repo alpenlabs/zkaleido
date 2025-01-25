@@ -4,6 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-strata-zkvm = { path = "../../zkvm" }
+zkaleido = { path = "../../zkvm" }
 strata-native-zkvm-adapter = { path = "../../adapters/native" }
 sha2 = "0.10"

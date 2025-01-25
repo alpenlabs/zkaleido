@@ -2,7 +2,7 @@ use std::fmt;
 
 use serde::{de::DeserializeOwned, Serialize};
 use sp1_sdk::{HashableKey, ProverClient, SP1ProvingKey};
-use strata_zkvm::{
+use zkaleido::{
     ProofType, PublicValues, VerificationKey, ZkVmError, ZkVmHost, ZkVmInputBuilder, ZkVmResult,
 };
 

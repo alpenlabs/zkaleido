@@ -660,7 +660,7 @@ dependencies = [
  "secp256k1",
  "signature",
  "strata-native-zkvm-adapter",
- "strata-zkvm",
+ "zkaleido",
 ]
 
 [[package]]
@@ -837,8 +837,8 @@ dependencies = [
  "bincode",
  "borsh",
  "serde",
- "strata-zkvm",
  "tracing",
+ "zkaleido",
 ]
 
 [[package]]
@@ -853,19 +853,8 @@ dependencies = [
  "sp1-primitives",
  "sp1-verifier",
  "sp1-zkvm",
- "strata-zkvm",
  "tracing",
-]
-
-[[package]]
-name = "strata-zkvm"
-version = "0.1.0"
-dependencies = [
- "arbitrary",
- "bincode",
- "borsh",
- "serde",
- "thiserror 1.0.69",
+ "zkaleido",
 ]
 
 [[package]]
@@ -1049,3 +1038,14 @@ name = "zeroize"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ced3678a2879b30306d323f4542626697a464a97c0a07c9aebf7ebca65cd4dde"
+
+[[package]]
+name = "zkaleido"
+version = "0.1.0"
+dependencies = [
+ "arbitrary",
+ "bincode",
+ "borsh",
+ "serde",
+ "thiserror 1.0.69",
+]

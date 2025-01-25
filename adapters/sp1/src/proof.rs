@@ -1,5 +1,5 @@
 use sp1_sdk::{SP1Proof, SP1ProofWithPublicValues, SP1PublicValues};
-use strata_zkvm::{Proof, ProofReceipt, PublicValues, ZkVmProofError};
+use zkaleido::{Proof, ProofReceipt, PublicValues, ZkVmProofError};
 
 #[derive(Debug, Clone)]
 pub struct SP1ProofReceipt(SP1ProofWithPublicValues);

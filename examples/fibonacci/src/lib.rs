@@ -1,4 +1,4 @@
-use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
+use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
 
 pub fn process_fib(zkvm: &impl ZkVmEnv) {
     // Read an input to the program.
@@ -28,22 +28,22 @@ impl ZkVmProver for FibProver {
         "fibonacci".to_owned()
     }
 
-    fn proof_type() -> strata_zkvm::ProofType {
+    fn proof_type() -> zkaleido::ProofType {
         ProofType::Groth16
     }
 
     fn prepare_input<'a, B>(input: &'a Self::Input) -> ZkVmInputResult<B::Input>
     where
-        B: strata_zkvm::ZkVmInputBuilder<'a>,
+        B: zkaleido::ZkVmInputBuilder<'a>,
     {
         B::new().write_serde(input)?.build()
     }
 
     fn process_output<H>(
-        public_values: &strata_zkvm::PublicValues,
-    ) -> strata_zkvm::ZkVmResult<Self::Output>
+        public_values: &zkaleido::PublicValues,
+    ) -> zkaleido::ZkVmResult<Self::Output>
     where
-        H: strata_zkvm::ZkVmHost,
+        H: zkaleido::ZkVmHost,
     {
         H::extract_serde_public_output(public_values)
     }
@@ -54,7 +54,7 @@ mod tests {
     use std::sync::Arc;
 
     use strata_native_zkvm_adapter::{NativeHost, NativeMachine};
-    use strata_zkvm::ZkVmProver;
+    use zkaleido::ZkVmProver;
 
     use super::process_fib;
     use crate::FibProver;

@@ -1,5 +1,5 @@
 use schnorr_sig_verify::{SchnorrSigInput, SchnorrSigProver};
-use strata_zkvm::{ProofReport, ZkVmHost, ZkVmProver};
+use zkaleido::{ProofReport, ZkVmHost, ZkVmProver};
 
 fn perf_report(host: &impl ZkVmHost) -> ProofReport {
     let input = SchnorrSigInput::new_random();

@@ -1,5 +1,5 @@
 use sp1_sdk::{SP1Proof, SP1Stdin, SP1VerifyingKey};
-use strata_zkvm::{
+use zkaleido::{
     AggregationInput, ProofType, ZkVmInputBuilder, ZkVmInputError, ZkVmInputResult, ZkVmProofError,
     ZkVmVerificationKeyError,
 };

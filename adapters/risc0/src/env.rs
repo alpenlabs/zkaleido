@@ -1,6 +1,6 @@
 use risc0_zkvm::{guest::env, serde::from_slice};
 use serde::{de::DeserializeOwned, Serialize};
-use strata_zkvm::{ProofReceipt, ZkVmEnv};
+use zkaleido::{ProofReceipt, ZkVmEnv};
 
 use crate::verify_groth16;
 

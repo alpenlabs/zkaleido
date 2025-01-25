@@ -1855,7 +1855,7 @@ name = "fibonacci"
 version = "0.1.0"
 dependencies = [
  "strata-native-zkvm-adapter",
- "strata-zkvm",
+ "zkaleido",
 ]
 
 [[package]]
@@ -4597,7 +4597,7 @@ dependencies = [
  "secp256k1",
  "signature",
  "strata-native-zkvm-adapter",
- "strata-zkvm",
+ "zkaleido",
 ]
 
 [[package]]
@@ -4833,7 +4833,7 @@ version = "0.1.0"
 dependencies = [
  "sha2",
  "strata-native-zkvm-adapter",
- "strata-zkvm",
+ "zkaleido",
 ]
 
 [[package]]
@@ -5462,8 +5462,8 @@ dependencies = [
  "bincode",
  "borsh",
  "serde",
- "strata-zkvm",
  "tracing",
+ "zkaleido",
 ]
 
 [[package]]
@@ -5476,8 +5476,8 @@ dependencies = [
  "risc0-zkvm",
  "serde",
  "sha2",
- "strata-zkvm",
  "tracing-subscriber 0.3.19",
+ "zkaleido",
 ]
 
 [[package]]
@@ -5500,8 +5500,8 @@ dependencies = [
  "sp1-sdk",
  "sp1-verifier",
  "sp1-zkvm",
- "strata-zkvm",
  "tracing",
+ "zkaleido",
 ]
 
 [[package]]
@@ -5510,17 +5510,6 @@ version = "0.1.0"
 dependencies = [
  "sp1-build",
  "sp1-sdk",
-]
-
-[[package]]
-name = "strata-zkvm"
-version = "0.1.0"
-dependencies = [
- "arbitrary",
- "bincode",
- "borsh",
- "serde",
- "thiserror 1.0.69",
 ]
 
 [[package]]
@@ -6773,6 +6762,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "zkaleido"
+version = "0.1.0"
+dependencies = [
+ "arbitrary",
+ "bincode",
+ "borsh",
+ "serde",
+ "thiserror 1.0.69",
+]
+
+[[package]]
 name = "zkhash"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6818,7 +6818,7 @@ dependencies = [
  "strata-risc0-artifacts",
  "strata-sp1-adapter",
  "strata-sp1-artifacts",
- "strata-zkvm",
  "time",
  "tokio",
+ "zkaleido",
 ]

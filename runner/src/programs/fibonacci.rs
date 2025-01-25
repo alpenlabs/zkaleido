@@ -1,5 +1,5 @@
 use fibonacci::FibProver;
-use strata_zkvm::{ProofReport, ZkVmHost, ZkVmProver};
+use zkaleido::{ProofReport, ZkVmHost, ZkVmProver};
 
 fn fib_prover_perf_report(host: &impl ZkVmHost) -> ProofReport {
     let input = 5;

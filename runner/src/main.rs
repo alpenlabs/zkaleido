@@ -9,7 +9,7 @@ use clap::Parser;
 use format::{format_header, format_results};
 use github::{format_github_message, post_to_github_pr};
 use serde::Serialize;
-use strata_zkvm::ProofReport;
+use zkaleido::ProofReport;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {

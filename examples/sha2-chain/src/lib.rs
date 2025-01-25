@@ -1,5 +1,5 @@
 use sha2::{Digest, Sha256};
-use strata_zkvm::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
+use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
 
 const MESSAGE_TO_HASH: &str = "Hello, world!";
 
@@ -37,22 +37,22 @@ impl ZkVmProver for ShaChainProver {
         "sha2_chain".to_string()
     }
 
-    fn proof_type() -> strata_zkvm::ProofType {
+    fn proof_type() -> zkaleido::ProofType {
         ProofType::Core
     }
 
     fn prepare_input<'a, B>(input: &'a Self::Input) -> ZkVmInputResult<B::Input>
     where
-        B: strata_zkvm::ZkVmInputBuilder<'a>,
+        B: zkaleido::ZkVmInputBuilder<'a>,
     {
         B::new().write_serde(input)?.build()
     }
 
     fn process_output<H>(
-        public_values: &strata_zkvm::PublicValues,
-    ) -> strata_zkvm::ZkVmResult<Self::Output>
+        public_values: &zkaleido::PublicValues,
+    ) -> zkaleido::ZkVmResult<Self::Output>
     where
-        H: strata_zkvm::ZkVmHost,
+        H: zkaleido::ZkVmHost,
     {
         H::extract_serde_public_output(public_values)
     }
@@ -63,7 +63,7 @@ mod tests {
     use std::sync::Arc;
 
     use strata_native_zkvm_adapter::{NativeHost, NativeMachine};
-    use strata_zkvm::ZkVmProver;
+    use zkaleido::ZkVmProver;
 
     use super::process_sha_chain;
     use crate::ShaChainProver;

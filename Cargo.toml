@@ -17,7 +17,7 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-strata-zkvm = { path = "zkvm" }
+zkaleido = { path = "zkvm" }
 strata-native-zkvm-adapter = { path = "adapters/native" }
 
 fibonacci = { path = "examples/fibonacci" }
