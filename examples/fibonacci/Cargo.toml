@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-zkaleido = { path = "../../zkvm", features = ["perf"] }
+zkaleido = { path = "../../zkaleido", features = ["perf"] }
 strata-native-zkvm-adapter = { path = "../../adapters/native" }

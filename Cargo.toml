@@ -3,7 +3,7 @@ members = [
   "adapters/native",
   "adapters/risc0",
   "adapters/sp1",
-  "zkvm",
+  "zkaleido",
 
   # binaries
   "runner",
@@ -17,7 +17,7 @@ members = [
 resolver = "2"
 
 [workspace.dependencies]
-zkaleido = { path = "zkvm" }
+zkaleido = { path = "zkaleido" }
 strata-native-zkvm-adapter = { path = "adapters/native" }
 
 fibonacci = { path = "examples/fibonacci" }
