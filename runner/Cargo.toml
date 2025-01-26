@@ -13,11 +13,11 @@ schnorr-sig-verify.workspace = true
 
 # sp1
 zkaleido-sp1-adapter = { path = "../adapters/sp1", optional = true }
-strata-sp1-artifacts = { path = "../artifacts/sp1", optional = true }
+zkaleido-sp1-artifacts = { path = "../artifacts/sp1", optional = true }
 
 # risc0
 zkaleido-risc0-adapter = { path = "../adapters/risc0", optional = true }
-strata-risc0-artifacts = { path = "../artifacts/risc0", optional = true }
+zkaleido-risc0-artifacts = { path = "../artifacts/risc0", optional = true }
 
 anyhow = "1.0.83"
 clap = { version = "4.5.9", features = ["derive"] }
@@ -34,13 +34,13 @@ tokio = { version = "1.39.0", features = ["full"] }
 default = ["sp1-mock", "risc0-mock"]
 sp1 = [
   "zkaleido-sp1-adapter/prover",
-  "strata-sp1-artifacts",
+  "zkaleido-sp1-artifacts",
   "zkaleido-sp1-adapter/perf",
 ]
-sp1-mock = ["sp1", "zkaleido-sp1-adapter/mock", "strata-sp1-artifacts/mock"]
+sp1-mock = ["sp1", "zkaleido-sp1-adapter/mock", "zkaleido-sp1-artifacts/mock"]
 risc0 = [
   "zkaleido-risc0-adapter/prover",
-  "strata-risc0-artifacts",
+  "zkaleido-risc0-artifacts",
   "zkaleido-risc0-adapter/perf",
 ]
 risc0-mock = ["risc0", "zkaleido-risc0-adapter/mock"]

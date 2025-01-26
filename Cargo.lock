@@ -5456,21 +5456,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 
 [[package]]
-name = "strata-risc0-artifacts"
-version = "0.1.0"
-dependencies = [
- "risc0-build",
-]
-
-[[package]]
-name = "strata-sp1-artifacts"
-version = "0.1.0"
-dependencies = [
- "sp1-build",
- "sp1-sdk",
-]
-
-[[package]]
 name = "strsim"
 version = "0.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6756,6 +6741,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "zkaleido-risc0-artifacts"
+version = "0.1.0"
+dependencies = [
+ "risc0-build",
+]
+
+[[package]]
 name = "zkaleido-runner"
 version = "0.1.0"
 dependencies = [
@@ -6770,13 +6762,13 @@ dependencies = [
  "serde_json",
  "sha2-chain",
  "sp1-sdk",
- "strata-risc0-artifacts",
- "strata-sp1-artifacts",
  "time",
  "tokio",
  "zkaleido",
  "zkaleido-risc0-adapter",
+ "zkaleido-risc0-artifacts",
  "zkaleido-sp1-adapter",
+ "zkaleido-sp1-artifacts",
 ]
 
 [[package]]
@@ -6794,6 +6786,14 @@ dependencies = [
  "sp1-zkvm",
  "tracing",
  "zkaleido",
+]
+
+[[package]]
+name = "zkaleido-sp1-artifacts"
+version = "0.1.0"
+dependencies = [
+ "sp1-build",
+ "sp1-sdk",
 ]
 
 [[package]]
