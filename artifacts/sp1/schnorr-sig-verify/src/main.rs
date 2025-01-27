@@ -6,7 +6,7 @@
 sp1_zkvm::entrypoint!(main);
 
 use schnorr_sig_verify::process_schnorr_sig;
-use strata_sp1_adapter::Sp1ZkVmEnv;
+use zkaleido_sp1_adapter::Sp1ZkVmEnv;
 
 pub fn main() {
     process_schnorr_sig(&Sp1ZkVmEnv);

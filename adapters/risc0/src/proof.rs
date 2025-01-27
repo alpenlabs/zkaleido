@@ -1,5 +1,5 @@
 use risc0_zkvm::{InnerReceipt, Receipt};
-use strata_zkvm::{Proof, ProofReceipt, PublicValues, ZkVmProofError};
+use zkaleido::{Proof, ProofReceipt, PublicValues, ZkVmProofError};
 
 #[derive(Debug, Clone)]
 pub struct Risc0ProofReceipt(Receipt);

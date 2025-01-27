@@ -6,7 +6,7 @@
 sp1_zkvm::entrypoint!(main);
 
 use sha2_chain::process_sha_chain;
-use strata_sp1_adapter::Sp1ZkVmEnv;
+use zkaleido_sp1_adapter::Sp1ZkVmEnv;
 
 pub fn main() {
     process_sha_chain(&Sp1ZkVmEnv)

@@ -1,4 +1,4 @@
-use strata_zkvm::{ProofReceipt, ZkVmProofError};
+use zkaleido::{ProofReceipt, ZkVmProofError};
 
 #[derive(Debug, Clone)]
 pub struct NativeProofReceipt(ProofReceipt);

@@ -1,5 +1,5 @@
 use risc0_zkvm::{sha::Digest, ExecutorEnv, ExecutorEnvBuilder};
-use strata_zkvm::{
+use zkaleido::{
     AggregationInput, DataFormatError, ZkVmInputBuilder, ZkVmInputError, ZkVmInputResult,
     ZkVmVerificationKeyError,
 };

@@ -1,6 +1,6 @@
 use risc0_zkvm::{Groth16Receipt, MaybePruned, ReceiptClaim};
 use sha2::Digest;
-use strata_zkvm::{ProofReceipt, ZkVmResult};
+use zkaleido::{ProofReceipt, ZkVmResult};
 
 pub fn verify_groth16(receipt: &ProofReceipt, verification_key: &[u8; 32]) -> ZkVmResult<()> {
     let public_params_hash: [u8; 32] =
@@ -23,12 +23,12 @@ pub fn verify_groth16(receipt: &ProofReceipt, verification_key: &[u8; 32]) -> Zk
     // Map the verification error to ZkVmResult and return the result
     receipt
         .verify_integrity()
-        .map_err(|e| strata_zkvm::ZkVmError::ProofVerificationError(e.to_string()))
+        .map_err(|e| zkaleido::ZkVmError::ProofVerificationError(e.to_string()))
 }
 
 #[cfg(test)]
 mod tests {
-    use strata_zkvm::ProofReceipt;
+    use zkaleido::ProofReceipt;
 
     use super::verify_groth16;
     #[test]

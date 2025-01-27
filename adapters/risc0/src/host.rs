@@ -5,7 +5,7 @@ use risc0_zkvm::{
     compute_image_id, default_executor, default_prover, sha::Digest, Journal, ProverOpts,
 };
 use serde::{de::DeserializeOwned, Serialize};
-use strata_zkvm::{
+use zkaleido::{
     ProofType, PublicValues, VerificationKey, ZkVmError, ZkVmHost, ZkVmInputBuilder, ZkVmResult,
 };
 
@@ -89,7 +89,7 @@ impl ZkVmHost for Risc0Host {
         journal
             .decode()
             .map_err(|e| ZkVmError::OutputExtractionError {
-                source: strata_zkvm::DataFormatError::Serde(e.to_string()),
+                source: zkaleido::DataFormatError::Serde(e.to_string()),
             })
     }
 

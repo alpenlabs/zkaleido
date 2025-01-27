@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use strata_zkvm::{ProofReceipt, ZkVmEnv};
+use zkaleido::{ProofReceipt, ZkVmEnv};
 
 /// Encapsulates the mutable state of the NativeMachine.
 #[derive(Debug, Clone)]

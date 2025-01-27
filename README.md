@@ -1,6 +1,6 @@
-# ZKVM Adapters Repository
+# Zkaleido
 
-This repository provides adapters for various ZKVMs (Zero-Knowledge Virtual Machines) to ensure a unified interface and enable the reuse of guest logic across multiple ZKVM implementations. By writing the code once, we aim to support multiple ZKVMs seamlessly.
+This repository provides the core traits as well as adapters for various ZKVMs (Zero-Knowledge Virtual Machines) to ensure a unified interface and enable the reuse of guest logic across multiple ZKVM implementations. By writing the code once, we aim to support multiple ZKVMs seamlessly.
 
 ## Supported ZKVMs
 
@@ -14,9 +14,11 @@ Currently, the repository supports the following ZKVMs:
 
 ## Repository Structure
 
-- **`crates/`**  
-  Contains core traits and ZKVM-specific adapters to standardize proof generation and verification.  
-  Each adapter implements core interfaces to interact with the underlying ZKVM.
+- **`zkaleido/`**  
+  Contains core traits to standardize proof generation and verification.  
+
+- **`adapters/`**  
+  Contains ZKVM-specific adapters. Each adapter implements core interfaces to interact with the underlying ZKVM.
 
 - **`examples/`**  
   Contains guest logic for different programs. These programs demonstrate how to use the adapters for various ZKVMs.
@@ -145,11 +147,10 @@ This will remove all `.trace_profile` and `.proof` files from the current direct
 
 5. **Generate and dump Risc0 Proof**
    ```bash
-  make proof ZKVM=risc0 PROGRAMS=fibonacci
+   make proof ZKVM=risc0 PROGRAMS=fibonacci
    ```
 
-
-5. **Clean Up Generated Data:**
+6. **Clean Up Generated Data:**
    ```bash
    make prover-clean
    ```
@@ -159,7 +160,7 @@ This will remove all `.trace_profile` and `.proof` files from the current direct
 
 ## Adding Support for New ZKVMs
 To add support for a new ZKVM:
-1. Create a new adapter in the `crates/` directory.
+1. Create a new adapter in the `adapters/` directory.
 2. Implement the core traits required to interface with the ZKVM.
 3. Extend the artifact generation logic in `artifacts/` as needed.
 

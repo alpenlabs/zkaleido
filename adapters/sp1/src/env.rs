@@ -4,7 +4,7 @@ use sha2::{Digest, Sha256};
 use sp1_zkvm::io;
 #[cfg(not(feature = "mock"))]
 use sp1_zkvm::lib::verify::verify_sp1_proof;
-use strata_zkvm::{ProofReceipt, ZkVmEnv};
+use zkaleido::{ProofReceipt, ZkVmEnv};
 
 #[cfg(not(feature = "mock"))]
 use crate::verify_groth16;

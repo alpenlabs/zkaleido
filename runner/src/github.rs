@@ -12,7 +12,7 @@ pub async fn post_to_github_pr(
 ) -> Result<(), Box<dyn std::error::Error>> {
     let client = Client::new();
 
-    const BASE_URL: &str = "https://api.github.com/repos/alpenlabs/zkvm";
+    const BASE_URL: &str = "https://api.github.com/repos/alpenlabs/zkaleido";
     let comments_url = format!("{}/issues/{}/comments", BASE_URL, &args.pr_number);
 
     // Get all comments on the PR
@@ -62,7 +62,7 @@ fn set_github_headers(builder: RequestBuilder, token: &str) -> RequestBuilder {
     builder
         .header("Authorization", format!("Bearer {}", token))
         .header("X-GitHub-Api-Version", "2022-11-28")
-        .header("User-Agent", "strata-perf-bot")
+        .header("User-Agent", "zkaleido-perf-bot")
 }
 
 pub fn format_github_message(results_text: &[String]) -> String {

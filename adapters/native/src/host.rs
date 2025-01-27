@@ -1,6 +1,6 @@
 use std::{fmt, sync::Arc};
 
-use strata_zkvm::{
+use zkaleido::{
     Proof, ProofReceipt, ProofType, PublicValues, VerificationKey, ZkVmError, ZkVmHost, ZkVmResult,
 };
 

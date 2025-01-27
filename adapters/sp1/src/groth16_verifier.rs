@@ -1,5 +1,5 @@
 use sp1_verifier::{Groth16Verifier, GROTH16_VK_BYTES};
-use strata_zkvm::{ProofReceipt, ZkVmError, ZkVmResult};
+use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult};
 
 pub fn verify_groth16(receipt: &ProofReceipt, vkey_hash: &[u8; 32]) -> ZkVmResult<()> {
     let vk_hash_str = hex::encode(vkey_hash);
@@ -20,7 +20,7 @@ pub fn verify_groth16(receipt: &ProofReceipt, vkey_hash: &[u8; 32]) -> ZkVmResul
 
 #[cfg(test)]
 mod tests {
-    use strata_zkvm::ProofReceipt;
+    use zkaleido::ProofReceipt;
 
     use crate::verify_groth16;
 
