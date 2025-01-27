@@ -72,7 +72,16 @@ define_byte_wrapper!(VerificationKey);
 
 /// A receipt containing a `Proof` and associated `PublicValues`.
 #[derive(
-    Debug, Clone, Serialize, Deserialize, BorshSerialize, BorshDeserialize, PartialEq, Eq, Arbitrary,
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    PartialEq,
+    Eq,
+    Arbitrary,
+    Default,
 )]
 pub struct ProofReceipt {
     /// The validity proof.
