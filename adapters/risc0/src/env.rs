@@ -2,6 +2,7 @@ use risc0_zkvm::{guest::env, serde::from_slice};
 use serde::{de::DeserializeOwned, Serialize};
 use zkaleido::{ProofReceipt, ZkVmEnv};
 
+#[cfg(not(feature = "mock"))]
 use crate::verify_groth16;
 
 /// An environment adapter for the RISC0 system implementing [`ZkVmEnv`].
@@ -38,9 +39,13 @@ impl ZkVmEnv for Risc0ZkVmEnv {
         env::verify(vk, public_values).expect("verification failed")
     }
 
+    #[cfg(not(feature = "mock"))]
     fn verify_groth16_receipt(&self, receipt: &ProofReceipt, verification_key: &[u8; 32]) {
-        verify_groth16(receipt, verification_key).unwrap();
+        verify_groth16(receipt, verification_key).expect("groth16 verification failed");
     }
+
+    #[cfg(feature = "mock")]
+    fn verify_groth16_receipt(&self, _receipt: &ProofReceipt, _verification_key: &[u8; 32]) {}
 
     fn read_verified_serde<T: DeserializeOwned>(&self, vk_digest: &[u32; 8]) -> T {
         let buf = self.read_verified_buf(vk_digest);

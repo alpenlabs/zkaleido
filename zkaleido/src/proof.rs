@@ -152,6 +152,7 @@ impl AggregationInput {
     }
 }
 
+/// Commitment of the [`VerificationKey`]
 #[derive(
     Debug,
     Clone,

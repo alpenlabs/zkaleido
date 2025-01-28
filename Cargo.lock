@@ -6785,6 +6785,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "borsh",
+ "cfg-if",
  "hex",
  "serde",
  "sha2",

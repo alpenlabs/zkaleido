@@ -575,8 +575,6 @@ dependencies = [
  "getrandom",
  "lazy_static",
  "libm",
- "p3-baby-bear",
- "p3-field",
  "rand",
  "sha2",
  "sp1-lib",
@@ -777,7 +775,6 @@ dependencies = [
  "bincode",
  "borsh",
  "serde",
- "tracing",
  "zkaleido",
 ]
 
@@ -786,13 +783,10 @@ name = "zkaleido-sp1-adapter"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "borsh",
+ "cfg-if",
  "hex",
  "serde",
- "sha2",
- "sp1-primitives",
  "sp1-verifier",
  "sp1-zkvm",
- "tracing",
  "zkaleido",
 ]

@@ -22,8 +22,6 @@ pub use host::SP1Host;
 mod input;
 #[cfg(feature = "prover")]
 mod proof;
-#[cfg(feature = "prover")]
-pub use input::SP1ProofInputBuilder;
 
 #[cfg(feature = "zkvm")]
 mod env;
