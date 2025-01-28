@@ -1,0 +1,10 @@
+[package]
+edition = "2021"
+name = "guest-risc0-fibonacci-composition"
+version = "0.1.0"
+
+[workspace]
+
+[dependencies]
+fibonacci_composition = { path = "../../../examples/fibonacci-composition" }
+zkaleido-risc0-adapter = { path = "../../../adapters/risc0" }
