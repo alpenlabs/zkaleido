@@ -6,7 +6,8 @@ use risc0_zkvm::{
 };
 use serde::{de::DeserializeOwned, Serialize};
 use zkaleido::{
-    ProofType, PublicValues, VerificationKey, ZkVmError, ZkVmHost, ZkVmInputBuilder, ZkVmResult,
+    ProofType, PublicValues, VerificationKey, VerificationKeyCommitment, ZkVmError, ZkVmHost,
+    ZkVmInputBuilder, ZkVmResult,
 };
 
 use crate::{input::Risc0ProofInputBuilder, proof::Risc0ProofReceipt};
@@ -99,6 +100,10 @@ impl ZkVmHost for Risc0Host {
 
     fn get_verification_key(&self) -> VerificationKey {
         VerificationKey::new(self.id.as_bytes().to_vec())
+    }
+
+    fn get_verification_key_commitment(&self) -> VerificationKeyCommitment {
+        VerificationKeyCommitment::new(self.id.into())
     }
 
     fn verify_inner(&self, proof: &Risc0ProofReceipt) -> ZkVmResult<()> {
