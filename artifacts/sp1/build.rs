@@ -4,4 +4,5 @@ fn main() {
     build_program("fibonacci");
     build_program("sha2-chain");
     build_program("schnorr-sig-verify");
+    build_program("fibonacci-composition");
 }

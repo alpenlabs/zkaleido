@@ -1,0 +1,14 @@
+[package]
+edition = "2021"
+name = "guest-sp1-fibonacci-composition"
+version = "0.1.0"
+
+[workspace]
+
+[dependencies]
+fibonacci-composition = { path = "../../../examples/fibonacci-composition" }
+zkaleido-sp1-adapter = { path = "../../../adapters/sp1", features = ["zkvm"] }
+sp1-zkvm = "4.0.0"
+
+[features]
+mock = ["zkaleido-sp1-adapter/mock"]
