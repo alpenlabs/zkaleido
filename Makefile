@@ -15,7 +15,7 @@ CARGO_INSTALL_EXTRA_FLAGS ?=
 FEATURES ?=
 
 # List of programs
-PROGRAMS ?= fibonacci,sha2-chain,schnorr-sig-verify
+PROGRAMS ?= fibonacci-composition,sha2-chain,schnorr-sig-verify
 
 # ZkVm to use
 ZKVM ?= sp1
