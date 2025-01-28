@@ -1,4 +1,5 @@
 use borsh::BorshSerialize;
+use serde::Serialize;
 use sp1_sdk::{SP1Proof, SP1Stdin, SP1VerifyingKey};
 use zkaleido::{
     AggregationInput, ProofType, ZkVmInputBuilder, ZkVmInputError, ZkVmInputResult, ZkVmProofError,
@@ -24,7 +25,7 @@ impl ZkVmInputBuilder<'_> for SP1ProofInputBuilder {
         SP1ProofInputBuilder(SP1Stdin::new())
     }
 
-    fn write_serde<T: serde::Serialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
+    fn write_serde<T: Serialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
         self.0.write(item);
         Ok(self)
     }

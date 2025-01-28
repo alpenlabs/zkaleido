@@ -1,3 +1,4 @@
+use bincode::deserialize;
 use serde::{de::DeserializeOwned, Serialize};
 #[cfg(feature = "zkvm-verify")]
 use sha2::{Digest, Sha256};
@@ -60,6 +61,6 @@ impl ZkVmEnv for Sp1ZkVmEnv {
 
     fn read_verified_serde<T: DeserializeOwned>(&self, vk_digest: &[u32; 8]) -> T {
         let buf = self.read_verified_buf(vk_digest);
-        bincode::deserialize(&buf).expect("bincode deserialization failed")
+        deserialize(&buf).expect("bincode deserialization failed")
     }
 }
