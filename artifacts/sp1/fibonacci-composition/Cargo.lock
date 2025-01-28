@@ -783,11 +783,9 @@ name = "zkaleido-sp1-adapter"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "borsh",
  "cfg-if",
  "hex",
  "serde",
- "sha2",
  "sp1-verifier",
  "sp1-zkvm",
  "zkaleido",
