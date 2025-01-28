@@ -1,3 +1,4 @@
+use borsh::BorshSerialize;
 use sp1_sdk::{SP1Proof, SP1Stdin, SP1VerifyingKey};
 use zkaleido::{
     AggregationInput, ProofType, ZkVmInputBuilder, ZkVmInputError, ZkVmInputResult, ZkVmProofError,
@@ -28,7 +29,7 @@ impl ZkVmInputBuilder<'_> for SP1ProofInputBuilder {
         Ok(self)
     }
 
-    fn write_borsh<T: borsh::BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
+    fn write_borsh<T: BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
         let slice = borsh::to_vec(item).map_err(|e| ZkVmInputError::DataFormat(e.into()))?;
         self.write_buf(&slice)
     }

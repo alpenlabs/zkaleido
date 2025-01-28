@@ -37,6 +37,6 @@ pub trait ZkVmInputBuilder<'a> {
     /// is involved, allowing for proof and verification inputs to be provided to the zkVM.
     fn write_proof(&mut self, item: &AggregationInput) -> ZkVmInputResult<&mut Self>;
 
-    /// Finalizes and returns the constructed [`Input`] data structure.
+    /// Finalizes and returns the constructed `Input` data structure.
     fn build(&mut self) -> ZkVmInputResult<Self::Input>;
 }

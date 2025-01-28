@@ -29,7 +29,7 @@ pub trait ZkVmHost: Send + Sync + Clone + Debug + 'static {
         proof_type: ProofType,
     ) -> ZkVmResult<Self::ZkVmProofReceipt>;
 
-    /// A higher-level proof function that generates a proof by calling [`prove_inner`] and
+    /// A higher-level proof function that generates a proof by calling `prove_inner` and
     /// then converts the resulting receipt into a generic [`ProofReceipt`].
     fn prove<'a>(
         &self,

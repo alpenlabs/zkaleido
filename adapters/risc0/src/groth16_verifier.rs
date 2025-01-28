@@ -6,7 +6,7 @@ use zkaleido::{ProofReceipt, ZkVmResult};
 ///
 /// This function checks whether the given [`ProofReceipt`] satisfies the constraints represented by
 /// the provided `verification_key`. If successful, it returns an empty `Ok(())`; otherwise,
-/// it returns a suitable [`ZkVmError`].
+/// it returns a suitable [`ZkVmError`](zkaleido::ZkVmError).
 pub fn verify_groth16(receipt: &ProofReceipt, verification_key: &[u8; 32]) -> ZkVmResult<()> {
     let public_params_hash: [u8; 32] =
         sha2::Sha256::digest(receipt.public_values().as_bytes()).into();

@@ -9,7 +9,7 @@ use crate::{
 ///
 /// This trait is host-agnostic, meaning it can generate proofs using any type that
 /// implements [`ZkVmHost`]. The specific host is passed as a parameter to methods like
-/// [`prove`] and [`perf_report`], allowing the prover to be flexible and work with
+/// `prove` and `perf_report`, allowing the prover to be flexible and work with
 /// different backends or proof systems.
 pub trait ZkVmProver {
     /// Represents the input data needed by the ZkVM to generate a proof.
