@@ -6,7 +6,13 @@ use zkaleido::{
 
 use crate::proof::SP1ProofReceipt;
 
-// A wrapper around SP1Stdin
+/// A proof input builder for the SP1 host environment.
+///
+/// This newtype wraps an internal `SP1Stdin` from the SP1 library,
+/// providing the required functionality to manage and serialize input data so
+/// it can be consumed by the SP1 proof executor. This structure is typically
+/// created by higher-level code that coordinates proof generation.
+#[derive(Debug)]
 pub struct SP1ProofInputBuilder(SP1Stdin);
 
 impl ZkVmInputBuilder<'_> for SP1ProofInputBuilder {

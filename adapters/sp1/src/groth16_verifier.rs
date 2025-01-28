@@ -1,6 +1,11 @@
 use sp1_verifier::{Groth16Verifier, GROTH16_VK_BYTES};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult};
 
+/// Verifies a SP1-based Groth16 proof, using a 32-byte verification key.
+///
+/// This function checks whether the given [`ProofReceipt`] satisfies the constraints represented by
+/// the provided `verification_key`. If successful, it returns an empty `Ok(())`; otherwise,
+/// it returns a suitable [`ZkVmError`].
 pub fn verify_groth16(receipt: &ProofReceipt, vkey_hash: &[u8; 32]) -> ZkVmResult<()> {
     let vk_hash_str = hex::encode(vkey_hash);
     let vk_hash_str = format!("0x{}", vk_hash_str);

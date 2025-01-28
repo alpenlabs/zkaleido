@@ -4,9 +4,8 @@ use zkaleido::{ProofReceipt, ZkVmResult};
 
 /// Verifies a RISC0-based Groth16 proof, using a 32-byte verification key.
 ///
-/// This function checks whether the given [`ProofReceipt`] (which encapsulates
-/// proof artifacts) satisfies the constraints represented by the provided
-/// `verification_key`. If successful, it returns an empty `Ok(())`; otherwise,
+/// This function checks whether the given [`ProofReceipt`] satisfies the constraints represented by
+/// the provided `verification_key`. If successful, it returns an empty `Ok(())`; otherwise,
 /// it returns a suitable [`ZkVmError`].
 pub fn verify_groth16(receipt: &ProofReceipt, verification_key: &[u8; 32]) -> ZkVmResult<()> {
     let public_params_hash: [u8; 32] =

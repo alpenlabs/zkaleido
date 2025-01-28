@@ -6777,12 +6777,9 @@ dependencies = [
  "borsh",
  "hex",
  "serde",
- "sha2",
- "sp1-primitives",
  "sp1-sdk",
  "sp1-verifier",
  "sp1-zkvm",
- "tracing",
  "zkaleido",
 ]
 
