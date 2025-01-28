@@ -4,6 +4,12 @@ use zkaleido::{ProofReceipt, ZkVmEnv};
 
 use crate::verify_groth16;
 
+/// A specialized zkVM environment for RISC0.
+///
+/// This environment is responsible for coordinating how guest code is loaded,
+/// executed, and how proofs are eventually generated or verified within the
+/// RISC0 framework.
+#[derive(Debug)]
 pub struct Risc0ZkVmEnv;
 
 impl ZkVmEnv for Risc0ZkVmEnv {
