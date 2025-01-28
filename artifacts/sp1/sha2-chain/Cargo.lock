@@ -768,7 +768,6 @@ dependencies = [
  "bincode",
  "borsh",
  "serde",
- "tracing",
  "zkaleido",
 ]
 

@@ -28,6 +28,14 @@ pub struct NativeMachine {
 }
 
 impl NativeMachine {
+    /// Creates a new, empty `NativeMachine` instance.
+    ///
+    /// # Returns
+    ///
+    /// A `NativeMachine` with an empty list of inputs and a freshly initialized
+    /// internal state. The internal state (`NativeMachineState`) manages the
+    /// machine's pointer to the next input element and captures any output
+    /// data produced by the machine during execution.
     pub fn new() -> Self {
         let state = RefCell::new(NativeMachineState {
             input_ptr: 0,
@@ -37,6 +45,7 @@ impl NativeMachine {
         Self { inputs, state }
     }
 
+    /// Appends a pre-serialized byte slice to the machine's list of inputs.
     pub fn write_slice(&mut self, input: Vec<u8>) {
         self.inputs.push(input);
     }
