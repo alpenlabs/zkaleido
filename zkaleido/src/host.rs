@@ -4,8 +4,8 @@ use borsh::BorshDeserialize;
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
-    input::ZkVmInputBuilder, ProofReceipt, ProofType, PublicValues, VerificationKey, ZkVmError,
-    ZkVmProofError, ZkVmResult,
+    input::ZkVmInputBuilder, ProofReceipt, ProofType, PublicValues, VerificationKey,
+    VerificationKeyCommitment, ZkVmError, ZkVmProofError, ZkVmResult,
 };
 
 /// A trait implemented by the prover ("host") of a zkVM program.
@@ -53,6 +53,9 @@ pub trait ZkVmHost: Send + Sync + Clone + Debug + 'static {
 
     /// Returns the Verification key for the loaded program
     fn get_verification_key(&self) -> VerificationKey;
+
+    /// Returns the commitment of the verification key for the loaded program
+    fn get_verification_key_commitment(&self) -> VerificationKeyCommitment;
 
     /// Returns the ELF for the loaded program
     fn get_elf(&self) -> &[u8];

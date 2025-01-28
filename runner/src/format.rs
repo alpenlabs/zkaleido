@@ -19,12 +19,12 @@ pub fn format_header(args: &EvalArgs) -> String {
 pub fn format_results(results: &[PerformanceReport], host_name: String) -> String {
     let mut table_text = String::new();
     table_text.push('\n');
-    table_text.push_str("| program             | cycles      | success  |\n");
-    table_text.push_str("|---------------------|-------------|----------|");
+    table_text.push_str("| program                | cycles      | success  |\n");
+    table_text.push_str("|------------------------|-------------|----------|");
 
     for result in results.iter() {
         table_text.push_str(&format!(
-            "\n| {:<19} | {:>11} | {:<7} |",
+            "\n| {:<22} | {:>11} | {:<7} |",
             result.program,
             result.cycles.to_formatted_string(&Locale::en),
             if result.success { "✅" } else { "❌" }

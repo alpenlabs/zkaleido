@@ -1,7 +1,8 @@
 use std::{fmt, sync::Arc};
 
 use zkaleido::{
-    Proof, ProofReceipt, ProofType, PublicValues, VerificationKey, ZkVmError, ZkVmHost, ZkVmResult,
+    Proof, ProofReceipt, ProofType, PublicValues, VerificationKey, VerificationKeyCommitment,
+    ZkVmError, ZkVmHost, ZkVmResult,
 };
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
@@ -52,6 +53,10 @@ impl ZkVmHost for NativeHost {
 
     fn get_verification_key(&self) -> VerificationKey {
         VerificationKey::default()
+    }
+
+    fn get_verification_key_commitment(&self) -> VerificationKeyCommitment {
+        VerificationKeyCommitment::new([0u32; 8])
     }
 
     fn extract_serde_public_output<T: serde::Serialize + serde::de::DeserializeOwned>(

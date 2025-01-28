@@ -1859,6 +1859,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "fibonacci-composition"
+version = "0.1.0"
+dependencies = [
+ "fibonacci",
+ "zkaleido",
+ "zkaleido-native-adapter",
+]
+
+[[package]]
 name = "fixed-hash"
 version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6753,6 +6762,7 @@ dependencies = [
  "bincode",
  "clap",
  "fibonacci",
+ "fibonacci-composition",
  "num-format",
  "reqwest",
  "schnorr-sig-verify",

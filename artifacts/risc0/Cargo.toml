@@ -9,4 +9,9 @@ version = "0.1.0"
 risc0-build = "1.1.2"
 
 [package.metadata.risc0]
-methods = ["fibonacci", "sha2-chain", "schnorr-sig-verify"]
+methods = [
+  "fibonacci",
+  "sha2-chain",
+  "schnorr-sig-verify",
+  "fibonacci-composition",
+]

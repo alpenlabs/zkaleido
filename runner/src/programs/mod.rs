@@ -3,6 +3,7 @@ use std::str::FromStr;
 use clap::ValueEnum;
 
 mod fibonacci;
+mod fibonacci_composition;
 mod schnorr;
 mod sha2;
 
@@ -12,6 +13,7 @@ use crate::PerformanceReport;
 #[non_exhaustive]
 pub enum GuestProgram {
     Fibonacci,
+    FibonacciComposition,
     Sha2Chain,
     SchnorrSigVerify,
 }
@@ -22,6 +24,7 @@ impl FromStr for GuestProgram {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s.to_lowercase().as_str() {
             "fibonacci" => Ok(GuestProgram::Fibonacci),
+            "fibonacci-composition" => Ok(GuestProgram::FibonacciComposition),
             "sha2-chain" => Ok(GuestProgram::Sha2Chain),
             "schnorr-sig-verify" => Ok(GuestProgram::SchnorrSigVerify),
             // Add more matches
@@ -39,6 +42,9 @@ pub fn run_sp1_programs(programs: &[GuestProgram]) -> Vec<PerformanceReport> {
         .iter()
         .map(|program| match program {
             GuestProgram::Fibonacci => fibonacci::sp1_fib_report(),
+            GuestProgram::FibonacciComposition => {
+                fibonacci_composition::sp1_fib_composition_report()
+            }
             GuestProgram::Sha2Chain => sha2::sp1_sha_report(),
             GuestProgram::SchnorrSigVerify => schnorr::sp1_schnorr_sig_verify_report(),
         })
@@ -55,6 +61,9 @@ pub fn run_risc0_programs(programs: &[GuestProgram]) -> Vec<PerformanceReport> {
         .iter()
         .map(|program| match program {
             GuestProgram::Fibonacci => fibonacci::risc0_fib_report(),
+            GuestProgram::FibonacciComposition => {
+                fibonacci_composition::risc0_fib_composition_report()
+            }
             GuestProgram::Sha2Chain => sha2::risc0_sha_report(),
             GuestProgram::SchnorrSigVerify => schnorr::risc0_schnorr_sig_verify_report(),
         })

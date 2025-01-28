@@ -152,6 +152,33 @@ impl AggregationInput {
     }
 }
 
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    PartialEq,
+    Eq,
+    Arbitrary,
+    Default,
+)]
+pub struct VerificationKeyCommitment([u32; 8]);
+
+impl VerificationKeyCommitment {
+    /// Creates a new instance from a `Vec<u8>`.
+    pub fn new(data: [u32; 8]) -> Self {
+        Self(data)
+    }
+
+    /// Consumes the wrapper and returns the inner [u32; 8].
+    pub fn into_inner(self) -> [u32; 8] {
+        self.0
+    }
+}
+
 /// Enumeration of proof types supported by the system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProofType {
