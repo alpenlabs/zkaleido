@@ -10,8 +10,14 @@ use crate::{
 
 /// A trait implemented by the prover ("host") of a zkVM program.
 pub trait ZkVmHost: Send + Sync + Clone + Debug + 'static {
+    /// The input type used by this host to build all data necessary for running the VM.
     type Input<'a>: ZkVmInputBuilder<'a>;
 
+    /// The proof receipt type, specific to this host, that can be
+    /// converted to and from a generic [`ProofReceipt`].
+    ///
+    /// This allows flexibility for different proof systems or proof representations
+    /// while still providing a way to convert back to a standard [`ProofReceipt`].
     type ZkVmProofReceipt: TryInto<ProofReceipt, Error = ZkVmProofError>
         + TryFrom<ProofReceipt, Error = ZkVmProofError>;
 
@@ -23,6 +29,8 @@ pub trait ZkVmHost: Send + Sync + Clone + Debug + 'static {
         proof_type: ProofType,
     ) -> ZkVmResult<Self::ZkVmProofReceipt>;
 
+    /// A higher-level proof function that generates a proof by calling [`prove_inner`] and
+    /// then converts the resulting receipt into a generic [`ProofReceipt`].
     fn prove<'a>(
         &self,
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,

@@ -5,20 +5,46 @@ use crate::{
     ZkVmInputResult, ZkVmResult,
 };
 
+/// A trait representing a "prover" that can produce zero-knowledge proofs using a ZkVM.
+///
+/// This trait is host-agnostic, meaning it can generate proofs using any type that
+/// implements [`ZkVmHost`]. The specific host is passed as a parameter to methods like
+/// [`prove`] and [`perf_report`], allowing the prover to be flexible and work with
+/// different backends or proof systems.
 pub trait ZkVmProver {
+    /// Represents the input data needed by the ZkVM to generate a proof.
+    ///
+    /// Typically, this includes any private data, parameters, or public information
+    /// necessary for the proof. It will be transformed into a ZkVM-specific format using a
+    /// [`ZkVmInputBuilder`]. Implementers of this trait should define how the input
+    /// structure is created, validated, and passed along to the ZkVM for proof generation.
     type Input;
+
+    /// Represents the final, verifiable output produced by the proven computation.
+    ///
+    /// Because the ZkVM returns proof results and other metadata as a stream of bytes
+    /// (captured in [`PublicValues`]), this output type defines how those bytes are parsed
+    /// and interpreted into a domain-specific result. Implementers should provide the logic
+    /// necessary to convert the raw `PublicValues` into this structured, validated form.
     type Output;
 
+    /// Returns a human-readable name for this prover.
+    ///
+    /// This name can be used for identification, logging, or debugging.
     fn name() -> String;
 
+    /// Returns the type of proof this prover generates.
+    ///
+    /// Hosts can use this to decide how to handle or route proof generation tasks.
     fn proof_type() -> ProofType;
 
-    /// Prepares the input for the zkVM.
+    /// Prepares the input for the ZkVM by converting [`Self::Input`] into a type usable
+    /// by a [`ZkVmInputBuilder`].
     fn prepare_input<'a, B>(input: &'a Self::Input) -> ZkVmInputResult<B::Input>
     where
         B: ZkVmInputBuilder<'a>;
 
-    /// Processes the [`PublicValues`] to produce the final output.
+    /// Processes the [`PublicValues`] from the ZkVM proof to produce the final [`Self::Output`].
     fn process_output<H>(public_values: &PublicValues) -> ZkVmResult<Self::Output>
     where
         H: ZkVmHost;
@@ -50,7 +76,7 @@ pub trait ZkVmProver {
         Ok(receipt)
     }
 
-    /// Generates the proof report using any zkVM host.
+    /// Generates a performance report for the proof process using a specified host.
     fn perf_report<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<ProofReport>
     where
         H: ZkVmHost,
