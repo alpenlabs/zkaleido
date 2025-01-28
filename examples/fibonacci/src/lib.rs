@@ -29,7 +29,7 @@ impl ZkVmProver for FibProver {
     }
 
     fn proof_type() -> zkaleido::ProofType {
-        ProofType::Groth16
+        ProofType::Compressed
     }
 
     fn prepare_input<'a, B>(input: &'a Self::Input) -> ZkVmInputResult<B::Input>
