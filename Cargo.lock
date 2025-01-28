@@ -1274,14 +1274,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5b63caa9aa9397e2d9480a9b13673856c78d8ac123288526c37d7839f2a86990"
 
 [[package]]
-name = "composition"
-version = "0.1.0"
-dependencies = [
- "zkaleido",
- "zkaleido-native-adapter",
-]
-
-[[package]]
 name = "console"
 version = "0.15.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1856,6 +1848,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "fib-composition"
+version = "0.1.0"
+dependencies = [
+ "zkaleido",
+ "zkaleido-native-adapter",
 ]
 
 [[package]]

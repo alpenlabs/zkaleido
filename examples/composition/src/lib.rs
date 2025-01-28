@@ -9,9 +9,9 @@ pub fn process_fib_verification(zkvm: &impl ZkVmEnv) {
     zkvm.commit_serde(&valid_fib_no);
 }
 
-pub struct FibVerificationProver;
+pub struct FibCompositionProver;
 
-impl ZkVmProver for FibVerificationProver {
+impl ZkVmProver for FibCompositionProver {
     type Input = AggregationInput;
     type Output = i32;
 
