@@ -1851,7 +1851,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fib-composition"
+name = "fibonacci"
 version = "0.1.0"
 dependencies = [
  "zkaleido",
@@ -1859,7 +1859,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "fibonacci"
+name = "fibonacci-composition"
 version = "0.1.0"
 dependencies = [
  "zkaleido",

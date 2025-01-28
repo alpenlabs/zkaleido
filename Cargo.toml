@@ -9,7 +9,7 @@ members = [
   "runner",
 
   # examples
-  "examples/composition",
+  "examples/fibonacci-composition",
   "examples/fibonacci",
   "examples/sha2-chain",
   "examples/schnorr-sig-verify",
@@ -22,6 +22,7 @@ zkaleido = { path = "zkaleido" }
 zkaleido-native-adapter = { path = "adapters/native" }
 
 fibonacci = { path = "examples/fibonacci" }
+fibonacci-composition = { path = "examples/fibonacci-composition" }
 sha2-chain = { path = "examples/sha2-chain" }
 schnorr-sig-verify = { path = "examples/schnorr-sig-verify" }
 

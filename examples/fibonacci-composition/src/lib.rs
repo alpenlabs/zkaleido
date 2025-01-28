@@ -1,6 +1,6 @@
 use zkaleido::{AggregationInput, ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
 
-pub fn process_fib_verification(zkvm: &impl ZkVmEnv) {
+pub fn process_fibonacci_composition(zkvm: &impl ZkVmEnv) {
     // Read the verification key of sha2-chain program
     let fib_vk: [u32; 8] = zkvm.read_serde();
     let valid_fib_no: u32 = zkvm.read_verified_serde(&fib_vk);
