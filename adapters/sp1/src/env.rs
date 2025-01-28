@@ -1,12 +1,12 @@
 use serde::{de::DeserializeOwned, Serialize};
-#[cfg(not(feature = "mock"))]
+#[cfg(feature = "zkvm-verify")]
 use sha2::{Digest, Sha256};
 use sp1_zkvm::io;
-#[cfg(not(feature = "mock"))]
+#[cfg(feature = "zkvm-verify")]
 use sp1_zkvm::lib::verify::verify_sp1_proof;
 use zkaleido::{ProofReceipt, ZkVmEnv};
 
-#[cfg(not(feature = "mock"))]
+#[cfg(feature = "zkvm-verify")]
 use crate::verify_groth16;
 
 /// An environment adapter for the SP1 proof system implementing [`ZkVmEnv`].
@@ -35,22 +35,34 @@ impl ZkVmEnv for Sp1ZkVmEnv {
         io::commit_slice(output_raw);
     }
 
-    #[cfg(not(feature = "mock"))]
     fn verify_native_proof(&self, vk_digest: &[u32; 8], public_values: &[u8]) {
-        let pv_digest = Sha256::digest(public_values);
-        verify_sp1_proof(vk_digest, &pv_digest.into());
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "zkvm-verify")] {
+                let pv_digest = Sha256::digest(public_values);
+                verify_sp1_proof(vk_digest, &pv_digest.into());
+            } else if #[cfg(feature = "mock")] {}
+            else {
+                panic!(
+                    "No verification feature enabled. \
+                     Please enable either `zkvm-verify` or `mock`."
+                );
+            }
+        }
     }
 
-    #[cfg(feature = "mock")]
-    fn verify_native_proof(&self, _vk_digest: &[u32; 8], _public_values: &[u8]) {}
-
-    #[cfg(not(feature = "mock"))]
     fn verify_groth16_receipt(&self, receipt: &ProofReceipt, verification_key: &[u8; 32]) {
-        verify_groth16(receipt, verification_key).unwrap();
+        cfg_if::cfg_if! {
+            if #[cfg(feature = "zkvm-verify")] {
+                verify_groth16(receipt, verification_key).unwrap();
+            } else if #[cfg(feature = "mock")] {}
+            else {
+                panic!(
+                    "No verification feature enabled. \
+                     Please enable either `zkvm-verify` or `mock`."
+                );
+            }
+        }
     }
-
-    #[cfg(feature = "mock")]
-    fn verify_groth16_receipt(&self, _receipt: &ProofReceipt, _verification_key: &[u8; 32]) {}
 
     fn read_verified_serde<T: DeserializeOwned>(&self, vk_digest: &[u32; 8]) -> T {
         let buf = self.read_verified_buf(vk_digest);

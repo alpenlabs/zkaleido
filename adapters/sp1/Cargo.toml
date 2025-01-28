@@ -8,16 +8,18 @@ zkaleido.workspace = true
 
 bincode.workspace = true
 borsh.workspace = true
+cfg-if.workspace = true
 hex.workspace = true
 serde.workspace = true
 sha2.workspace = true
 sp1-sdk = { version = "4.0.0", optional = true }
 sp1-verifier = "4.0.0"
-sp1-zkvm = { version = "4.0.0", features = ["verify"], optional = true }
+sp1-zkvm = { version = "4.0.0", optional = true }
 
 [features]
 default = []
 mock = []
 prover = ["sp1-sdk"]
 zkvm = ["sp1-zkvm"]
+zkvm-verify = ["sp1-zkvm/verify"]
 perf = ["sp1-sdk/profiling", "prover"]
