@@ -6,7 +6,7 @@ use sp1_zkvm::io;
 use sp1_zkvm::lib::verify::verify_sp1_proof;
 use zkaleido::{ProofReceipt, ZkVmEnv};
 
-#[cfg(feature = "zkvm-verify")]
+#[cfg(not(feature = "mock"))]
 use crate::verify_groth16;
 
 /// An environment adapter for the SP1 proof system implementing [`ZkVmEnv`].
@@ -50,18 +50,12 @@ impl ZkVmEnv for Sp1ZkVmEnv {
         }
     }
 
+    #[cfg(feature = "mock")]
+    fn verify_groth16_receipt(&self, _receipt: &ProofReceipt, _verification_key: &[u8; 32]) {}
+
+    #[cfg(not(feature = "mock"))]
     fn verify_groth16_receipt(&self, receipt: &ProofReceipt, verification_key: &[u8; 32]) {
-        cfg_if::cfg_if! {
-            if #[cfg(feature = "zkvm-verify")] {
-                verify_groth16(receipt, verification_key).unwrap();
-            } else if #[cfg(feature = "mock")] {}
-            else {
-                panic!(
-                    "No verification feature enabled. \
-                     Please enable either `zkvm-verify` or `mock`."
-                );
-            }
-        }
+        verify_groth16(receipt, verification_key).expect("groth16 verification failed");
     }
 
     fn read_verified_serde<T: DeserializeOwned>(&self, vk_digest: &[u32; 8]) -> T {
