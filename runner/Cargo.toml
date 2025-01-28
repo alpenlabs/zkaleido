@@ -8,6 +8,7 @@ zkaleido.workspace = true
 
 # examples
 fibonacci.workspace = true
+fibonacci-composition.workspace = true
 sha2-chain.workspace = true
 schnorr-sig-verify.workspace = true
 
