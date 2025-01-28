@@ -9,6 +9,8 @@ use crate::{ZkVmError, ZkVmResult};
 /// Macro to define a newtype wrapper around `Vec<u8>` with common implementations.
 macro_rules! define_byte_wrapper {
     ($name:ident) => {
+        /// A type wrapping a [`Vec<u8>`] with common trait implementations,
+        /// allowing easy serialization, comparison, and other utility operations.
         #[derive(
             Debug,
             Clone,

@@ -6722,7 +6722,6 @@ dependencies = [
  "bincode",
  "borsh",
  "serde",
- "tracing",
  "zkaleido",
 ]
 
@@ -6736,7 +6735,6 @@ dependencies = [
  "risc0-zkvm",
  "serde",
  "sha2",
- "tracing-subscriber 0.3.19",
  "zkaleido",
 ]
 
@@ -6780,11 +6778,9 @@ dependencies = [
  "hex",
  "serde",
  "sha2",
- "sp1-primitives",
  "sp1-sdk",
  "sp1-verifier",
  "sp1-zkvm",
- "tracing",
  "zkaleido",
 ]
 

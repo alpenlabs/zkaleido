@@ -2,6 +2,12 @@ use zkaleido::{AggregationInput, ProofReceipt, ZkVmInputBuilder, ZkVmInputResult
 
 use crate::env::NativeMachine;
 
+/// A thin wrapper around [`NativeMachine`] that implements input-building traits.
+///
+/// This newtype allows for seamless integration with components expecting a
+/// [`ZkVmInputBuilder`]. It delegates serialization and other input preparation
+/// tasks to the underlying [`NativeMachine`].
+#[derive(Debug)]
 pub struct NativeMachineInputBuilder(pub NativeMachine);
 
 impl ZkVmInputBuilder<'_> for NativeMachineInputBuilder {

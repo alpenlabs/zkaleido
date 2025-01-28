@@ -8,8 +8,19 @@ use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeP
 
 type ProcessProofFn = dyn Fn(&NativeMachine) -> ZkVmResult<()> + Send + Sync;
 
+/// A native host that holds a reference to a proof-processing function (`process_proof`).
+///
+/// This struct can be cloned cheaply (due to the internal [`Arc`]), and used by various
+/// parts of the application to execute native proofs or validations without
+/// requiring a real cryptographic backend.
 #[derive(Clone)]
 pub struct NativeHost {
+    /// A function wrapped in [`Arc`] and [`Box`] that processes proofs for a
+    /// [`NativeMachine`].
+    ///
+    /// By storing the function in a dynamic pointer (`Box<dyn ...>`) inside an
+    /// [`Arc`], multiple host instances or threads can share the same proof
+    /// logic without needing to replicate code or data.
     pub process_proof: Arc<Box<ProcessProofFn>>,
 }
 

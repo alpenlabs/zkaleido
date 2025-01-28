@@ -6,6 +6,13 @@ use zkaleido::{
 
 use crate::proof::Risc0ProofReceipt;
 
+/// A proof input builder for the RISC0 host environment.
+///
+/// This newtype wraps an internal `ExecutorEnvBuilder` from the RISC0 library,
+/// providing the required functionality to manage and serialize input data so
+/// it can be consumed by the RISC0 proof executor. This structure is typically
+/// created by higher-level code that coordinates proof generation.
+#[allow(missing_debug_implementations)]
 pub struct Risc0ProofInputBuilder<'a>(ExecutorEnvBuilder<'a>);
 
 impl<'a> ZkVmInputBuilder<'a> for Risc0ProofInputBuilder<'a> {

@@ -6,7 +6,12 @@ pub type ZkVmInputResult<T> = Result<T, ZkVmInputError>;
 /// A trait for managing inputs to a ZkVm prover. This trait provides methods for
 /// adding inputs in various formats to be used during the proof generation process.
 pub trait ZkVmInputBuilder<'a> {
+    /// The data type representing the fully constructed set of inputs
+    /// ready to be used by the ZkVM.
     type Input;
+
+    /// The type of proof receipt that this builder can handle, typically convertible
+    /// from a generic [`ProofReceipt`].
     type ZkVmProofReceipt: TryFrom<ProofReceipt>;
 
     /// Creates a new instance of the `ProverInputs` struct.
@@ -32,5 +37,6 @@ pub trait ZkVmInputBuilder<'a> {
     /// is involved, allowing for proof and verification inputs to be provided to the zkVM.
     fn write_proof(&mut self, item: &AggregationInput) -> ZkVmInputResult<&mut Self>;
 
+    /// Finalizes and returns the constructed `Input` data structure.
     fn build(&mut self) -> ZkVmInputResult<Self::Input>;
 }

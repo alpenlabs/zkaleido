@@ -1030,7 +1030,6 @@ dependencies = [
  "bincode",
  "borsh",
  "serde",
- "tracing",
  "zkaleido",
 ]
 
@@ -1043,9 +1042,7 @@ dependencies = [
  "hex",
  "serde",
  "sha2",
- "sp1-primitives",
  "sp1-verifier",
  "sp1-zkvm",
- "tracing",
  "zkaleido",
 ]

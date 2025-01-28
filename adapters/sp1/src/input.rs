@@ -1,3 +1,4 @@
+use borsh::BorshSerialize;
 use sp1_sdk::{SP1Proof, SP1Stdin, SP1VerifyingKey};
 use zkaleido::{
     AggregationInput, ProofType, ZkVmInputBuilder, ZkVmInputError, ZkVmInputResult, ZkVmProofError,
@@ -6,7 +7,13 @@ use zkaleido::{
 
 use crate::proof::SP1ProofReceipt;
 
-// A wrapper around SP1Stdin
+/// A proof input builder for the SP1 host environment.
+///
+/// This newtype wraps an internal `SP1Stdin` from the SP1 library,
+/// providing the required functionality to manage and serialize input data so
+/// it can be consumed by the SP1 proof executor. This structure is typically
+/// created by higher-level code that coordinates proof generation.
+#[derive(Debug)]
 pub struct SP1ProofInputBuilder(SP1Stdin);
 
 impl ZkVmInputBuilder<'_> for SP1ProofInputBuilder {
@@ -22,7 +29,7 @@ impl ZkVmInputBuilder<'_> for SP1ProofInputBuilder {
         Ok(self)
     }
 
-    fn write_borsh<T: borsh::BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
+    fn write_borsh<T: BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
         let slice = borsh::to_vec(item).map_err(|e| ZkVmInputError::DataFormat(e.into()))?;
         self.write_buf(&slice)
     }

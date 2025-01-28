@@ -9,6 +9,13 @@ use zkaleido::{ProofReceipt, ZkVmEnv};
 #[cfg(not(feature = "mock"))]
 use crate::verify_groth16;
 
+/// An environment adapter for the SP1 proof system implementing [`ZkVmEnv`].
+///
+/// This struct provides methods to read and commit data (both raw buffers and
+/// Serde-serialized items) in the SP1 guest environment. It also supports
+/// verification of both native SP1 proofs and Groth16 proofs within the
+/// SP1 runtime.
+#[derive(Debug)]
 pub struct Sp1ZkVmEnv;
 
 impl ZkVmEnv for Sp1ZkVmEnv {

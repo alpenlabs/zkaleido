@@ -9,4 +9,3 @@ zkaleido.workspace = true
 bincode.workspace = true
 borsh.workspace = true
 serde.workspace = true
-tracing.workspace = true

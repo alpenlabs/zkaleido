@@ -20,10 +20,11 @@ pub struct Risc0Host {
 }
 
 impl Risc0Host {
-    pub fn init(guest_code: &[u8]) -> Self {
-        let id = compute_image_id(guest_code).expect("invalid elf");
+    /// Initializes the Risc0Host with the given ELF.
+    pub fn init(elf: &[u8]) -> Self {
+        let id = compute_image_id(elf).expect("invalid elf");
         Risc0Host {
-            elf: guest_code.to_vec(),
+            elf: elf.to_vec(),
             id,
         }
     }
