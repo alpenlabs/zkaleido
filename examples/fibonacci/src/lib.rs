@@ -5,8 +5,8 @@ pub fn process_fib(zkvm: &impl ZkVmEnv) {
     let n: u32 = zkvm.read_serde();
 
     // Compute the n'th fibonacci number, using normal Rust code.
-    let mut a = 0;
-    let mut b = 1;
+    let mut a: u32 = 0;
+    let mut b: u32 = 1;
     for _ in 0..n {
         let mut c = a + b;
         c %= 7919; // Modulus to prevent overflow.
@@ -22,7 +22,7 @@ pub struct FibProver;
 
 impl ZkVmProver for FibProver {
     type Input = u32;
-    type Output = i32;
+    type Output = u32;
 
     fn name() -> String {
         "fibonacci".to_owned()
@@ -50,7 +50,7 @@ impl ZkVmProver for FibProver {
 }
 
 #[cfg(test)]
-mod tests {
+pub mod tests {
     use std::sync::Arc;
 
     use zkaleido::ZkVmProver;
@@ -59,7 +59,7 @@ mod tests {
     use super::process_fib;
     use crate::FibProver;
 
-    fn get_native_host() -> NativeHost {
+    pub fn get_native_host() -> NativeHost {
         NativeHost {
             process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
                 process_fib(zkvm);

@@ -150,6 +150,19 @@ impl AggregationInput {
     }
 }
 
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    PartialEq,
+    Eq,
+    Arbitrary,
+    Default,
+)]
 pub struct VerificationKeyCommitment([u32; 8]);
 
 impl VerificationKeyCommitment {

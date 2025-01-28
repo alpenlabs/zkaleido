@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 zkaleido = { path = "../../zkaleido", features = ["perf"] }
+fibonacci = { path = "../fibonacci" }
 zkaleido-native-adapter = { path = "../../adapters/native" }
