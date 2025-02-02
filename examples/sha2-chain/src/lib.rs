@@ -3,7 +3,7 @@ use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
 
 const MESSAGE_TO_HASH: &str = "Hello, world!";
 
-pub fn process_sha_chain(zkvm: &impl ZkVmEnv) {
+pub fn process_sha2_chain(zkvm: &impl ZkVmEnv) {
     let rounds: u32 = zkvm.read_serde();
     let final_hash = hash_n_rounds(MESSAGE_TO_HASH, rounds);
 
@@ -65,13 +65,13 @@ mod tests {
     use zkaleido::ZkVmProver;
     use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
-    use super::process_sha_chain;
+    use super::process_sha2_chain;
     use crate::ShaChainProver;
 
     fn get_native_host() -> NativeHost {
         NativeHost {
             process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
-                process_sha_chain(zkvm);
+                process_sha2_chain(zkvm);
                 Ok(())
             })),
         }
