@@ -1,0 +1,7 @@
+[package]
+name = "{{ project_name }}"
+version = "{{ version }}"
+edition = "{{ edition }}"
+
+[dependencies]
+# Add your dependencies here
