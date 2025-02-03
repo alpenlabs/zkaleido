@@ -1,6 +1,6 @@
-use fibonacci::process_fib;
+use fibonacci::process_fibonacci;
 use zkaleido_risc0_adapter::Risc0ZkVmEnv;
 
 fn main() {
-    process_fib(&Risc0ZkVmEnv)
+    process_fibonacci(&Risc0ZkVmEnv)
 }
