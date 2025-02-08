@@ -9,7 +9,7 @@ use clap::Parser;
 use format::{format_header, format_results};
 use github::{format_github_message, post_to_github_pr};
 use serde::Serialize;
-use zkaleido::ProofReport;
+use zkaleido::PerfReport;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -61,8 +61,8 @@ pub struct PerformanceReport {
     success: bool,
 }
 
-impl From<ProofReport> for PerformanceReport {
-    fn from(value: ProofReport) -> Self {
+impl From<PerfReport> for PerformanceReport {
+    fn from(value: PerfReport) -> Self {
         PerformanceReport {
             program: value.name,
             cycles: value.cycles,

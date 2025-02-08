@@ -1,7 +1,7 @@
 use std::time::Instant;
 
 use crate::{
-    host::ZkVmHost, input::ZkVmInputBuilder, ProofReceipt, ProofReport, ProofType, PublicValues,
+    host::ZkVmHost, input::ZkVmInputBuilder, PerfReport, ProofReceipt, ProofType, PublicValues,
     ZkVmInputResult, ZkVmResult,
 };
 
@@ -77,7 +77,7 @@ pub trait ZkVmProver {
     }
 
     /// Generates a performance report for the proof process using a specified host.
-    fn perf_report<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<ProofReport>
+    fn perf_report<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<PerfReport>
     where
         H: ZkVmHost,
         H::Input<'a>: ZkVmInputBuilder<'a>,
@@ -93,7 +93,7 @@ pub trait ZkVmProver {
         let _ = Self::prove(input, host)?;
         let proving_time = start.elapsed().as_millis();
 
-        Ok(ProofReport {
+        Ok(PerfReport {
             name: Self::name(),
             cycles,
             execution_time,

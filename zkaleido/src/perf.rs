@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use serde::Serialize;
 /// A proof report containing a performance stats about proof generation.
 #[derive(Debug, Clone)]
-pub struct ProofReport {
+pub struct PerfReport {
     /// A human-readable name identifying the prover or proof process.
     pub name: String,
     /// The number of cycles (or execution steps) that the ZkVM consumed to run the computation.
@@ -15,9 +15,28 @@ pub struct ProofReport {
     pub proving_time: u128,
 }
 
-/// The performance report of a zkVM on a program.
-///
-/// Adapted from [zkvm-perf](https://github.dev/succinctlabs/zkvm-perf/blob/main/eval/src/main.rs)
+/// Executes the provided closure once and measures the time it takes to complete.
+pub fn time_operation<T, F: FnOnce() -> T>(operation: F) -> (T, Duration) {
+    let start = Instant::now();
+    let result = operation();
+    let duration = start.elapsed();
+    (result, duration)
+}
+
+/// A proof report containing a performance stats about proof generation.
+#[derive(Debug, Clone, Serialize, Default)]
+pub struct ProofReport {
+    /// The duration of the proving time in seconds.
+    pub prove_duration: f64,
+    /// The size of the proof.
+    pub proof_size: usize,
+    /// The duration of the verification time in seconds.
+    pub verify_duration: f64,
+    /// The speed in KHz.
+    pub speed: f64,
+}
+
+/// Performace report
 #[derive(Debug, Serialize, Default)]
 pub struct PerformanceReport {
     /// The number of shards.
@@ -26,44 +45,56 @@ pub struct PerformanceReport {
     ///
     /// Note that this number may vary based on the zkVM.
     pub cycles: u64,
-    /// The reported speed in cycles per second.
-    pub speed: f64,
-    /// The reported duration of the prover in seconds.
-    pub prove_duration: f64,
+    /// The duration for execution in seconds
+    pub execution_duration: f64,
 
-    /// The reported duration of the core proving time in seconds.
-    pub core_prove_duration: f64,
-    /// The reported duration of the verifier in seconds.
-    pub core_verify_duration: f64,
-    /// The size of the core proof.
-    pub core_proof_size: usize,
-    /// The speed of the core proving time in KHz.
-    pub core_khz: f64,
+    /// [ProofReport] for [Core](crate::proof::ProofType::Core) proof
+    pub core_proof_report: Option<ProofReport>,
 
-    /// The reported duration of the recursive proving time in seconds.
-    pub compress_prove_duration: f64,
-    /// The reported duration of the verifier in seconds.
-    pub compress_verify_duration: f64,
-    /// The size of the recursive proof in bytes.
-    pub compress_proof_size: usize,
-    /// The speed of the recursive proving time in KHz.
-    pub compress_khz: f64,
+    /// [ProofReport] for [Compressed](crate::proof::ProofType::Compressed) proof
+    pub compressed_proof_report: Option<ProofReport>,
 
-    /// The reported duration of the shrink proving time in seconds.
-    pub shrink_prove_duration: f64,
-    /// The reported duration of the wrap proving time in seconds.
-    pub wrap_prove_duration: f64,
-    /// The reported duration of the groth16 proving time in seconds.
-    pub groth16_prove_duration: f64,
+    /// [ProofReport] for [Groth16](crate::proof::ProofType::Groth16) proof
+    pub groth16_proof_report: Option<ProofReport>,
 
-    /// The overall speed in KHz.
-    pub overall_khz: f64,
+    /// End to end prove duration for the given proof
+    pub e2e_prove_duration: f64,
+
+    /// End to end proving speed
+    pub e2e_prove_speed: f64,
 }
 
-/// Executes the provided closure once and measures the time it takes to complete.
-pub fn time_operation<T, F: FnOnce() -> T>(operation: F) -> (T, Duration) {
-    let start = Instant::now();
-    let result = operation();
-    let duration = start.elapsed();
-    (result, duration)
+impl PerformanceReport {
+    /// Genereates new performance report
+    pub fn new(
+        shards: usize,
+        cycles: u64,
+        execution_duration: f64,
+        core_proof_report: Option<ProofReport>,
+        compressed_proof_report: Option<ProofReport>,
+        groth16_proof_report: Option<ProofReport>,
+    ) -> Self {
+        let e2e_prove_duration = core_proof_report.clone().unwrap_or_default().prove_duration
+            + compressed_proof_report
+                .clone()
+                .unwrap_or_default()
+                .prove_duration
+            + groth16_proof_report
+                .clone()
+                .unwrap_or_default()
+                .prove_duration;
+
+        let e2e_prove_speed = cycles as f64 / e2e_prove_duration / 1_000.0;
+
+        Self {
+            shards,
+            cycles,
+            execution_duration,
+            core_proof_report,
+            compressed_proof_report,
+            groth16_proof_report,
+            e2e_prove_duration,
+            e2e_prove_speed,
+        }
+    }
 }

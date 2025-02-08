@@ -4,7 +4,7 @@ use sp1_prover::{
 };
 use sp1_sdk::{SP1Context, SP1Prover};
 use sp1_stark::SP1ProverOpts;
-use zkaleido::{time_operation, PerformanceReport, ZkVmHost, ZkVmHostPerf};
+use zkaleido::{time_operation, PerformanceReport, ProofReport, ZkVmHost, ZkVmHostPerf};
 
 use crate::SP1Host;
 
@@ -16,39 +16,52 @@ impl ZkVmHostPerf for SP1Host {
         let prover = SP1Prover::<CpuProverComponents>::new();
         let elf = self.get_elf();
 
+        let opts = SP1ProverOpts::auto();
+        let context = SP1Context::default();
         let cycles = get_cycles(elf, &input);
         let (_, pk_d, program, vk) = prover.setup(elf);
 
-        let context = SP1Context::default();
-        let opts = SP1ProverOpts::auto();
+        // Core Proof
+        let ((pv, _), execution_duration) =
+            time_operation(|| prover.execute(elf, &input, context.clone()).unwrap());
         let (core_proof, core_prove_duration) = time_operation(|| {
             prover
                 .prove_core(&pk_d, program, &input, opts, context)
                 .unwrap()
         });
-        let pv = core_proof.public_values.clone();
-
-        let num_shards = core_proof.proof.0.len();
-
+        let shards = core_proof.proof.0.len();
         let core_bytes = bincode::serialize(&core_proof).unwrap();
         let (_, verify_core_duration) = time_operation(|| {
             prover
                 .verify(&core_proof.proof, &vk)
                 .expect("Proof verification failed")
         });
+        let core_speed = cycles as f64 / core_prove_duration.as_secs_f64() / 1_000.0;
+        let core_proof_report = ProofReport {
+            prove_duration: core_prove_duration.as_secs_f64(),
+            verify_duration: verify_core_duration.as_secs_f64(),
+            proof_size: core_bytes.len(),
+            speed: core_speed,
+        };
 
+        // Compressed proof
         let (compress_proof, compress_duration) =
             time_operation(|| prover.compress(&vk, core_proof, vec![], opts).unwrap());
-
         let compress_bytes = bincode::serialize(&compress_proof).unwrap();
-        println!("recursive proof size: {}", compress_bytes.len());
-
         let (_, verify_compress_duration) = time_operation(|| {
             prover
                 .verify_compressed(&compress_proof, &vk)
                 .expect("Proof verification failed")
         });
+        let compress_speed = cycles as f64 / compress_duration.as_secs_f64() / 1_000.0;
+        let compress_proof_report = ProofReport {
+            prove_duration: compress_duration.as_secs_f64(),
+            verify_duration: verify_compress_duration.as_secs_f64(),
+            proof_size: compress_bytes.len(),
+            speed: compress_speed,
+        };
 
+        // Groth16 Proof
         let (shrink_proof, shrink_prove_duration) =
             time_operation(|| prover.shrink(compress_proof.clone(), opts).unwrap());
 
@@ -64,36 +77,27 @@ impl ZkVmHostPerf for SP1Host {
         let (groth16_proof, groth16_prove_duration) =
             time_operation(|| prover.wrap_groth16_bn254(wrap_proof, &artifacts_dir));
 
+        let groth16_total_duration =
+            shrink_prove_duration + wrap_prove_duration + groth16_prove_duration;
         prover
             .verify_groth16_bn254(&groth16_proof, &vk, &pv, &artifacts_dir)
             .expect("Proof verification failed");
 
-        let prove_duration = core_prove_duration + compress_duration;
-        let core_khz = cycles as f64 / core_prove_duration.as_secs_f64() / 1_000.0;
-        let compress_khz = cycles as f64 / compress_duration.as_secs_f64() / 1_000.0;
-        let overall_khz = cycles as f64 / prove_duration.as_secs_f64() / 1_000.0;
+        let groth16_speed = cycles as f64 / groth16_total_duration.as_secs_f64() / 1_000.0;
+        let groth16_proof_report = ProofReport {
+            prove_duration: groth16_total_duration.as_secs_f64(),
+            verify_duration: 0.0,
+            proof_size: groth16_proof.encoded_proof.len(),
+            speed: groth16_speed,
+        };
 
-        // Create the performance report.
-        PerformanceReport {
-            shards: num_shards,
+        PerformanceReport::new(
+            shards,
             cycles,
-            speed: (cycles as f64) / core_prove_duration.as_secs_f64(),
-            prove_duration: prove_duration.as_secs_f64(),
-
-            core_prove_duration: core_prove_duration.as_secs_f64(),
-            core_verify_duration: verify_core_duration.as_secs_f64(),
-            core_proof_size: core_bytes.len(),
-            core_khz,
-
-            compress_prove_duration: compress_duration.as_secs_f64(),
-            compress_verify_duration: verify_compress_duration.as_secs_f64(),
-            compress_proof_size: compress_bytes.len(),
-            compress_khz,
-
-            shrink_prove_duration: shrink_prove_duration.as_secs_f64(),
-            wrap_prove_duration: wrap_prove_duration.as_secs_f64(),
-            groth16_prove_duration: groth16_prove_duration.as_secs_f64(),
-            overall_khz,
-        }
+            execution_duration.as_secs_f64(),
+            Some(core_proof_report),
+            Some(compress_proof_report),
+            Some(groth16_proof_report),
+        )
     }
 }
