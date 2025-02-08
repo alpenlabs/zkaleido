@@ -1,0 +1,6 @@
+use {{program}}::process_{{program}};
+use zkaleido_risc0_adapter::Risc0ZkVmEnv;
+
+pub fn main() {
+    process_{{program}}(&Risc0ZkVmEnv)
+}

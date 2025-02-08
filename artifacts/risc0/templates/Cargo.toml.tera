@@ -1,12 +1,12 @@
 [package]
-name = "guest-risc0-sha2-chain"
-version = "0.1.0"
-edition = "2021"
+name = "guest-risc0-{{ program_dir }}"
+version = "{{ version }}"
+edition = "{{ edition }}"
 
 [workspace]
 
 [dependencies]
-sha2-chain = { path = "../../../examples/sha2-chain" }
+{{ program_dir }} = { path = "../../../examples/{{ program_dir }}" }
 zkaleido-risc0-adapter = { path = "../../../adapters/risc0" }
 
 [patch.crates-io]

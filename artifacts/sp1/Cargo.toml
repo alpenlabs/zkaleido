@@ -8,9 +8,7 @@ sp1-sdk = "4.0.0"
 
 [build-dependencies]
 sp1-build = "4.0.0"
-tera = "1.17.0"     # or the latest version
-walkdir = "2.3.2"   # for directory traversal
-fs_extra = "1.2.0"  # for copying directories, optional
+tera = "1.17.0"
 
 [features]
 mock = []

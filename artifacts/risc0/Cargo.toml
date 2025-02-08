@@ -7,6 +7,7 @@ version = "0.1.0"
 
 [build-dependencies]
 risc0-build = "1.1.2"
+tera = "1.17.0"
 
 [package.metadata.risc0]
 methods = [
