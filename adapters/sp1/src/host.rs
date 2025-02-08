@@ -13,7 +13,8 @@ use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt};
 /// The `SP1Host` is responsible for program execution and proving
 #[derive(Clone)]
 pub struct SP1Host {
-    proving_key: SP1ProvingKey,
+    /// Proving Key
+    pub proving_key: SP1ProvingKey,
 }
 
 impl SP1Host {
