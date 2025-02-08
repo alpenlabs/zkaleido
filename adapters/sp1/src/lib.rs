@@ -31,4 +31,5 @@ pub use env::Sp1ZkVmEnv;
 mod groth16_verifier;
 pub use groth16_verifier::*;
 
+#[cfg(feature = "perf")]
 mod perf;
