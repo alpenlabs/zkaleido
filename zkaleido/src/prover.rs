@@ -1,8 +1,6 @@
-use std::time::Instant;
-
 use crate::{
-    host::ZkVmHost, input::ZkVmInputBuilder, PerfReport, ProofReceipt, ProofType, PublicValues,
-    ZkVmInputResult, ZkVmResult,
+    host::ZkVmHost, input::ZkVmInputBuilder, PerformanceReport, ProofReceipt, ProofType,
+    PublicValues, ZkVmHostPerf, ZkVmInputResult, ZkVmResult,
 };
 
 /// A trait representing a "prover" that can produce zero-knowledge proofs using a ZkVM.
@@ -75,29 +73,26 @@ pub trait ZkVmProver {
 
         Ok(receipt)
     }
+}
 
+/// Extends the [`ZkVmProver`] trait by providing functionality to generate performance reports.
+///
+/// This trait introduces an additional method, `perf_report`, which accepts an input and returns a
+/// [`PerformanceReport`].
+pub trait ZkVmProverPerf: ZkVmProver {
     /// Generates a performance report for the proof process using a specified host.
-    fn perf_report<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<PerfReport>
+    fn perf_report<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<PerformanceReport>
     where
-        H: ZkVmHost,
+        H: ZkVmHostPerf,
         H::Input<'a>: ZkVmInputBuilder<'a>,
     {
-        let start = Instant::now();
-
         // Prepare the input using the host's input builder.
-        let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
+        let input = Self::prepare_input::<H::Input<'a>>(input)?;
 
-        let (_, cycles) = host.execute(zkvm_input)?;
-        let execution_time = start.elapsed().as_millis();
+        // Generate the perf report and set proper name in the report
+        let mut perf_report = host.perf_report(input);
+        perf_report.name = Self::name();
 
-        let _ = Self::prove(input, host)?;
-        let proving_time = start.elapsed().as_millis();
-
-        Ok(PerfReport {
-            name: Self::name(),
-            cycles,
-            execution_time,
-            proving_time,
-        })
+        Ok(perf_report)
     }
 }

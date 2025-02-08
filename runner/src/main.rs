@@ -8,8 +8,7 @@ use args::EvalArgs;
 use clap::Parser;
 use format::{format_header, format_results};
 use github::{format_github_message, post_to_github_pr};
-use serde::Serialize;
-use zkaleido::PerfReport;
+use zkaleido::PerformanceReport;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -48,25 +47,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     Ok(())
-}
-
-/// Basic data about the performance of a certain prover program.
-///
-/// TODO: Currently, only program and cycles are used, populalate the rest
-/// as part of full execution with timings reporting.
-#[derive(Debug, Serialize)]
-pub struct PerformanceReport {
-    program: String,
-    cycles: u64,
-    success: bool,
-}
-
-impl From<PerfReport> for PerformanceReport {
-    fn from(value: PerfReport) -> Self {
-        PerformanceReport {
-            program: value.name,
-            cycles: value.cycles,
-            success: true,
-        }
-    }
 }

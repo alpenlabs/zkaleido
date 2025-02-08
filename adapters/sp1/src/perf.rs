@@ -4,7 +4,7 @@ use sp1_prover::{
 };
 use sp1_sdk::{SP1Context, SP1Prover};
 use sp1_stark::SP1ProverOpts;
-use zkaleido::{time_operation, PerformanceReport, ProofReport, ZkVmHost, ZkVmHostPerf};
+use zkaleido::{time_operation, PerformanceReport, ProofMetrics, ZkVmHost, ZkVmHostPerf};
 
 use crate::SP1Host;
 
@@ -37,7 +37,7 @@ impl ZkVmHostPerf for SP1Host {
                 .expect("Proof verification failed")
         });
         let core_speed = cycles as f64 / core_prove_duration.as_secs_f64() / 1_000.0;
-        let core_proof_report = ProofReport {
+        let core_proof_report = ProofMetrics {
             prove_duration: core_prove_duration.as_secs_f64(),
             verify_duration: verify_core_duration.as_secs_f64(),
             proof_size: core_bytes.len(),
@@ -54,7 +54,7 @@ impl ZkVmHostPerf for SP1Host {
                 .expect("Proof verification failed")
         });
         let compress_speed = cycles as f64 / compress_duration.as_secs_f64() / 1_000.0;
-        let compress_proof_report = ProofReport {
+        let compress_proof_report = ProofMetrics {
             prove_duration: compress_duration.as_secs_f64(),
             verify_duration: verify_compress_duration.as_secs_f64(),
             proof_size: compress_bytes.len(),
@@ -84,7 +84,7 @@ impl ZkVmHostPerf for SP1Host {
             .expect("Proof verification failed");
 
         let groth16_speed = cycles as f64 / groth16_total_duration.as_secs_f64() / 1_000.0;
-        let groth16_proof_report = ProofReport {
+        let groth16_proof_report = ProofMetrics {
             prove_duration: groth16_total_duration.as_secs_f64(),
             verify_duration: 0.0,
             proof_size: groth16_proof.encoded_proof.len(),

@@ -4,7 +4,7 @@ use risc0_zkvm::{
     get_prover_server, sha::Digest, ExecutorImpl, ProverOpts, ProverServer, Receipt, Session,
     VerifierContext,
 };
-use zkaleido::{time_operation, PerformanceReport, ProofReport, ZkVmHost, ZkVmHostPerf};
+use zkaleido::{time_operation, PerformanceReport, ProofMetrics, ZkVmHost, ZkVmHostPerf};
 
 use crate::Risc0Host;
 
@@ -25,13 +25,13 @@ impl ZkVmHostPerf for Risc0Host {
         let shards = session.segments.len();
         let cycles = session.user_cycles;
 
-        let (core_proof_report, core_proof) = core_proof_report(prover.clone(), session, image_id);
+        let (core_proof_report, core_proof) = core_proof_metrics(prover.clone(), session, image_id);
 
         let (compressed_proof_report, compressed_proof) =
-            compressed_proof_report(prover.clone(), core_proof, image_id, cycles);
+            compressed_proof_metrics(prover.clone(), core_proof, image_id, cycles);
 
         let groth16_proof_report =
-            groth16_proof_receipt(prover, compressed_proof, image_id, cycles);
+            groth16_proof_metrics(prover, compressed_proof, image_id, cycles);
 
         PerformanceReport::new(
             shards,
@@ -44,11 +44,11 @@ impl ZkVmHostPerf for Risc0Host {
     }
 }
 
-fn core_proof_report(
+fn core_proof_metrics(
     prover: Rc<dyn ProverServer>,
     session: Session,
     image_id: impl Into<Digest>,
-) -> (ProofReport, Receipt) {
+) -> (ProofMetrics, Receipt) {
     let ctx = VerifierContext::default();
     let (info, core_prove_duration) =
         time_operation(|| prover.prove_session(&ctx, &session).unwrap());
@@ -61,7 +61,7 @@ fn core_proof_report(
     // Calculate speed in KHz
     let speed = cycles as f64 / core_prove_duration.as_secs_f64() / 1_000.0;
 
-    let report = ProofReport {
+    let report = ProofMetrics {
         prove_duration: core_prove_duration.as_secs_f64(),
         verify_duration: core_verify_duration.as_secs_f64(),
         proof_size: receipt.seal_size(),
@@ -71,12 +71,12 @@ fn core_proof_report(
     (report, receipt)
 }
 
-fn compressed_proof_report(
+fn compressed_proof_metrics(
     prover: Rc<dyn ProverServer>,
     core_receipt: Receipt,
     image_id: impl Into<Digest>,
     cycles: u64,
-) -> (ProofReport, Receipt) {
+) -> (ProofMetrics, Receipt) {
     // Now compress the proof with recursion.
     let (compressed_proof, compress_prove_duration) = time_operation(|| {
         prover
@@ -91,7 +91,7 @@ fn compressed_proof_report(
     // Calculate speed in KHz
     let speed = cycles as f64 / compress_prove_duration.as_secs_f64() / 1_000.0;
 
-    let report = ProofReport {
+    let report = ProofMetrics {
         prove_duration: compress_prove_duration.as_secs_f64(),
         verify_duration: recursive_verify_duration.as_secs_f64(),
         proof_size: compressed_proof.seal_size(),
@@ -101,12 +101,12 @@ fn compressed_proof_report(
     (report, compressed_proof)
 }
 
-fn groth16_proof_receipt(
+fn groth16_proof_metrics(
     prover: Rc<dyn ProverServer>,
     compressed_receipt: Receipt,
     _image_id: impl Into<Digest>,
     cycles: u64,
-) -> ProofReport {
+) -> ProofMetrics {
     let (bn254_proof, bn254_compress_duration) = time_operation(|| {
         prover
             .identity_p254(compressed_receipt.inner.succinct().unwrap())
@@ -121,7 +121,7 @@ fn groth16_proof_receipt(
 
     // TODO: add verification
 
-    ProofReport {
+    ProofMetrics {
         prove_duration: total_duration.as_secs_f64(),
         verify_duration: 0.0, // TODO fix
         proof_size: groth16_proof.to_vec().len(),

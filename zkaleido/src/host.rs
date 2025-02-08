@@ -84,9 +84,9 @@ pub trait ZkVmHost: Send + Sync + Clone + Debug + 'static {
     }
 }
 
-/// Extends the `ZkVmHost` trait by providing functionality to generate performance reports.
+/// Extends the [`ZkVmHost`] trait by providing functionality to generate performance reports.
 ///
-/// This trait introduces an additional method, [`perf_report`], which accepts an input
+/// This trait introduces an additional method, `perf_report`, which accepts an input
 /// constructed by the associated [`ZkVmInputBuilder`] and returns a [`PerformanceReport`].
 pub trait ZkVmHostPerf: ZkVmHost {
     /// Produces a performance report based on the provided input.
