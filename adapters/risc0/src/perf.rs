@@ -33,7 +33,7 @@ impl ZkVmHostPerf for Risc0Host {
         let ((), core_verify_duration) = time_operation(|| receipt.verify(image_id).unwrap());
 
         // Now compress the proof with recursion.
-        let (compressed_proof, compress_duration) =
+        let (compressed_proof, compress_prove_duration) =
             time_operation(|| prover.compress(&ProverOpts::succinct(), &receipt).unwrap());
 
         // Verify the recursive proof
@@ -57,9 +57,10 @@ impl ZkVmHostPerf for Risc0Host {
 
         // Get the recursive proof size.
         let recursive_proof_size = succinct_receipt.seal.len() * 4;
-        let prove_duration = core_prove_duration + compress_duration;
+        let prove_duration = core_prove_duration + compress_prove_duration;
 
         let core_khz = cycles as f64 / core_prove_duration.as_secs_f64() / 1_000.0;
+        let compress_khz = cycles as f64 / compress_prove_duration.as_secs_f64() / 1_000.0;
         let overall_khz = cycles as f64 / prove_duration.as_secs_f64() / 1_000.0;
 
         // Create the performance report.
@@ -68,13 +69,17 @@ impl ZkVmHostPerf for Risc0Host {
             cycles,
             speed: (cycles as f64) / prove_duration.as_secs_f64(),
             prove_duration: prove_duration.as_secs_f64(),
+
             core_prove_duration: core_prove_duration.as_secs_f64(),
             core_verify_duration: core_verify_duration.as_secs_f64(),
             core_proof_size,
             core_khz,
-            compress_prove_duration: compress_duration.as_secs_f64(),
+
+            compress_prove_duration: compress_prove_duration.as_secs_f64(),
             compress_verify_duration: recursive_verify_duration.as_secs_f64(),
             compress_proof_size: recursive_proof_size,
+            compress_khz,
+
             overall_khz,
             shrink_prove_duration: 0f64,
             wrap_prove_duration: wrap_prove_duration.as_secs_f64(),

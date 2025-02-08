@@ -46,6 +46,8 @@ pub struct PerformanceReport {
     pub compress_verify_duration: f64,
     /// The size of the recursive proof in bytes.
     pub compress_proof_size: usize,
+    /// The speed of the recursive proving time in KHz.
+    pub compress_khz: f64,
 
     /// The reported duration of the shrink proving time in seconds.
     pub shrink_prove_duration: f64,

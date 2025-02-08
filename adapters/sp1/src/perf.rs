@@ -21,7 +21,7 @@ impl ZkVmHostPerf for SP1Host {
 
         let context = SP1Context::default();
         let opts = SP1ProverOpts::auto();
-        let (core_proof, prove_core_duration) = time_operation(|| {
+        let (core_proof, core_prove_duration) = time_operation(|| {
             prover
                 .prove_core(&pk_d, program, &input, opts, context)
                 .unwrap()
@@ -68,23 +68,28 @@ impl ZkVmHostPerf for SP1Host {
             .verify_groth16_bn254(&groth16_proof, &vk, &pv, &artifacts_dir)
             .expect("Proof verification failed");
 
-        let prove_duration = prove_core_duration + compress_duration;
-        let core_khz = cycles as f64 / prove_core_duration.as_secs_f64() / 1_000.0;
+        let prove_duration = core_prove_duration + compress_duration;
+        let core_khz = cycles as f64 / core_prove_duration.as_secs_f64() / 1_000.0;
+        let compress_khz = cycles as f64 / compress_duration.as_secs_f64() / 1_000.0;
         let overall_khz = cycles as f64 / prove_duration.as_secs_f64() / 1_000.0;
 
         // Create the performance report.
         PerformanceReport {
             shards: num_shards,
             cycles,
-            speed: (cycles as f64) / prove_core_duration.as_secs_f64(),
+            speed: (cycles as f64) / core_prove_duration.as_secs_f64(),
             prove_duration: prove_duration.as_secs_f64(),
-            core_prove_duration: prove_core_duration.as_secs_f64(),
+
+            core_prove_duration: core_prove_duration.as_secs_f64(),
             core_verify_duration: verify_core_duration.as_secs_f64(),
             core_proof_size: core_bytes.len(),
             core_khz,
+
             compress_prove_duration: compress_duration.as_secs_f64(),
             compress_verify_duration: verify_compress_duration.as_secs_f64(),
             compress_proof_size: compress_bytes.len(),
+            compress_khz,
+
             shrink_prove_duration: shrink_prove_duration.as_secs_f64(),
             wrap_prove_duration: wrap_prove_duration.as_secs_f64(),
             groth16_prove_duration: groth16_prove_duration.as_secs_f64(),
