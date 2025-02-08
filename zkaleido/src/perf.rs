@@ -28,8 +28,6 @@ pub struct PerformanceReport {
     pub cycles: u64,
     /// The reported speed in cycles per second.
     pub speed: f64,
-    /// The reported duration of the execution in seconds.
-    pub execution_duration: f64,
     /// The reported duration of the prover in seconds.
     pub prove_duration: f64,
 

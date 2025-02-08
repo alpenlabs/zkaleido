@@ -20,15 +20,13 @@ impl ZkVmHostPerf for SP1Host {
         let (_, pk_d, program, vk) = prover.setup(elf);
 
         let context = SP1Context::default();
-        let ((pv, _), execution_duration) =
-            time_operation(|| prover.execute(elf, &input, context.clone()).unwrap());
-
         let opts = SP1ProverOpts::auto();
         let (core_proof, prove_core_duration) = time_operation(|| {
             prover
                 .prove_core(&pk_d, program, &input, opts, context)
                 .unwrap()
         });
+        let pv = core_proof.public_values.clone();
 
         let num_shards = core_proof.proof.0.len();
 
@@ -79,7 +77,6 @@ impl ZkVmHostPerf for SP1Host {
             shards: num_shards,
             cycles,
             speed: (cycles as f64) / prove_core_duration.as_secs_f64(),
-            execution_duration: execution_duration.as_secs_f64(),
             prove_duration: prove_duration.as_secs_f64(),
             core_prove_duration: prove_core_duration.as_secs_f64(),
             core_verify_duration: verify_core_duration.as_secs_f64(),
