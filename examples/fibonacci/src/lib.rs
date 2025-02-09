@@ -1,6 +1,6 @@
 use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
 
-pub fn process_fib(zkvm: &impl ZkVmEnv) {
+pub fn process_fibonacci(zkvm: &impl ZkVmEnv) {
     // Read an input to the program.
     let n: u32 = zkvm.read_serde();
 
@@ -56,13 +56,13 @@ pub mod tests {
     use zkaleido::ZkVmProver;
     use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
-    use super::process_fib;
+    use super::process_fibonacci;
     use crate::FibProver;
 
     pub fn get_native_host() -> NativeHost {
         NativeHost {
             process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
-                process_fib(zkvm);
+                process_fibonacci(zkvm);
                 Ok(())
             })),
         }

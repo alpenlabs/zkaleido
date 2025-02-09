@@ -5,9 +5,9 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use sha2_chain::process_sha_chain;
+use {{program}}::process_{{program}};
 use zkaleido_sp1_adapter::Sp1ZkVmEnv;
 
 pub fn main() {
-    process_sha_chain(&Sp1ZkVmEnv)
+    process_{{program}}(&Sp1ZkVmEnv)
 }

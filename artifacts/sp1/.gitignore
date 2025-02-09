@@ -1,0 +1,5 @@
+# Ignore all top-level directories...
+/*/
+# ...except for the "src" and "templates" directories
+!/src/
+!/templates/

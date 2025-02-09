@@ -2,7 +2,7 @@ use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
 
 use crate::{verify_schnorr_sig_k256, SchnorrSigInput};
 
-pub fn process_schnorr_sig(zkvm: &impl ZkVmEnv) {
+pub fn process_schnorr_sig_verify(zkvm: &impl ZkVmEnv) {
     let sig = zkvm.read_buf();
     let msg: [u8; 32] = zkvm.read_serde();
     let pk: [u8; 32] = zkvm.read_serde();
@@ -59,7 +59,7 @@ mod tests {
     fn get_native_host() -> NativeHost {
         NativeHost {
             process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
-                process_schnorr_sig(zkvm);
+                process_schnorr_sig_verify(zkvm);
                 Ok(())
             })),
         }
