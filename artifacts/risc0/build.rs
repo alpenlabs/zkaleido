@@ -8,8 +8,10 @@ fn main() {
     let manifest_dir =
         env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR env variable not set");
     let examples_dir = Path::new(&manifest_dir)
-        .join("..") // goes to artifacts/
-        .join("..") // goes to project root
+        .parent() // goes to artifacts/
+        .unwrap()
+        .parent()
+        .unwrap() // goes to project root
         .join("examples");
 
     // Read the directory entries in examples.
