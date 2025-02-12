@@ -25,26 +25,55 @@ impl ZkVmHostPerf for Risc0Host {
         let shards = session.segments.len();
         let cycles = session.user_cycles;
 
-        let (core_proof_report, core_proof) = core_proof_metrics(prover.clone(), session, image_id);
-
-        let (compressed_proof_report, compressed_proof) =
-            compressed_proof_metrics(prover.clone(), core_proof, image_id, cycles);
-
-        let groth16_proof_report =
-            groth16_proof_metrics(prover, compressed_proof, image_id, cycles);
+        // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
+        // then do not generate the proof metrics
+        let (core_proof_report, compressed_proof_report, groth16_proof_report) =
+            if std::env::var("ZKVM_MOCK")
+                .map(|v| v == "1" || v.to_lowercase() == "true")
+                .unwrap_or(false)
+            {
+                (None, None, None)
+            } else {
+                gen_proof_metrics(prover, session, image_id, cycles)
+            };
 
         PerformanceReport::new(
             shards,
             cycles,
             execution_duration.as_secs_f64(),
-            Some(core_proof_report),
-            Some(compressed_proof_report),
-            Some(groth16_proof_report),
+            core_proof_report,
+            compressed_proof_report,
+            groth16_proof_report,
         )
     }
 }
 
-fn core_proof_metrics(
+fn gen_proof_metrics(
+    prover: Rc<dyn ProverServer>,
+    session: Session,
+    image_id: [u32; 8],
+    cycles: u64,
+) -> (
+    Option<ProofMetrics>,
+    Option<ProofMetrics>,
+    Option<ProofMetrics>,
+) {
+    let (core_proof_report, core_proof) = gen_core_proof_metrics(prover.clone(), session, image_id);
+
+    let (compressed_proof_report, compressed_proof) =
+        gen_compressed_proof_metrics(prover.clone(), core_proof, image_id, cycles);
+
+    let groth16_proof_report =
+        gen_groth16_proof_metrics(prover, compressed_proof, image_id, cycles);
+
+    (
+        Some(core_proof_report),
+        Some(compressed_proof_report),
+        Some(groth16_proof_report),
+    )
+}
+
+fn gen_core_proof_metrics(
     prover: Rc<dyn ProverServer>,
     session: Session,
     image_id: impl Into<Digest>,
@@ -71,7 +100,7 @@ fn core_proof_metrics(
     (report, receipt)
 }
 
-fn compressed_proof_metrics(
+fn gen_compressed_proof_metrics(
     prover: Rc<dyn ProverServer>,
     core_receipt: Receipt,
     image_id: impl Into<Digest>,
@@ -101,7 +130,7 @@ fn compressed_proof_metrics(
     (report, compressed_proof)
 }
 
-fn groth16_proof_metrics(
+fn gen_groth16_proof_metrics(
     prover: Rc<dyn ProverServer>,
     compressed_receipt: Receipt,
     _image_id: impl Into<Digest>,

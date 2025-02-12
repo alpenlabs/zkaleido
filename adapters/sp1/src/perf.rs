@@ -1,16 +1,10 @@
-use sp1_prover::{components::CpuProverComponents, utils::get_cycles};
-use sp1_sdk::{SP1Context, SP1Prover};
+use sp1_prover::{
+    build::try_build_groth16_bn254_artifacts_dev, components::CpuProverComponents,
+    utils::get_cycles,
+};
+use sp1_sdk::{SP1Context, SP1Prover, SP1Stdin};
 use sp1_stark::SP1ProverOpts;
-use zkaleido::{time_operation, PerformanceReport, ZkVmHost, ZkVmHostPerf};
-
-cfg_if::cfg_if! {
-    if #[cfg(not(feature = "mock"))] {
-        use sp1_prover::build::try_build_groth16_bn254_artifacts_dev;
-        use sp1_sdk::SP1Stdin;
-        use sp1_stark::SP1ProverOpts;
-        use zkaleido::ProofMetrics;
-    }
-}
+use zkaleido::{time_operation, PerformanceReport, ProofMetrics, ZkVmHost, ZkVmHostPerf};
 
 use crate::SP1Host;
 
@@ -29,35 +23,41 @@ impl ZkVmHostPerf for SP1Host {
         let (_, execution_duration) =
             time_operation(|| prover.execute(elf, &input, context.clone()).unwrap());
 
-        let (core_proof_report, compress_proof_report, groth16_proof_report, shards) = {
-            cfg_if::cfg_if! {
-                if #[cfg(feature = "mock")] {
-                    let shards = cycles as usize / opts.core_opts.shard_size;
-                    (None, None, None, shards)
-                } else {
-                    generate_proof_metrics(prover, elf, cycles, pv, input)
-                }
-            }
-        };
+        // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
+        // then do not generate the proof metrics
+        let (core_proof_report, compressed_proof_report, groth16_proof_report, shards) =
+            if std::env::var("ZKVM_MOCK")
+                .map(|v| v == "1" || v.to_lowercase() == "true")
+                .unwrap_or(false)
+            {
+                let shards = cycles as usize / opts.core_opts.shard_size;
+                (None, None, None, shards)
+            } else {
+                gen_proof_metrics(elf, cycles, input)
+            };
 
         PerformanceReport::new(
             shards,
             cycles,
             execution_duration.as_secs_f64(),
             core_proof_report,
-            compress_proof_report,
+            compressed_proof_report,
             groth16_proof_report,
         )
     }
 }
 
-#[cfg(not(feature = "mock"))]
-fn generate_proof_metrics(
-    prover: SP1Prover,
+fn gen_proof_metrics(
     elf: &[u8],
     cycles: u64,
     input: SP1Stdin,
-) -> (ProofMetrics, ProofMetrics, ProofMetrics, usize) {
+) -> (
+    Option<ProofMetrics>,
+    Option<ProofMetrics>,
+    Option<ProofMetrics>,
+    usize,
+) {
+    let prover = SP1Prover::<CpuProverComponents>::new();
     let context = SP1Context::default();
     let opts = SP1ProverOpts::auto();
 
@@ -132,9 +132,9 @@ fn generate_proof_metrics(
     };
 
     (
-        core_proof_report,
-        compress_proof_report,
-        groth16_proof_report,
+        Some(core_proof_report),
+        Some(compress_proof_report),
+        Some(groth16_proof_report),
         shards,
     )
 }
