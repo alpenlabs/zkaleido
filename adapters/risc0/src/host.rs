@@ -40,7 +40,12 @@ impl ZkVmHost for Risc0Host {
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
     ) -> ZkVmResult<Risc0ProofReceipt> {
-        #[cfg(feature = "mock")]
+        // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
+        // then set "SP1_PROVER" to "mock". This effectively enables the mock mode in the SP1
+        // prover.
+        if std::env::var("ZKVM_MOCK")
+            .map(|v| v == "1" || v.to_lowercase() == "true")
+            .unwrap_or(false)
         {
             std::env::set_var("RISC0_DEV_MODE", "true");
         }
