@@ -63,15 +63,15 @@ sec: ## Check for security advisories on any dependencies.
 
 .PHONY: report
 report: prover-clean ## Generate proof report for programs for all supported ZkVm
-	cargo run -p zkaleido-runner --release -- --programs $(PROGRAMS)
+	ZKVM_MOCK=1 cargo run -p zkaleido-runner --release -- --programs $(PROGRAMS)
 
 .PHONY: report-sp1
 report-sp1: prover-clean ## Generate SP1 proof report for given programs
-	cargo run -p zkaleido-runner --release --no-default-features -F sp1-mock -- --programs $(PROGRAMS)
+	ZKVM_MOCK=1 cargo run -p zkaleido-runner --release --no-default-features -F sp1-mock -- --programs $(PROGRAMS)
 
 .PHONY: report-risc0
 report-risc0: prover-clean ## Generate Risc0 proof report for given programs
-	cargo run -p zkaleido-runner --release --no-default-features -F risc0-mock -- --programs $(PROGRAMS)
+	ZKVM_MOCK=1 cargo run -p zkaleido-runner --release --no-default-features -F risc0-mock -- --programs $(PROGRAMS)
 
 .PHONY: proof
 proof: ## Generate proof for the given program using the given ZkVm
