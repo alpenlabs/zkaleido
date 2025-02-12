@@ -15,7 +15,7 @@ pub struct ProofMetrics {
     pub speed: f64,
 }
 
-/// Performace report
+/// Performance report
 #[derive(Debug, Clone, Serialize, Default)]
 pub struct PerformanceReport {
     /// A human-readable name identifying the prover or proof process.
@@ -51,7 +51,7 @@ pub struct PerformanceReport {
 }
 
 impl PerformanceReport {
-    /// Genereates new performance report based on the given proof metrics
+    /// Generates new performance report based on the given proof metrics
     pub fn new(
         shards: usize,
         cycles: u64,
