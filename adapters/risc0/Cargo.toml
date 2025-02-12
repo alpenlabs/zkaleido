@@ -18,7 +18,7 @@ zkaleido.workspace = true
 bincode = { workspace = true, optional = true }
 borsh = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
-risc0-zkvm = "1.2"
+risc0-zkvm = "1.2.3"
 serde.workspace = true
 sha2.workspace = true
 
