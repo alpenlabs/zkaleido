@@ -1,7 +1,7 @@
 use std::fmt;
 
 use serde::{de::DeserializeOwned, Serialize};
-use sp1_sdk::{HashableKey, ProverClient, SP1ProvingKey};
+use sp1_sdk::{network::FulfillmentStrategy, HashableKey, ProverClient, SP1ProvingKey};
 use zkaleido::{
     ProofType, PublicValues, VerificationKey, VerificationKeyCommitment, ZkVmError, ZkVmHost,
     ZkVmInputBuilder, ZkVmResult,
@@ -50,10 +50,30 @@ impl ZkVmHost for SP1Host {
             std::env::set_var("SP1_PROVER", "mock");
         }
 
-        let client = ProverClient::from_env();
+        // Handle network proving with custom strategy
+        if std::env::var("SP1_PROOF_STRATEGY").unwrap_or_default() == "private_cluster" {
+            let prover_client = ProverClient::builder().network().build();
 
-        // Start proving
+            let network_prover_builder = prover_client
+                .prove(&self.proving_key, &prover_input)
+                .strategy(FulfillmentStrategy::Reserved);
+
+            let network_prover = match proof_type {
+                ProofType::Compressed => network_prover_builder.compressed(),
+                ProofType::Core => network_prover_builder.core(),
+                ProofType::Groth16 => network_prover_builder.groth16(),
+            };
+
+            let proof_info = network_prover
+                .run()
+                .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
+
+            return Ok(proof_info.into());
+        }
+
+        let client = ProverClient::from_env();
         let mut prover = client.prove(&self.proving_key, &prover_input);
+
         prover = match proof_type {
             ProofType::Compressed => prover.compressed(),
             ProofType::Core => prover.core(),
