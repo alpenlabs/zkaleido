@@ -15,7 +15,7 @@ runs:
     - name: Install SP1 Toolchain
       shell: bash
       run: |
-        curl -fsSL --proto '=https' --tlsv1.2 https://sp1.succinct.xyz | bash && ~/.sp1/bin/sp1up --token "${{ secrets.GH_PAT }}"
+        curl -fsSL --proto '=https' --tlsv1.2 https://sp1.succinct.xyz | bash && ~/.sp1/bin/sp1up
         export PATH=~/.sp1/bin:$PATH
         cargo prove --version
 
