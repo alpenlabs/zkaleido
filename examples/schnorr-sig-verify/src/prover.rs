@@ -1,4 +1,4 @@
-use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
+use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProgram};
 
 use crate::{verify_schnorr_sig_k256, SchnorrSigInput};
 
@@ -12,9 +12,9 @@ pub fn process_schnorr_sig_verify(zkvm: &impl ZkVmEnv) {
     zkvm.commit_serde(&result);
 }
 
-pub struct SchnorrSigProver;
+pub struct SchnorrSigProgram;
 
-impl ZkVmProver for SchnorrSigProver {
+impl ZkVmProgram for SchnorrSigProgram {
     type Input = SchnorrSigInput;
     type Output = bool;
 
@@ -51,7 +51,7 @@ impl ZkVmProver for SchnorrSigProver {
 mod tests {
     use std::sync::Arc;
 
-    use zkaleido::ZkVmProver;
+    use zkaleido::ZkVmProgram;
     use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
     use super::*;
@@ -69,9 +69,9 @@ mod tests {
     fn test_native() {
         let input = SchnorrSigInput::new_random();
         let host = get_native_host();
-        let receipt = SchnorrSigProver::prove(&input, &host).unwrap();
+        let receipt = SchnorrSigProgram::prove(&input, &host).unwrap();
         let output =
-            SchnorrSigProver::process_output::<NativeHost>(receipt.public_values()).unwrap();
+            SchnorrSigProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
         assert!(output);
     }
 }

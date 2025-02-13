@@ -1,13 +1,13 @@
-use fibonacci::FibProver;
-use fibonacci_composition::{FibCompositionInput, FibCompositionProver};
-use zkaleido::{AggregationInput, ProofReport, ZkVmHost, ZkVmProver};
+use fibonacci::FibProgram;
+use fibonacci_composition::{FibCompositionInput, FibCompositionProgram};
+use zkaleido::{AggregationInput, ProofReport, ZkVmHost, ZkVmProgram};
 
 fn fib_composition_prover_perf_report(
     fib_host: &impl ZkVmHost,
     fib_composition_host: &impl ZkVmHost,
 ) -> ProofReport {
     let input = 5;
-    let receipt = FibProver::prove(&input, fib_host).unwrap();
+    let receipt = FibProgram::prove(&input, fib_host).unwrap();
     let vk = fib_host.get_verification_key();
     let fib_proof_with_vk = AggregationInput::new(receipt, vk);
     let fib_vk_commitment = fib_host.get_verification_key_commitment();
@@ -15,7 +15,7 @@ fn fib_composition_prover_perf_report(
         fib_proof_with_vk,
         fib_vk_commitment,
     };
-    FibCompositionProver::perf_report(&input, fib_composition_host).unwrap()
+    FibCompositionProgram::perf_report(&input, fib_composition_host).unwrap()
 }
 
 #[cfg(feature = "sp1")]

@@ -24,8 +24,8 @@ mod host;
 mod input;
 #[cfg(feature = "perf")]
 mod perf;
+mod program;
 mod proof;
-mod prover;
 
 pub use env::*;
 pub use errors::*;
@@ -33,8 +33,8 @@ pub use host::*;
 pub use input::*;
 #[cfg(feature = "perf")]
 pub use perf::*;
+pub use program::*;
 pub use proof::*;
-pub use prover::*;
 
 /// Represents the ZkVm host used for proof generation.
 ///

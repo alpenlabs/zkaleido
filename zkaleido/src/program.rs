@@ -5,13 +5,13 @@ use crate::{
     ZkVmInputResult, ZkVmResult,
 };
 
-/// A trait representing a "prover" that can produce zero-knowledge proofs using a ZkVM.
+/// A trait representing a "program" whose zero-knowledge proofs can be produced using a ZkVM.
 ///
 /// This trait is host-agnostic, meaning it can generate proofs using any type that
 /// implements [`ZkVmHost`]. The specific host is passed as a parameter to methods like
-/// `prove` and `perf_report`, allowing the prover to be flexible and work with
+/// `prove` and `perf_report`, allowing the program to be flexible and work with
 /// different backends or proof systems.
-pub trait ZkVmProver {
+pub trait ZkVmProgram {
     /// Represents the input data needed by the ZkVM to generate a proof.
     ///
     /// Typically, this includes any private data, parameters, or public information
@@ -28,12 +28,12 @@ pub trait ZkVmProver {
     /// necessary to convert the raw `PublicValues` into this structured, validated form.
     type Output;
 
-    /// Returns a human-readable name for this prover.
+    /// Returns a human-readable name for this program.
     ///
     /// This name can be used for identification, logging, or debugging.
     fn name() -> String;
 
-    /// Returns the type of proof this prover generates.
+    /// Returns the type of proof this program generates.
     ///
     /// Hosts can use this to decide how to handle or route proof generation tasks.
     fn proof_type() -> ProofType;
