@@ -1,5 +1,7 @@
 use std::fmt::Debug;
 
+use async_trait::async_trait;
+
 use crate::{
     input::ZkVmInputBuilder, ProofReceipt, ProofType, PublicValues, ZkVmError, ZkVmProofError,
     ZkVmResult,
@@ -53,32 +55,45 @@ pub trait ZkVmProver: Send + Sync + Clone + Debug + 'static {
 }
 
 /// A trait implemented by the prover ("host") of a zkVM program.
+///
+/// This trait extends [`ZkVmProver`] to support asynchronous remote proving operations.
+/// It provides methods to start the proving process and retrieve the proof once it
+/// becomes available. Implementors of this trait typically handle the remote communication
+/// required to generate and fetch proofs.
+#[async_trait(?Send)]
 pub trait ZkVmRemoteProver: ZkVmProver + Send + Sync + Clone + Debug + 'static {
-    /// The proof receipt type, specific to this host, that can be
-    /// converted to and from a generic [`ProofReceipt`].
+    /// Starts the proving process for the given input and proof type.
     ///
-    /// This allows flexibility for different proof systems or proof representations
-    /// while still providing a way to convert back to a standard [`ProofReceipt`].
-    type ZkVmProofReceipt: TryInto<ProofReceipt, Error = ZkVmProofError>
-        + TryFrom<ProofReceipt, Error = ZkVmProofError>;
-
-    /// Executes the guest code within the VM.
-    ///
-    /// # Returns
-    /// A tuple containing:
-    /// * `PublicValues` - The public values generated during proof execution.
-    /// * `u64` - The cycle count for the execution
-    fn start_proving<'a>(
+    /// This method typically initiates the remote proof generation and returns
+    /// a proof identifier (`proof_id`) that can be used to query the status
+    /// of the proof later.
+    async fn start_proving<'a>(
         &self,
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
-    ) -> ZkVmResult<(PublicValues, u64)>;
+    ) -> ZkVmResult<String>;
 
-    /// Executes the guest code within the VM, generating and returning ZkVm specific validity
-    /// proof.
-    fn get_proof_status(&self, id: String) -> ZkVmResult<String>;
+    /// Retrieves the proof if it is ready.
+    ///
+    /// This method performs the underlying logic to check whether the proof
+    /// has been generated and is available from the remote service. If it is
+    /// not ready yet, `None` will be returned.
+    async fn get_proof_if_ready_inner(
+        &self,
+        id: String,
+    ) -> ZkVmResult<Option<Self::ZkVmProofReceipt>>;
 
-    /// A higher-level proof function that generates a proof by calling `prove_inner` and
-    /// then converts the resulting receipt into a generic [`ProofReceipt`].
-    fn get_proof(&self, id: String) -> ZkVmResult<ProofReceipt>;
+    /// Retrieves the proof if it is ready and converts it into a [`ProofReceipt`].
+    ///
+    /// Internally calls [`get_proof_if_ready_inner`](Self::get_proof_if_ready_inner)
+    /// to fetch the proof receipt and attempts to convert it into a
+    /// [`ProofReceipt`]. If the proof is not ready, `None` is returned.
+    async fn get_proof_if_ready(&self, id: String) -> ZkVmResult<Option<ProofReceipt>> {
+        let receipt = self.get_proof_if_ready_inner(id).await?;
+        let res = match receipt {
+            Some(inner_receipt) => Some(inner_receipt.try_into()?),
+            None => None,
+        };
+        Ok(res)
+    }
 }

@@ -7,7 +7,7 @@ use risc0_zkvm::{
 use serde::{de::DeserializeOwned, Serialize};
 use zkaleido::{
     ProofType, PublicValues, VerificationKey, VerificationKeyCommitment, ZkVmError, ZkVmHost,
-    ZkVmInputBuilder, ZkVmProver, ZkVmResult, ZkVmVerifier,
+    ZkVmInputBuilder, ZkVmProver, ZkVmRemoteProver, ZkVmResult, ZkVmVerifier,
 };
 
 use crate::{input::Risc0ProofInputBuilder, proof::Risc0ProofReceipt};
@@ -86,6 +86,21 @@ impl ZkVmProver for Risc0Host {
 
     fn get_elf(&self) -> &[u8] {
         &self.elf
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl ZkVmRemoteProver for Risc0Host {
+    async fn start_proving<'a>(
+        &self,
+        _input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
+        _proof_type: ProofType,
+    ) -> ZkVmResult<String> {
+        todo!()
+    }
+
+    async fn get_proof_if_ready_inner(&self, _id: String) -> ZkVmResult<Option<Risc0ProofReceipt>> {
+        unimplemented!()
     }
 }
 

@@ -15,6 +15,7 @@ rustdoc.all = "warn"
 [dependencies]
 zkaleido.workspace = true
 
+async-trait.workspace = true
 bincode = { workspace = true, optional = true }
 borsh = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }

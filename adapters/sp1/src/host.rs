@@ -1,10 +1,10 @@
 use std::fmt;
 
 use serde::{de::DeserializeOwned, Serialize};
-use sp1_sdk::{HashableKey, ProverClient, SP1ProvingKey};
+use sp1_sdk::{network::B256, HashableKey, ProverClient, SP1ProvingKey};
 use zkaleido::{
     ProofType, PublicValues, VerificationKey, VerificationKeyCommitment, ZkVmError, ZkVmHost,
-    ZkVmInputBuilder, ZkVmProver, ZkVmResult, ZkVmVerifier,
+    ZkVmInputBuilder, ZkVmProver, ZkVmRemoteProver, ZkVmResult, ZkVmVerifier,
 };
 
 use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt};
@@ -95,6 +95,32 @@ impl ZkVmProver for SP1Host {
 
     fn get_elf(&self) -> &[u8] {
         &self.proving_key.elf
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl ZkVmRemoteProver for SP1Host {
+    async fn start_proving<'a>(
+        &self,
+        input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
+        _proof_type: ProofType,
+    ) -> ZkVmResult<String> {
+        let client = ProverClient::builder().network().build();
+        let pk = &self.proving_key;
+        let request_id = client.prove(pk, &input).request_async().await.unwrap();
+        let id = hex::encode(request_id.0);
+        Ok(id)
+    }
+
+    async fn get_proof_if_ready_inner(&self, id: String) -> ZkVmResult<Option<SP1ProofReceipt>> {
+        let client = ProverClient::builder().network().build();
+        let request_id = hex::decode(id).unwrap();
+        let request_id = B256::from_slice(&request_id);
+        let (_, proof) = client.get_proof_status(request_id).await.unwrap();
+        match proof {
+            Some(proof) => Ok(Some(proof.into())),
+            None => Ok(None),
+        }
     }
 }
 

@@ -18,6 +18,7 @@ bincode.workspace = true
 borsh.workspace = true
 serde.workspace = true
 thiserror.workspace = true
+async-trait.workspace = true
 
 [features]
 default = ["perf"]

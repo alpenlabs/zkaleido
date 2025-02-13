@@ -24,6 +24,7 @@ sha2 = { workspace = true, optional = true }
 sp1-sdk = { version = "4.1.0", optional = true }
 sp1-verifier = "4.1.0"
 sp1-zkvm = { version = "4.1.0", optional = true }
+async-trait = { workspace = true }
 
 [features]
 default = []
