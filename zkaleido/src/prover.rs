@@ -51,3 +51,34 @@ pub trait ZkVmProver: Send + Sync + Clone + Debug + 'static {
     /// Returns the ELF for the loaded program
     fn get_elf(&self) -> &[u8];
 }
+
+/// A trait implemented by the prover ("host") of a zkVM program.
+pub trait ZkVmRemoteProver: ZkVmProver + Send + Sync + Clone + Debug + 'static {
+    /// The proof receipt type, specific to this host, that can be
+    /// converted to and from a generic [`ProofReceipt`].
+    ///
+    /// This allows flexibility for different proof systems or proof representations
+    /// while still providing a way to convert back to a standard [`ProofReceipt`].
+    type ZkVmProofReceipt: TryInto<ProofReceipt, Error = ZkVmProofError>
+        + TryFrom<ProofReceipt, Error = ZkVmProofError>;
+
+    /// Executes the guest code within the VM.
+    ///
+    /// # Returns
+    /// A tuple containing:
+    /// * `PublicValues` - The public values generated during proof execution.
+    /// * `u64` - The cycle count for the execution
+    fn start_proving<'a>(
+        &self,
+        input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
+        proof_type: ProofType,
+    ) -> ZkVmResult<(PublicValues, u64)>;
+
+    /// Executes the guest code within the VM, generating and returning ZkVm specific validity
+    /// proof.
+    fn get_proof_status(&self, id: String) -> ZkVmResult<String>;
+
+    /// A higher-level proof function that generates a proof by calling `prove_inner` and
+    /// then converts the resulting receipt into a generic [`ProofReceipt`].
+    fn get_proof(&self, id: String) -> ZkVmResult<ProofReceipt>;
+}
