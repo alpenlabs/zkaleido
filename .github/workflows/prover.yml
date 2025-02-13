@@ -41,7 +41,7 @@ jobs:
 
       - name: Run performance evaluation
         run: |
-          cargo run --release -- \
+          ZKVM_MOCK=1 cargo run --release -- \
           --post-to-gh \
           --github-token "${{ secrets.GITHUB_TOKEN }}" \
           --pr-number "${{ github.event.pull_request.number }}" \

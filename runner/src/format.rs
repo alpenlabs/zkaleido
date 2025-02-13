@@ -25,7 +25,7 @@ pub fn format_results(results: &[PerformanceReport], host_name: String) -> Strin
     for result in results.iter() {
         table_text.push_str(&format!(
             "\n| {:<22} | {:>11} | {:<7} |",
-            result.program,
+            result.name,
             result.cycles.to_formatted_string(&Locale::en),
             if result.success { "✅" } else { "❌" }
         ));

@@ -1,5 +1,6 @@
 use zkaleido::{
     AggregationInput, ProofType, VerificationKeyCommitment, ZkVmEnv, ZkVmInputResult, ZkVmProver,
+    ZkVmProverPerf,
 };
 
 pub fn process_fibonacci_composition(zkvm: &impl ZkVmEnv) {
@@ -47,3 +48,5 @@ impl ZkVmProver for FibCompositionProver {
         H::extract_serde_public_output(public_values)
     }
 }
+
+impl ZkVmProverPerf for FibCompositionProver {}
