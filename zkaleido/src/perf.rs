@@ -31,13 +31,13 @@ pub struct PerformanceReport {
     /// The duration for execution in seconds
     pub execution_duration: f64,
 
-    /// [ProofReport] for [Core](crate::proof::ProofType::Core) proof
+    /// [ProofMetrics] for [`Core`](crate::proof::ProofType::Core) proof
     pub core_proof_metrics: Option<ProofMetrics>,
 
-    /// [ProofReport] for [Compressed](crate::proof::ProofType::Compressed) proof
+    /// [`ProofMetrics`] for [`Compressed`](crate::proof::ProofType::Compressed) proof
     pub compressed_proof_metrics: Option<ProofMetrics>,
 
-    /// [ProofReport] for [Groth16](crate::proof::ProofType::Groth16) proof
+    /// [`ProofMetrics`] for [`Groth16`](crate::proof::ProofType::Groth16) proof
     pub groth16_proof_metrics: Option<ProofMetrics>,
 
     /// End to end prove duration for the given proof
