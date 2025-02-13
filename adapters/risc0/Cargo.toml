@@ -15,7 +15,7 @@ rustdoc.all = "warn"
 [dependencies]
 zkaleido.workspace = true
 
-async-trait.workspace = true
+async-trait = { workspace = true, optional = true }
 bincode = { workspace = true, optional = true }
 borsh = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
@@ -26,5 +26,5 @@ sha2.workspace = true
 [features]
 default = []
 mock = []
-prover = ["bincode", "borsh", "hex"]
+prover = ["bincode", "borsh", "hex", "async-trait"]
 perf = ["prover"]

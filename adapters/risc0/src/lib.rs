@@ -24,5 +24,7 @@ pub use groth16_verifier::*;
 mod env;
 pub use env::Risc0ZkVmEnv;
 
+#[cfg(feature = "prover")]
 mod prover;
+#[cfg(feature = "prover")]
 mod verifier;

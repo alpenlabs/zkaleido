@@ -58,7 +58,7 @@ pub trait ZkVmProver: Send + Sync + Clone + Debug + 'static {
 ///
 /// This trait extends [`ZkVmProver`] to support asynchronous remote proving operations.
 /// It provides methods to start the proving process and retrieve the proof once it
-/// becomes available. Implementors of this trait typically handle the remote communication
+/// becomes available. Implementers of this trait typically handle the remote communication
 /// required to generate and fetch proofs.
 #[async_trait(?Send)]
 pub trait ZkVmRemoteProver: ZkVmProver + Send + Sync + Clone + Debug + 'static {

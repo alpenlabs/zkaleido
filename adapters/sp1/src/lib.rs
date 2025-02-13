@@ -31,5 +31,7 @@ pub use env::Sp1ZkVmEnv;
 mod groth16_verifier;
 pub use groth16_verifier::*;
 
+#[cfg(feature = "prover")]
 mod prover;
+#[cfg(feature = "prover")]
 mod verifier;
