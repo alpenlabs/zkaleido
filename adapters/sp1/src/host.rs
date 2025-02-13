@@ -4,7 +4,7 @@ use serde::{de::DeserializeOwned, Serialize};
 use sp1_sdk::{HashableKey, ProverClient, SP1ProvingKey};
 use zkaleido::{
     ProofType, PublicValues, VerificationKey, VerificationKeyCommitment, ZkVmError, ZkVmHost,
-    ZkVmInputBuilder, ZkVmResult,
+    ZkVmInputBuilder, ZkVmProver, ZkVmResult, ZkVmVerifier,
 };
 
 use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt};
@@ -37,7 +37,7 @@ impl SP1Host {
     }
 }
 
-impl ZkVmHost for SP1Host {
+impl ZkVmProver for SP1Host {
     type Input<'a> = SP1ProofInputBuilder;
     type ZkVmProofReceipt = SP1ProofReceipt;
     fn prove_inner<'a>(
@@ -93,16 +93,19 @@ impl ZkVmHost for SP1Host {
         Ok((public_values, total_cycles))
     }
 
+    fn get_elf(&self) -> &[u8] {
+        &self.proving_key.elf
+    }
+}
+
+impl ZkVmVerifier for SP1Host {
+    type ZkVmProofReceipt = SP1ProofReceipt;
     fn extract_serde_public_output<T: Serialize + DeserializeOwned>(
         public_values: &PublicValues,
     ) -> ZkVmResult<T> {
         let public_params: T = bincode::deserialize(public_values.as_bytes())
             .map_err(|e| ZkVmError::OutputExtractionError { source: e.into() })?;
         Ok(public_params)
-    }
-
-    fn get_elf(&self) -> &[u8] {
-        &self.proving_key.elf
     }
 
     fn get_verification_key(&self) -> VerificationKey {
@@ -129,3 +132,5 @@ impl fmt::Debug for SP1Host {
         write!(f, "sp1_{}", self.proving_key.vk.bytes32())
     }
 }
+
+impl ZkVmHost for SP1Host {}

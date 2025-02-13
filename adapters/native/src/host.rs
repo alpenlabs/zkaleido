@@ -2,7 +2,7 @@ use std::{fmt, sync::Arc};
 
 use zkaleido::{
     Proof, ProofReceipt, ProofType, PublicValues, VerificationKey, VerificationKeyCommitment,
-    ZkVmError, ZkVmHost, ZkVmResult,
+    ZkVmError, ZkVmHost, ZkVmProver, ZkVmResult, ZkVmVerifier,
 };
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
@@ -25,7 +25,13 @@ pub struct NativeHost {
     pub process_proof: Arc<Box<ProcessProofFn>>,
 }
 
-impl ZkVmHost for NativeHost {
+impl fmt::Debug for NativeHost {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "native")
+    }
+}
+
+impl ZkVmProver for NativeHost {
     type Input<'a> = NativeMachineInputBuilder;
     type ZkVmProofReceipt = NativeProofReceipt;
 
@@ -50,7 +56,10 @@ impl ZkVmHost for NativeHost {
     fn get_elf(&self) -> &[u8] {
         &[]
     }
+}
 
+impl ZkVmVerifier for NativeHost {
+    type ZkVmProofReceipt = NativeProofReceipt;
     fn get_verification_key(&self) -> VerificationKey {
         VerificationKey::default()
     }
@@ -72,8 +81,4 @@ impl ZkVmHost for NativeHost {
     }
 }
 
-impl fmt::Debug for NativeHost {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "native")
-    }
-}
+impl ZkVmHost for NativeHost {}

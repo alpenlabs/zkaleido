@@ -7,7 +7,7 @@ use risc0_zkvm::{
 use serde::{de::DeserializeOwned, Serialize};
 use zkaleido::{
     ProofType, PublicValues, VerificationKey, VerificationKeyCommitment, ZkVmError, ZkVmHost,
-    ZkVmInputBuilder, ZkVmResult,
+    ZkVmInputBuilder, ZkVmProver, ZkVmResult, ZkVmVerifier,
 };
 
 use crate::{input::Risc0ProofInputBuilder, proof::Risc0ProofReceipt};
@@ -31,7 +31,7 @@ impl Risc0Host {
     }
 }
 
-impl ZkVmHost for Risc0Host {
+impl ZkVmProver for Risc0Host {
     type Input<'a> = Risc0ProofInputBuilder<'a>;
     type ZkVmProofReceipt = Risc0ProofReceipt;
 
@@ -84,6 +84,14 @@ impl ZkVmHost for Risc0Host {
         Ok((public_values, cycles))
     }
 
+    fn get_elf(&self) -> &[u8] {
+        &self.elf
+    }
+}
+
+impl ZkVmVerifier for Risc0Host {
+    type ZkVmProofReceipt = Risc0ProofReceipt;
+
     fn extract_serde_public_output<T: Serialize + DeserializeOwned>(
         proof: &PublicValues,
     ) -> ZkVmResult<T> {
@@ -93,10 +101,6 @@ impl ZkVmHost for Risc0Host {
             .map_err(|e| ZkVmError::OutputExtractionError {
                 source: zkaleido::DataFormatError::Serde(e.to_string()),
             })
-    }
-
-    fn get_elf(&self) -> &[u8] {
-        &self.elf
     }
 
     fn get_verification_key(&self) -> VerificationKey {
@@ -121,3 +125,5 @@ impl fmt::Debug for Risc0Host {
         write!(f, "risc0_{}", encode(self.id.as_bytes()))
     }
 }
+
+impl ZkVmHost for Risc0Host {}
