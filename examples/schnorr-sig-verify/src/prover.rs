@@ -1,4 +1,4 @@
-use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver};
+use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver, ZkVmProverPerf};
 
 use crate::{verify_schnorr_sig_k256, SchnorrSigInput};
 
@@ -46,6 +46,8 @@ impl ZkVmProver for SchnorrSigProver {
         H::extract_serde_public_output(public_values)
     }
 }
+
+impl ZkVmProverPerf for SchnorrSigProver {}
 
 #[cfg(test)]
 mod tests {

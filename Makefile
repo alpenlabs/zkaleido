@@ -63,19 +63,19 @@ sec: ## Check for security advisories on any dependencies.
 
 .PHONY: report
 report: prover-clean ## Generate proof report for programs for all supported ZkVm
-	cargo run --release -- --programs $(PROGRAMS)
+	ZKVM_MOCK=1 cargo run -p zkaleido-runner --release -- --programs $(PROGRAMS)
 
 .PHONY: report-sp1
 report-sp1: prover-clean ## Generate SP1 proof report for given programs
-	cargo run --release --no-default-features -F sp1-mock -- --programs $(PROGRAMS)
+	ZKVM_MOCK=1 cargo run -p zkaleido-runner --release --no-default-features -F sp1-mock -- --programs $(PROGRAMS)
 
 .PHONY: report-risc0
 report-risc0: prover-clean ## Generate Risc0 proof report for given programs
-	cargo run --release --no-default-features -F risc0-mock -- --programs $(PROGRAMS)
+	ZKVM_MOCK=1 cargo run -p zkaleido-runner --release --no-default-features -F risc0-mock -- --programs $(PROGRAMS)
 
 .PHONY: proof
 proof: ## Generate proof for the given program using the given ZkVm
-	ZKVM_PROOF_DUMP=1 cargo run --release --no-default-features -F $(ZKVM) -- --programs $(PROGRAMS)
+	ZKVM_PROOF_DUMP=1 cargo run -p zkaleido-runner --release --no-default-features -F $(ZKVM) -- --programs $(PROGRAMS)
 
 .PHONY: prover-clean
 prover-clean: ## Cleans up proofs and profiling data generated
@@ -178,8 +178,3 @@ pr: lint rustdocs test-doc test-unit  ## Runs lints (without fixing), audit, doc
 	@echo "\n\033[36m======== CHECKS_COMPLETE ========\033[0m\n"
 	@test -z "$$(git status --porcelain)" || echo "WARNNG: You have uncommitted changes"
 	@echo "All good to create a PR!"
-
-
-.PHONY: docker
-docker: docker-down docker-up
-	echo "Done!"

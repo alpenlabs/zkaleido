@@ -26,4 +26,4 @@ sha2.workspace = true
 default = []
 mock = []
 prover = ["bincode", "borsh", "hex"]
-perf = ["prover"]
+perf = ["prover", "risc0-zkvm/prove"]
