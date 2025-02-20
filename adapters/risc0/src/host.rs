@@ -70,15 +70,15 @@ impl ZkVmHost for Risc0Host {
     fn execute<'a>(
         &self,
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<(PublicValues, u64)> {
+    ) -> ZkVmResult<PublicValues> {
         let executor = default_executor();
 
-        // TODO: handle error
-        let session_info = executor.execute(prover_input, self.get_elf()).unwrap();
+        let session_info = executor
+            .execute(prover_input, self.get_elf())
+            .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
 
-        let cycles = session_info.cycles();
         let public_values = PublicValues::new(session_info.journal.bytes);
-        Ok((public_values, cycles))
+        Ok(public_values)
     }
 
     fn extract_serde_public_output<T: Serialize + DeserializeOwned>(
