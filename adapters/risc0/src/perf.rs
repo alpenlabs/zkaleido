@@ -15,6 +15,8 @@ impl ZkVmHostPerf for Risc0Host {
     ) -> zkaleido::PerformanceReport {
         // If the environment variable "ZKVM_PROFILING_DUMP" is set to "1" or "true"
         // (case-insensitive), then enable profling.
+        // FIXME: In Risc0, the profiling information is already set in input. So, putting it up
+        // like this only sets it up for the next program.
         if std::env::var("ZKVM_PROFILING_DUMP")
             .map(|v| v == "1" || v.to_lowercase() == "true")
             .unwrap_or(false)
