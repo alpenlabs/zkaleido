@@ -14,11 +14,6 @@ impl ZkVmProver for Risc0Host {
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
     ) -> ZkVmResult<Risc0ProofReceipt> {
-        #[cfg(feature = "mock")]
-        {
-            std::env::set_var("RISC0_DEV_MODE", "true");
-        }
-
         // Setup the prover
         let opts = match proof_type {
             ProofType::Core => ProverOpts::default(),

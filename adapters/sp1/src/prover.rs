@@ -13,11 +13,6 @@ impl ZkVmProver for SP1Host {
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
     ) -> ZkVmResult<SP1ProofReceipt> {
-        #[cfg(feature = "mock")]
-        {
-            std::env::set_var("SP1_PROVER", "mock");
-        }
-
         let client = ProverClient::from_env();
 
         // Start proving
