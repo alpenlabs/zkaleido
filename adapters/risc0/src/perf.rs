@@ -14,7 +14,7 @@ impl ZkVmHostPerf for Risc0Host {
         input: <Self::Input<'a> as zkaleido::ZkVmInputBuilder<'a>>::Input,
     ) -> zkaleido::PerformanceReport {
         // If the environment variable "ZKVM_PROFILING_DUMP" is set to "1" or "true"
-        // (case-insensitive), then enable profling.
+        // (case-insensitive), then enable profiling.
         // FIXME: In Risc0, the profiling information is already set in input. So, putting it up
         // like this only sets it up for the next program.
         if std::env::var("ZKVM_PROFILING_DUMP")

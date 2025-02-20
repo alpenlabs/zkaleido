@@ -14,7 +14,7 @@ impl ZkVmHostPerf for SP1Host {
         input: <Self::Input<'a> as zkaleido::ZkVmInputBuilder<'a>>::Input,
     ) -> PerformanceReport {
         // If the environment variable "ZKVM_PROFILING_DUMP" is set to "1" or "true"
-        // (case-insensitive), then enable profling.
+        // (case-insensitive), then enable profiling.
         if std::env::var("ZKVM_PROFILING_DUMP")
             .map(|v| v == "1" || v.to_lowercase() == "true")
             .unwrap_or(false)
