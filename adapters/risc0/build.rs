@@ -8,6 +8,8 @@ fn main() {
         .map(|v| v == "1" || v.to_lowercase() == "true")
         .unwrap_or(false)
     {
+        println!("cargo:warning=This is a build-time message");
+
         std::env::set_var("RISC0_DEV_MODE", "true");
     }
 }

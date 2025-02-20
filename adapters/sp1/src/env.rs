@@ -5,10 +5,7 @@ use sha2::{Digest, Sha256};
 use sp1_zkvm::io;
 #[cfg(feature = "zkvm-recursion")]
 use sp1_zkvm::lib::verify::verify_sp1_proof;
-use zkaleido::{ProofReceipt, ZkVmEnv};
-
-#[cfg(not(feature = "mock-env"))]
-use crate::verify_groth16;
+use zkaleido::ZkVmEnv;
 
 /// An environment adapter for the SP1 proof system implementing [`ZkVmEnv`].
 ///
@@ -45,7 +42,7 @@ impl ZkVmEnv for Sp1ZkVmEnv {
             else {
                 panic!(
                     "No verification feature enabled. \
-                     Please enable either `zkvm-recursion` or `mock`."
+                     Please enable either `zkvm-recursion` or `zkvm-mock-recursion`."
                 );
             }
         }
