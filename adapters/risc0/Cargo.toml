@@ -25,6 +25,5 @@ sha2.workspace = true
 
 [features]
 default = []
-mock = []
 prover = ["bincode", "borsh", "hex", "async-trait"]
 perf = ["prover"]

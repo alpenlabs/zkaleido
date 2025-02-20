@@ -7,11 +7,14 @@
 //!
 //! ## Features
 //!
-//! - **`prover`**: Enables proof generation via the RISC0 host and proof input builder. If you only
-//!   need to perform verification, you can disable this feature.
-//! - **`mock`**: When enabled, the proof verification methods (`verify_native_proof` and
-//!   `verify_groth16_receipt`) become no-ops. This is useful for testing or local development where
-//!   you don't need to run the actual cryptographic verification:
+//! - **`prover`**: Enables proof generation via the SP1 host and proof input builder.
+//! - **`zkvm`**: Required for in the guest program to pass the input and commit the output.
+//! - **`zkvm-recursion`**: Required if the guest program needs to recursively verify other proofs.
+//!   Enable `zkvm-mock-recursion` for local development and testing.
+//! - **`zkvm-mock-recursion`**: When enabled, the proof verification methods `verify_native_proof`
+//!   become no-ops. This is useful for testing or local development where you don't need to run the
+//!   actual cryptographic verification:
+//! - **`perf`**: Enables reporting of performance metrics
 
 #[cfg(feature = "prover")]
 mod host;

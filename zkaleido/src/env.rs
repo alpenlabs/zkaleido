@@ -52,16 +52,6 @@ pub trait ZkVmEnv {
     /// and public values. It will panic if the proof fails to verify.
     fn verify_native_proof(&self, vk_digest: &[u32; 8], public_values: &[u8]);
 
-    /// Verifies a Groth16 proof receipt.
-    ///
-    /// # Parameters
-    ///
-    /// * `receipt`: [ProofReceipt]
-    /// * `verification_key`: A byte slice containing the serialized verification key.
-    ///
-    /// It will panic if the proof fails to verify.
-    fn verify_groth16_receipt(&self, receipt: &ProofReceipt, verification_key: &[u8; 32]);
-
     /// Reads and verifies a committed output from another guest function.
     ///
     /// This is equivalent to calling [`ZkVmEnv::read_buf`] and [`ZkVmEnv::verify_native_proof`],

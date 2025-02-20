@@ -28,8 +28,8 @@ async-trait = { workspace = true, optional = true }
 
 [features]
 default = []
-mock = []
 prover = ["sp1-sdk", "borsh", "serde", "bincode", "async-trait"]
 zkvm = ["sp1-zkvm", "cfg-if", "serde", "bincode"]
-zkvm-verify = ["sp1-zkvm/verify", "sha2"]
+zkvm-recursion = ["sp1-zkvm/verify", "sha2"]
+zkvm-mock-recursion = []
 perf = ["sp1-sdk/profiling", "prover"]
