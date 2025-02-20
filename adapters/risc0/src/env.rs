@@ -34,6 +34,7 @@ impl ZkVmEnv for Risc0ZkVmEnv {
         env::commit(output);
     }
 
+    // FIXME: This is not consistent with SP1 where the vk_digest is passed
     fn verify_native_proof(&self, _vk_digest: &[u32; 8], public_values: &[u8]) {
         let vk: [u32; 8] = env::read();
         env::verify(vk, public_values).expect("verification failed")
