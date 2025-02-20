@@ -8,9 +8,9 @@ fn fib_composition_prover_perf_report(
 ) -> ProofReport {
     let input = 5;
     let receipt = FibProgram::prove(&input, fib_host).unwrap();
-    let vk = fib_host.get_verification_key();
+    let vk = fib_host.get_vk();
     let fib_proof_with_vk = AggregationInput::new(receipt, vk);
-    let fib_vk_commitment = fib_host.get_verification_key_commitment();
+    let fib_vk_commitment = fib_host.get_vk_commitment();
     let input = FibCompositionInput {
         fib_proof_with_vk,
         fib_vk_commitment,

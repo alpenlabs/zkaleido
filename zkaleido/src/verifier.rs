@@ -4,8 +4,8 @@ use borsh::BorshDeserialize;
 use serde::{de::DeserializeOwned, Serialize};
 
 use crate::{
-    ProofReceipt, PublicValues, VerificationKey, VerificationKeyCommitment, ZkVmError,
-    ZkVmProofError, ZkVmResult,
+    ProofReceipt, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError, ZkVmProofError,
+    ZkVmResult,
 };
 
 /// A trait implemented by the prover ("host") of a zkVM program.
@@ -18,11 +18,11 @@ pub trait ZkVmVerifier: Send + Sync + Clone + Debug + 'static {
     type ZkVmProofReceipt: TryInto<ProofReceipt, Error = ZkVmProofError>
         + TryFrom<ProofReceipt, Error = ZkVmProofError>;
 
-    /// Returns the Verification key for the loaded program
-    fn get_verification_key(&self) -> VerificationKey;
+    /// Returns the Verifiying key for the loaded program
+    fn get_vk(&self) -> VerifyingKey;
 
     /// Returns the commitment of the verification key for the loaded program
-    fn get_verification_key_commitment(&self) -> VerificationKeyCommitment;
+    fn get_vk_commitment(&self) -> VerifyingKeyCommitment;
 
     /// Extracts the public output from the public values using ZkVm's `serde`
     /// serialization/deserialization.
