@@ -79,6 +79,22 @@ pub trait ZkVmProgram {
         Ok(receipt)
     }
 
+    /// Executes the program using any zkVM host.
+    fn execute<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<Self::Output>
+    where
+        H: ZkVmHost,
+        H::Input<'a>: ZkVmInputBuilder<'a>,
+    {
+        // Prepare the input using the host's input builder.
+        let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
+
+        // Use the host to prove.
+        let (public_values, _) = host.execute(zkvm_input)?;
+
+        // Process output to see if we are getting the expected type.
+        Self::process_output::<H>(&public_values)
+    }
+
     /// Generates a performance report for the proof process using a specified host.
     fn perf_report<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<ProofReport>
     where
