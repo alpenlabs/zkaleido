@@ -1,8 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::ProofReceipt;
-
 /// A trait representing a Zero-Knowledge Virtual Machine (ZkVM) interface.
 /// Provides methods for reading inputs, committing outputs, and verifying proofs
 /// within the ZkVM environment.

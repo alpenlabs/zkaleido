@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use zkaleido::{ProofReceipt, ZkVmEnv};
+use zkaleido::ZkVmEnv;
 
 /// Encapsulates the mutable state of the NativeMachine.
 #[derive(Debug, Clone)]
@@ -78,8 +78,6 @@ impl ZkVmEnv for NativeMachine {
         let bytes = bincode::serialize(output).expect("bincode serialization failed");
         self.commit_buf(&bytes);
     }
-
-    fn verify_groth16_receipt(&self, _receipt: &ProofReceipt, _verification_key: &[u8; 32]) {}
 
     fn verify_native_proof(&self, _vk_digest: &[u32; 8], _public_values: &[u8]) {}
 

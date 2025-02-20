@@ -22,16 +22,17 @@ fn main() {
         ..Default::default()
     };
 
-    build_args.features = {
-        #[cfg(feature = "mock")]
-        {
-            vec!["mock".to_string()]
-        }
-        #[cfg(not(feature = "mock"))]
-        {
-            vec![]
-        }
-    };
+    // Tell Cargo to rerun this build script if ZKVM_MOCK_MODE changes.
+    println!("cargo:rerun-if-env-changed=ZKVM_MOCK_MODE");
+
+    if std::env::var("ZKVM_MOCK_MODE")
+        .map(|v| v == "1" || v.to_lowercase() == "true")
+        .unwrap_or(false)
+    {
+        build_args.features = vec!["zkvm-mock-recursion".to_string()]
+    } else {
+        build_args.features = vec!["zkvm-recursion".to_string()]
+    }
 
     println!("Directories in '{}':", examples_dir.display());
     for entry in entries {
