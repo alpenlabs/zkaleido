@@ -47,6 +47,22 @@ pub trait ZkVmProver {
     where
         H: ZkVmHost;
 
+    /// Executes the computation using any zkVM host to get the output.
+    fn execute<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<Self::Output>
+    where
+        H: ZkVmHost,
+        H::Input<'a>: ZkVmInputBuilder<'a>,
+    {
+        // Prepare the input using the host's input builder.
+        let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
+
+        // Use the host to execute.
+        let receipt = host.prove(zkvm_input, Self::proof_type())?;
+
+        // Process output to see if we are getting the expected type.
+        Self::process_output::<H>(receipt.public_values())
+    }
+
     /// Proves the computation using any zkVM host.
     fn prove<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<ProofReceipt>
     where

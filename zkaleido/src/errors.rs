@@ -8,6 +8,10 @@ pub type ZkVmResult<T> = Result<T, ZkVmError>;
 /// General ZkVM error types.
 #[derive(Debug, Error)]
 pub enum ZkVmError {
+    /// This error is returned when execution fails for any reason.
+    #[error("Execution failed: {0}")]
+    ExecutionError(String),
+
     /// This error is returned when proof generation fails for any reason.
     #[error("Proof generation failed: {0}")]
     ProofGenerationError(String),

@@ -34,17 +34,16 @@ impl ZkVmHost for NativeHost {
         native_machine: NativeMachine,
         _proof_type: ProofType,
     ) -> ZkVmResult<NativeProofReceipt> {
-        let (public_values, _) = self.execute(native_machine)?;
+        let public_values = self.execute(native_machine)?;
         let proof = Proof::default();
         Ok(ProofReceipt::new(proof, public_values).try_into()?)
     }
 
-    fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<(PublicValues, u64)> {
+    fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<PublicValues> {
         (self.process_proof)(&native_machine)?;
         let output = native_machine.state.borrow().output.clone();
         let public_values = PublicValues::new(output);
-        // Since we don't care about cycle counts in the native mode, setting it to zero
-        Ok((public_values, 0))
+        Ok(public_values)
     }
 
     fn get_elf(&self) -> &[u8] {
