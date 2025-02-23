@@ -9,7 +9,7 @@
 //!   formats) before handing it off to the ZkVM for proof generation.
 //! - **[`ZkVmHost`]**: A trait for the "host," i.e., the environment or system responsible for
 //!   generating and verifying proofs.
-//! - **[`ZkVmProver`]**: A high-level interface for logic-specific proof generation. Implementers
+//! - **[`ZkVmProgram`]**: A high-level interface for logic-specific proof generation. Implementers
 //!   define custom `Input` and `Output` types, then rely on a chosen host to actually run or verify
 //!   the proof.
 //! - **Error Handling**: A set of error enums (e.g., `ZkVmError`) provides comprehensive error
@@ -24,8 +24,8 @@ mod host;
 mod input;
 #[cfg(feature = "perf")]
 mod perf;
+mod program;
 mod proof;
-mod prover;
 
 pub use env::*;
 pub use errors::*;
@@ -33,8 +33,8 @@ pub use host::*;
 pub use input::*;
 #[cfg(feature = "perf")]
 pub use perf::*;
+pub use program::*;
 pub use proof::*;
-pub use prover::*;
 
 /// Represents the ZkVm host used for proof generation.
 ///

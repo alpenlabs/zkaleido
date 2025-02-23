@@ -1,5 +1,5 @@
 mod prover;
-pub use prover::{process_schnorr_sig_verify, SchnorrSigProver};
+pub use prover::{process_schnorr_sig_verify, SchnorrSigProgram};
 
 mod input;
 pub use input::SchnorrSigInput;
