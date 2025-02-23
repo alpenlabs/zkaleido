@@ -26,6 +26,8 @@ mod input;
 mod perf;
 mod program;
 mod proof;
+mod prover;
+mod verifier;
 
 pub use env::*;
 pub use errors::*;
@@ -35,6 +37,8 @@ pub use input::*;
 pub use perf::*;
 pub use program::*;
 pub use proof::*;
+pub use prover::*;
+pub use verifier::*;
 
 /// Represents the ZkVm host used for proof generation.
 ///

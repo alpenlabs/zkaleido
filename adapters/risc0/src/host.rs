@@ -1,120 +1,47 @@
 use std::fmt;
 
 use hex::encode;
-use risc0_zkvm::{
-    compute_image_id, default_executor, default_prover, sha::Digest, Journal, ProverOpts,
-};
-use serde::{de::DeserializeOwned, Serialize};
-use zkaleido::{
-    ProofType, PublicValues, VerificationKey, VerificationKeyCommitment, ZkVmError, ZkVmHost,
-    ZkVmInputBuilder, ZkVmResult,
-};
+use risc0_zkvm::{compute_image_id, sha::Digest};
+use zkaleido::ZkVmHost;
 
-use crate::{input::Risc0ProofInputBuilder, proof::Risc0ProofReceipt};
-
-/// A host for the `Risc0` zkVM that stores the guest program in ELF format
-/// The `Risc0Host` is responsible for program execution and proving
+/// A host for the `Risc0` zkVM that stores the guest program in ELF format.
+///
+/// The `Risc0Host` is responsible for managing program execution and generating proofs of
+/// computation. It encapsulates the guest program in its ELF representation along with a
+/// verification key (`vk`) that uniquely identifies the program.
 #[derive(Clone)]
 pub struct Risc0Host {
+    /// A vector of bytes containing the guest program in ELF format.
     elf: Vec<u8>,
-    id: Digest,
+    /// The verification key computed from the ELF, used to verify the integrity of the program.
+    vk: Digest,
 }
 
 impl Risc0Host {
     /// Initializes the Risc0Host with the given ELF.
     pub fn init(elf: &[u8]) -> Self {
-        let id = compute_image_id(elf).expect("invalid elf");
+        let vk = compute_image_id(elf).expect("invalid elf");
         Risc0Host {
             elf: elf.to_vec(),
-            id,
+            vk,
         }
     }
-}
 
-impl ZkVmHost for Risc0Host {
-    type Input<'a> = Risc0ProofInputBuilder<'a>;
-    type ZkVmProofReceipt = Risc0ProofReceipt;
-
-    fn prove_inner<'a>(
-        &self,
-        prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-        proof_type: ProofType,
-    ) -> ZkVmResult<Risc0ProofReceipt> {
-        // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
-        // then enable "RISC0_DEV_MODE" . This effectively enables the mock mode in the Risc0
-        // prover.
-        if std::env::var("ZKVM_MOCK")
-            .map(|v| v == "1" || v.to_lowercase() == "true")
-            .unwrap_or(false)
-        {
-            std::env::set_var("RISC0_DEV_MODE", "true");
-        }
-
-        // Setup the prover
-        let opts = match proof_type {
-            ProofType::Core => ProverOpts::default(),
-            ProofType::Compressed => ProverOpts::succinct(),
-            ProofType::Groth16 => ProverOpts::groth16(),
-        };
-
-        let prover = default_prover();
-
-        // Generate the proof
-        let proof_info = prover
-            .prove_with_opts(prover_input, &self.elf, &opts)
-            .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
-
-        Ok(proof_info.receipt.into())
-    }
-
-    fn execute<'a>(
-        &self,
-        prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<PublicValues> {
-        let executor = default_executor();
-
-        let session_info = executor
-            .execute(prover_input, self.get_elf())
-            .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
-
-        let public_values = PublicValues::new(session_info.journal.bytes);
-        Ok(public_values)
-    }
-
-    fn extract_serde_public_output<T: Serialize + DeserializeOwned>(
-        proof: &PublicValues,
-    ) -> ZkVmResult<T> {
-        let journal = Journal::new(proof.as_bytes().to_vec());
-        journal
-            .decode()
-            .map_err(|e| ZkVmError::OutputExtractionError {
-                source: zkaleido::DataFormatError::Serde(e.to_string()),
-            })
-    }
-
-    fn get_elf(&self) -> &[u8] {
+    /// Returns a reference to the guest program in ELF format.
+    pub fn elf(&self) -> &[u8] {
         &self.elf
     }
 
-    fn get_verification_key(&self) -> VerificationKey {
-        VerificationKey::new(self.id.as_bytes().to_vec())
-    }
-
-    fn get_verification_key_commitment(&self) -> VerificationKeyCommitment {
-        VerificationKeyCommitment::new(self.id.into())
-    }
-
-    fn verify_inner(&self, proof: &Risc0ProofReceipt) -> ZkVmResult<()> {
-        proof
-            .as_ref()
-            .verify(self.id)
-            .map_err(|e| ZkVmError::ProofVerificationError(e.to_string()))?;
-        Ok(())
+    /// Returns the verification key (`vk`) associated with the guest program.
+    pub fn vk(&self) -> Digest {
+        self.vk
     }
 }
 
+impl ZkVmHost for Risc0Host {}
+
 impl fmt::Debug for Risc0Host {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "risc0_{}", encode(self.id.as_bytes()))
+        write!(f, "risc0_{}", encode(self.vk.as_bytes()))
     }
 }

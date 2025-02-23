@@ -4,7 +4,9 @@ use risc0_zkvm::{
     get_prover_server, sha::Digest, ExecutorImpl, ProverOpts, ProverServer, Receipt, Session,
     VerifierContext,
 };
-use zkaleido::{time_operation, PerformanceReport, ProofMetrics, ZkVmHost, ZkVmHostPerf};
+use zkaleido::{
+    time_operation, PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf, ZkVmVerifier,
+};
 
 use crate::Risc0Host;
 

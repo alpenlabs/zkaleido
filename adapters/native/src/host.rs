@@ -2,7 +2,7 @@ use std::{fmt, sync::Arc};
 
 use zkaleido::{
     Proof, ProofReceipt, ProofType, PublicValues, VerificationKey, VerificationKeyCommitment,
-    ZkVmError, ZkVmHost, ZkVmResult,
+    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmProver, ZkVmResult, ZkVmVerifier,
 };
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
@@ -25,8 +25,23 @@ pub struct NativeHost {
     pub process_proof: Arc<Box<ProcessProofFn>>,
 }
 
-impl ZkVmHost for NativeHost {
+impl ZkVmHost for NativeHost {}
+
+impl ZkVmExecutor for NativeHost {
     type Input<'a> = NativeMachineInputBuilder;
+    fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<PublicValues> {
+        (self.process_proof)(&native_machine)?;
+        let output = native_machine.state.borrow().output.clone();
+        let public_values = PublicValues::new(output);
+        Ok(public_values)
+    }
+
+    fn get_elf(&self) -> &[u8] {
+        &[]
+    }
+}
+
+impl ZkVmProver for NativeHost {
     type ZkVmProofReceipt = NativeProofReceipt;
 
     fn prove_inner<'a>(
@@ -38,18 +53,10 @@ impl ZkVmHost for NativeHost {
         let proof = Proof::default();
         Ok(ProofReceipt::new(proof, public_values).try_into()?)
     }
+}
 
-    fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<PublicValues> {
-        (self.process_proof)(&native_machine)?;
-        let output = native_machine.state.borrow().output.clone();
-        let public_values = PublicValues::new(output);
-        Ok(public_values)
-    }
-
-    fn get_elf(&self) -> &[u8] {
-        &[]
-    }
-
+impl ZkVmVerifier for NativeHost {
+    type ZkVmProofReceipt = NativeProofReceipt;
     fn get_verification_key(&self) -> VerificationKey {
         VerificationKey::default()
     }
