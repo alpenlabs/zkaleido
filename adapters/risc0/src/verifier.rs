@@ -1,7 +1,7 @@
 use risc0_zkvm::Journal;
 use serde::{de::DeserializeOwned, Serialize};
 use zkaleido::{
-    PublicValues, VerificationKey, VerificationKeyCommitment, ZkVmError, ZkVmResult, ZkVmVerifier,
+    PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError, ZkVmResult, ZkVmVerifier,
 };
 
 use crate::{proof::Risc0ProofReceipt, Risc0Host};
@@ -20,12 +20,12 @@ impl ZkVmVerifier for Risc0Host {
             })
     }
 
-    fn get_verification_key(&self) -> VerificationKey {
-        VerificationKey::new(self.vk().as_bytes().to_vec())
+    fn vk(&self) -> VerifyingKey {
+        VerifyingKey::new(self.vk().as_bytes().to_vec())
     }
 
-    fn get_verification_key_commitment(&self) -> VerificationKeyCommitment {
-        VerificationKeyCommitment::new(self.vk().into())
+    fn vk_commitment(&self) -> VerifyingKeyCommitment {
+        VerifyingKeyCommitment::new(self.vk().into())
     }
 
     fn verify_inner(&self, proof: &Risc0ProofReceipt) -> ZkVmResult<()> {

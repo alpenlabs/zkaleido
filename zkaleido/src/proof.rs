@@ -70,7 +70,7 @@ macro_rules! define_byte_wrapper {
 // Use the macro to define the specific types.
 define_byte_wrapper!(Proof);
 define_byte_wrapper!(PublicValues);
-define_byte_wrapper!(VerificationKey);
+define_byte_wrapper!(VerifyingKey);
 
 /// A receipt containing a `Proof` and associated `PublicValues`.
 #[derive(
@@ -126,18 +126,18 @@ impl ProofReceipt {
 
 /// An input to the aggregation program.
 ///
-/// Consists of a [`ProofReceipt`] and a [`VerificationKey`].
+/// Consists of a [`ProofReceipt`] and a [`VerifyingKey`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AggregationInput {
     /// The proof receipt containing the proof and its public values.
     receipt: ProofReceipt,
     /// The verification key for validating the proof.
-    vk: VerificationKey,
+    vk: VerifyingKey,
 }
 
 impl AggregationInput {
     /// Creates a new `AggregationInput`.
-    pub fn new(receipt: ProofReceipt, vk: VerificationKey) -> Self {
+    pub fn new(receipt: ProofReceipt, vk: VerifyingKey) -> Self {
         Self { receipt, vk }
     }
 
@@ -146,13 +146,13 @@ impl AggregationInput {
         &self.receipt
     }
 
-    /// Returns a reference to the `VerificationKey`.
-    pub fn vk(&self) -> &VerificationKey {
+    /// Returns a reference to the `VerifyingKey`.
+    pub fn vk(&self) -> &VerifyingKey {
         &self.vk
     }
 }
 
-/// Commitment of the [`VerificationKey`]
+/// Commitment of the [`VerifyingKey`]
 #[derive(
     Debug,
     Clone,
@@ -166,9 +166,9 @@ impl AggregationInput {
     Arbitrary,
     Default,
 )]
-pub struct VerificationKeyCommitment([u32; 8]);
+pub struct VerifyingKeyCommitment([u32; 8]);
 
-impl VerificationKeyCommitment {
+impl VerifyingKeyCommitment {
     /// Creates a new instance from a `Vec<u8>`.
     pub fn new(data: [u32; 8]) -> Self {
         Self(data)

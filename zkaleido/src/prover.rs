@@ -6,10 +6,6 @@ use crate::{
 };
 
 /// A trait implemented by types that execute zkVM programs.
-///
-/// This trait abstracts over an executor that runs guest code inside a zero-knowledge virtual
-/// machine (zkVM) and produces the corresponding public values. Implementors of this trait must be
-/// thread-safe (`Send` and `Sync`), clonable, debuggable, and have a static lifetime.
 pub trait ZkVmExecutor: Send + Sync + Clone + Debug + 'static {
     /// The input type used by this host to build all data necessary for running the VM.
     type Input<'a>: ZkVmInputBuilder<'a>;

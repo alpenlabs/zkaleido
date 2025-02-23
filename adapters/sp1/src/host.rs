@@ -18,7 +18,7 @@ impl SP1Host {
     }
 
     /// Creates a new instance of [`SP1Host`] from serialized proving key bytes.
-    pub fn new_from_bytes(proving_key_bytes: &[u8]) -> Self {
+    pub fn new_from_pk_bytes(proving_key_bytes: &[u8]) -> Self {
         let proving_key: SP1ProvingKey =
             bincode::deserialize(proving_key_bytes).expect("invalid sp1 pk bytes");
         SP1Host::new(proving_key)
