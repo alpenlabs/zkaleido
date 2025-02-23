@@ -57,10 +57,10 @@ pub trait ZkVmProgram {
         let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
 
         // Use the host to execute.
-        let receipt = host.prove(zkvm_input, Self::proof_type())?;
+        let public_values = host.execute(zkvm_input)?;
 
         // Process output to see if we are getting the expected type.
-        Self::process_output::<H>(receipt.public_values())
+        Self::process_output::<H>(&public_values)
     }
 
     /// Proves the computation using any zkVM host.
