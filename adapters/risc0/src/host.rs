@@ -41,7 +41,7 @@ impl ZkVmHost for Risc0Host {
         proof_type: ProofType,
     ) -> ZkVmResult<Risc0ProofReceipt> {
         // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
-        // then set "SP1_PROVER" to "mock". This effectively enables the mock mode in the Risc0
+        // then enable "RISC0_DEV_MODE" . This effectively enables the mock mode in the Risc0
         // prover.
         if std::env::var("ZKVM_MOCK")
             .map(|v| v == "1" || v.to_lowercase() == "true")
@@ -70,23 +70,15 @@ impl ZkVmHost for Risc0Host {
     fn execute<'a>(
         &self,
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<(PublicValues, u64)> {
+    ) -> ZkVmResult<PublicValues> {
         let executor = default_executor();
 
-        if std::env::var("ZKVM_PROFILING_DUMP")
-            .map(|v| v == "1" || v.to_lowercase() == "true")
-            .unwrap_or(false)
-        {
-            let profiling_file_name = format!("{:?}.trace_profile", self);
-            std::env::set_var("RISC0_PPROF_OUT", profiling_file_name);
-        }
+        let session_info = executor
+            .execute(prover_input, self.get_elf())
+            .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
 
-        // TODO: handle error
-        let session_info = executor.execute(prover_input, self.get_elf()).unwrap();
-
-        let cycles = session_info.cycles();
         let public_values = PublicValues::new(session_info.journal.bytes);
-        Ok((public_values, cycles))
+        Ok(public_values)
     }
 
     fn extract_serde_public_output<T: Serialize + DeserializeOwned>(
