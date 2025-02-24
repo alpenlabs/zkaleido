@@ -32,7 +32,7 @@ sp1-stark = { version = "4.1.0", optional = true }
 default = []
 mock = []
 prover = ["sp1-sdk", "borsh", "serde", "bincode"]
-remote-prover = ["prover"]
+remote-prover = ["prover", "async-trait"]
 zkvm = ["sp1-zkvm", "cfg-if", "serde", "bincode"]
 zkvm-verify = ["sp1-zkvm/verify", "sha2"]
 perf = ["sp1-sdk/profiling", "sp1-prover", "sp1-stark", "prover"]

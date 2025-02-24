@@ -1,10 +1,13 @@
+use sp1_sdk::ProverClient;
+#[cfg(feature = "remote-prover")]
 use sp1_sdk::{
     network::{FulfillmentStrategy, B256},
-    ProverClient, SP1ProofMode,
+    SP1ProofMode,
 };
+#[cfg(feature = "remote-prover")]
+use zkaleido::ZkVmRemoteProver;
 use zkaleido::{
-    ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder, ZkVmProver,
-    ZkVmRemoteProver, ZkVmResult,
+    ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder, ZkVmProver, ZkVmResult,
 };
 
 use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt, SP1Host};
@@ -66,6 +69,7 @@ impl ZkVmProver for SP1Host {
     }
 }
 
+#[cfg(feature = "remote-prover")]
 #[async_trait::async_trait(?Send)]
 impl ZkVmRemoteProver for SP1Host {
     async fn start_proving<'a>(
