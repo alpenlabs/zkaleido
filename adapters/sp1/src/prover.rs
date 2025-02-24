@@ -1,6 +1,10 @@
-use sp1_sdk::{network::FulfillmentStrategy, ProverClient};
+use sp1_sdk::{
+    network::{FulfillmentStrategy, B256},
+    ProverClient, SP1ProofMode,
+};
 use zkaleido::{
-    ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder, ZkVmProver, ZkVmResult,
+    ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder, ZkVmProver,
+    ZkVmRemoteProver, ZkVmResult,
 };
 
 use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt, SP1Host};
@@ -45,27 +49,6 @@ impl ZkVmProver for SP1Host {
             std::env::set_var("SP1_PROVER", "mock");
         }
 
-        // Handle network proving with custom strategy
-        if std::env::var("SP1_PROOF_STRATEGY").unwrap_or_default() == "private_cluster" {
-            let prover_client = ProverClient::builder().network().build();
-
-            let network_prover_builder = prover_client
-                .prove(&self.proving_key, &prover_input)
-                .strategy(FulfillmentStrategy::Reserved);
-
-            let network_prover = match proof_type {
-                ProofType::Compressed => network_prover_builder.compressed(),
-                ProofType::Core => network_prover_builder.core(),
-                ProofType::Groth16 => network_prover_builder.groth16(),
-            };
-
-            let proof_info = network_prover
-                .run()
-                .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
-
-            return Ok(proof_info.into());
-        }
-
         let client = ProverClient::from_env();
         let mut prover = client.prove(&self.proving_key, &prover_input);
 
@@ -80,5 +63,49 @@ impl ZkVmProver for SP1Host {
             .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
 
         Ok(proof_info.into())
+    }
+}
+
+#[async_trait::async_trait(?Send)]
+impl ZkVmRemoteProver for SP1Host {
+    async fn start_proving<'a>(
+        &self,
+        input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
+        proof_type: ProofType,
+    ) -> ZkVmResult<String> {
+        let client = ProverClient::builder().network().build();
+
+        let strategy = std::env::var("SP1_PROOF_STRATEGY")
+            .ok()
+            .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
+            .unwrap_or(FulfillmentStrategy::Hosted);
+
+        let mode = match proof_type {
+            ProofType::Core => SP1ProofMode::Core,
+            ProofType::Compressed => SP1ProofMode::Compressed,
+            ProofType::Groth16 => SP1ProofMode::Groth16,
+        };
+
+        let pk = &self.proving_key;
+        let request_id = client
+            .prove(pk, &input)
+            .strategy(strategy)
+            .mode(mode)
+            .request_async()
+            .await
+            .unwrap();
+        let id = hex::encode(request_id.0);
+        Ok(id)
+    }
+
+    async fn get_proof_if_ready_inner(&self, id: String) -> ZkVmResult<Option<SP1ProofReceipt>> {
+        let client = ProverClient::builder().network().build();
+        let request_id = hex::decode(id).unwrap();
+        let request_id = B256::from_slice(&request_id);
+        let (_, proof) = client.get_proof_status(request_id).await.unwrap();
+        match proof {
+            Some(proof) => Ok(Some(proof.into())),
+            None => Ok(None),
+        }
     }
 }

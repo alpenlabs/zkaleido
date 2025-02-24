@@ -15,6 +15,7 @@ rustdoc.all = "warn"
 [dependencies]
 zkaleido.workspace = true
 
+async-trait = { workspace = true, optional = true }
 bincode = { workspace = true, optional = true }
 borsh = { workspace = true, optional = true }
 cfg-if = { workspace = true, optional = true }
@@ -31,6 +32,7 @@ sp1-stark = { version = "4.1.0", optional = true }
 default = []
 mock = []
 prover = ["sp1-sdk", "borsh", "serde", "bincode"]
+remote-prover = ["prover"]
 zkvm = ["sp1-zkvm", "cfg-if", "serde", "bincode"]
 zkvm-verify = ["sp1-zkvm/verify", "sha2"]
 perf = ["sp1-sdk/profiling", "sp1-prover", "sp1-stark", "prover"]
