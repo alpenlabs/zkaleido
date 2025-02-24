@@ -4,3 +4,4 @@ cache/
 
 *.trace_profile
 *.proof
+vkeys.json

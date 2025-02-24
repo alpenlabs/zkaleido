@@ -1175,6 +1175,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo_metadata"
+version = "0.19.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8769706aad5d996120af43197bf46ef6ad0fda35216b4505f926a365a232d924"
+dependencies = [
+ "camino",
+ "cargo-platform",
+ "semver 1.0.25",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.11",
+]
+
+[[package]]
 name = "cbindgen"
 version = "0.27.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4601,7 +4615,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2336678ab6701f737522f153050c8c688860a2db29ef8fea7a42ae0a1de614d6"
 dependencies = [
  "anyhow",
- "cargo_metadata",
+ "cargo_metadata 0.18.1",
  "dirs",
  "docker-generate",
  "hex",
@@ -5510,12 +5524,24 @@ dependencies = [
 
 [[package]]
 name = "sp1-build"
+version = "4.0.1"
+source = "git+https://github.com/succinctlabs/sp1.git?rev=6c5a7f2846cd3610ecd38b1641f0e370fd07ee83#6c5a7f2846cd3610ecd38b1641f0e370fd07ee83"
+dependencies = [
+ "anyhow",
+ "cargo_metadata 0.18.1",
+ "chrono",
+ "clap",
+ "dirs",
+]
+
+[[package]]
+name = "sp1-build"
 version = "4.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cb3ab2b8e8bad6d5ab1235ac31f777a0d4487a3d79b275af61008e58cec40391"
 dependencies = [
  "anyhow",
- "cargo_metadata",
+ "cargo_metadata 0.18.1",
  "chrono",
  "clap",
  "dirs",
@@ -5668,6 +5694,14 @@ checksum = "0527cf1c71561d7a83059a53733f45504b5e71ff63a68da8cd9705bb53a3d1c6"
 dependencies = [
  "quote",
  "syn 1.0.109",
+]
+
+[[package]]
+name = "sp1-helper"
+version = "4.0.1"
+source = "git+https://github.com/succinctlabs/sp1.git?rev=6c5a7f2846cd3610ecd38b1641f0e370fd07ee83#6c5a7f2846cd3610ecd38b1641f0e370fd07ee83"
+dependencies = [
+ "sp1-build 4.0.1",
 ]
 
 [[package]]
@@ -5909,7 +5943,7 @@ dependencies = [
  "reqwest-middleware",
  "serde",
  "serde_json",
- "sp1-build",
+ "sp1-build 4.1.1",
  "sp1-core-executor",
  "sp1-core-machine",
  "sp1-cuda",
@@ -7533,7 +7567,9 @@ dependencies = [
 name = "zkaleido-sp1-artifacts"
 version = "0.1.0"
 dependencies = [
- "sp1-build",
+ "cargo_metadata 0.19.1",
+ "serde_json",
+ "sp1-helper",
  "sp1-sdk",
  "tera",
 ]

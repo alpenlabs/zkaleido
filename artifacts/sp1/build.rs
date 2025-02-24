@@ -1,6 +1,11 @@
-use std::{env, fs, path::Path};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
-use sp1_build::{build_program_with_args, BuildArgs};
+use cargo_metadata::MetadataCommand;
+use sp1_helper::{build_program_with_args, BuildArgs};
+use sp1_sdk::{HashableKey, ProverClient};
 use tera::{Context, Tera};
 
 fn main() {
@@ -22,6 +27,9 @@ fn main() {
         ..Default::default()
     };
 
+    build_args.docker = true;
+    build_args.workspace_directory = Some("../../".to_owned());
+
     build_args.features = {
         #[cfg(feature = "mock")]
         {
@@ -34,6 +42,7 @@ fn main() {
     };
 
     println!("Directories in '{}':", examples_dir.display());
+    let mut vkeys = Vec::new();
     for entry in entries {
         let entry = entry.expect("Failed to get directory entry");
         let path = entry.path();
@@ -42,14 +51,22 @@ fn main() {
         if path.is_dir() {
             // Print only the directory name.
             if let Some(dir_name) = path.file_name() {
-                let program_dir = dir_name.to_string_lossy();
+                let program_dir = dir_name.to_string_lossy().into_owned();
                 build_from_templates(&program_dir);
                 println!("built from template{:?}", program_dir);
                 build_program_with_args(&program_dir, build_args.clone());
                 println!("built sp1{:?}", program_dir);
+                let vkey = get_vkey(&program_dir);
+                vkeys.push((program_dir, vkey));
             }
         }
     }
+
+    // Save the verifying keys to a file.
+    let vkeys_path = examples_dir.join("vkeys.json");
+    let vkeys_json =
+        serde_json::to_string_pretty(&vkeys).expect("Failed to serialize verifying keys");
+    fs::write(&vkeys_path, vkeys_json).expect("Failed to write verifying keys to file");
 }
 
 fn build_from_templates(program_dir: &str) {
@@ -93,4 +110,42 @@ fn build_from_templates(program_dir: &str) {
         .expect("Failed to write main.rs");
 
     println!("Generated Rust project in '{}'", program_dir);
+}
+
+fn get_vkey(program: &str) -> String {
+    eprintln!("Generating verifying key for program '{}'", program);
+    // Get the build directory from the environment
+    let sp1_build_dir =
+        PathBuf::from(env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR is not set"));
+
+    // Form the path to the program directory
+    let program_path = sp1_build_dir.join(program);
+
+    // Fetch metadata for this program
+    let metadata = MetadataCommand::new()
+        .manifest_path(program_path.join("Cargo.toml"))
+        .exec()
+        .expect("Failed to get metadata");
+
+    // Use the root package name as the built ELF name
+    let built_elf_name = metadata
+        .root_package()
+        .expect("Failed to get root package")
+        .name
+        .clone();
+
+    // Source path: program/target/elf-compilation/.../release/{built_elf_name}
+    let built_elf_path = program_path
+        .join("target")
+        .join("elf-compilation")
+        .join("docker")
+        .join("riscv32im-succinct-zkvm-elf")
+        .join("release")
+        .join(&built_elf_name);
+
+    let elf = fs::read(&built_elf_path).unwrap();
+    let prover_client = ProverClient::from_env();
+    let (_, vk) = prover_client.setup(&elf);
+
+    vk.bytes32()
 }
