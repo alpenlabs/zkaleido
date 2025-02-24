@@ -1,6 +1,8 @@
+use async_trait::async_trait;
+
 use crate::{
     host::ZkVmHost, input::ZkVmInputBuilder, PerformanceReport, ProofReceipt, ProofType,
-    PublicValues, ZkVmHostPerf, ZkVmInputResult, ZkVmResult,
+    PublicValues, ZkVmHostPerf, ZkVmInputResult, ZkVmRemoteHost, ZkVmResult,
 };
 
 /// A trait representing a "program" whose zero-knowledge proofs can be produced using a ZkVM.
@@ -110,5 +112,27 @@ pub trait ZkVmProgramPerf: ZkVmProgram {
         perf_report.name = Self::name();
 
         Ok(perf_report)
+    }
+}
+
+/// A trait representing a zkVM program that supports remote proving operations.
+///
+/// This trait extends [`ZkVmProgram`] to allow proof generation to be performed using remote
+/// proving capabilities. While the core logic of the program remains host-agnostic, implementations
+/// that use this trait can leverage a remote prover (such as one implementing [`ZkVmRemoteProver`])
+/// to initiate asynchronous proof generation via the `start_proving` method, and later retrieve the
+/// proof once it is ready.
+#[async_trait(?Send)]
+pub trait ZkVmRemoteProgram: ZkVmProgram {
+    /// Proves the computation using any zkVM host.
+    async fn start_proving<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<String>
+    where
+        H: ZkVmRemoteHost,
+        H::Input<'a>: ZkVmInputBuilder<'a>,
+    {
+        // Prepare the input using the host's input builder.
+        let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
+
+        host.start_proving(zkvm_input, Self::proof_type()).await
     }
 }

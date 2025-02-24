@@ -1,6 +1,16 @@
-use crate::{input::ZkVmInputBuilder, PerformanceReport, ZkVmProver, ZkVmVerifier};
+use crate::{
+    input::ZkVmInputBuilder, PerformanceReport, ZkVmProver, ZkVmRemoteProver, ZkVmVerifier,
+};
 
-/// A trait implemented by the prover ("host") of a zkVM program.
+/// A trait implemented by the host of a zkVM program.
+///
+/// In a zkVM application, the host is the machine that runs the zkVM instance.
+/// It is responsible for setting up the zkVM environment and managing the input/output
+/// operations during execution. This includes loading the program, providing necessary
+/// inputs, and handling outputs after execution.
+///
+/// The host combines the capabilities of both a zkVM prover and a zkVM verifier, as
+/// indicated by its inheritance from the `ZkVmProver` and `ZkVmVerifier` traits.
 pub trait ZkVmHost: ZkVmProver + ZkVmVerifier {}
 
 /// Extends the [`ZkVmHost`] trait by providing functionality to generate performance reports.
@@ -21,3 +31,6 @@ pub trait ZkVmHostPerf: ZkVmHost {
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
     ) -> PerformanceReport;
 }
+
+/// A trait implemented by the host of a zkVM program with support for remote proving operations.
+pub trait ZkVmRemoteHost: ZkVmHost + ZkVmRemoteProver {}
