@@ -17,6 +17,10 @@ mod input;
 pub use host::Risc0Host;
 #[cfg(feature = "prover")]
 mod proof;
+#[cfg(feature = "prover")]
+mod prover;
+#[cfg(feature = "prover")]
+mod verifier;
 
 mod groth16_verifier;
 pub use groth16_verifier::*;

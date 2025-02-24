@@ -33,3 +33,8 @@ pub use groth16_verifier::*;
 
 #[cfg(feature = "perf")]
 mod perf;
+
+#[cfg(feature = "prover")]
+mod prover;
+#[cfg(feature = "prover")]
+mod verifier;

@@ -1,7 +1,7 @@
 use risc0_zkvm::{sha::Digest, ExecutorEnv, ExecutorEnvBuilder};
 use zkaleido::{
     AggregationInput, DataFormatError, ZkVmInputBuilder, ZkVmInputError, ZkVmInputResult,
-    ZkVmVerificationKeyError,
+    ZkVmVerifyingKeyError,
 };
 
 use crate::proof::Risc0ProofReceipt;
@@ -56,8 +56,8 @@ impl<'a> ZkVmInputBuilder<'a> for Risc0ProofInputBuilder<'a> {
             .vk()
             .as_bytes()
             .try_into()
-            .map_err(|_| ZkVmVerificationKeyError::InvalidVerificationKeySize)
-            .map_err(ZkVmInputError::VerificationKey)?;
+            .map_err(|_| ZkVmVerifyingKeyError::InvalidVerifyingKeySize)
+            .map_err(ZkVmInputError::VerifyingKey)?;
 
         // Write the verification key of the program that'll be proven in the guest.
         // Note: The vkey is written here so we don't have to hardcode it in guest code.

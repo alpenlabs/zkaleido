@@ -4,7 +4,9 @@ use risc0_zkvm::{
     get_prover_server, sha::Digest, ExecutorImpl, ProverOpts, ProverServer, Receipt, Session,
     VerifierContext,
 };
-use zkaleido::{time_operation, PerformanceReport, ProofMetrics, ZkVmHost, ZkVmHostPerf};
+use zkaleido::{
+    time_operation, PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf, ZkVmVerifier,
+};
 
 use crate::Risc0Host;
 
@@ -26,7 +28,7 @@ impl ZkVmHostPerf for Risc0Host {
         }
 
         let elf = self.get_elf();
-        let image_id = self.get_verification_key_commitment().into_inner();
+        let image_id = self.vk_commitment().into_inner();
 
         let opts = ProverOpts::default();
         let prover = get_prover_server(&opts).unwrap();

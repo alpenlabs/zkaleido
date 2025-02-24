@@ -1,9 +1,9 @@
-use fibonacci::FibProver;
-use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProverPerf};
+use fibonacci::FibProgram;
+use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgramPerf};
 
 fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {
     let input = 5;
-    FibProver::perf_report(&input, host).unwrap()
+    FibProgram::perf_report(&input, host).unwrap()
 }
 
 #[cfg(feature = "sp1")]

@@ -1,9 +1,9 @@
-use schnorr_sig_verify::{SchnorrSigInput, SchnorrSigProver};
-use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProverPerf};
+use schnorr_sig_verify::{SchnorrSigInput, SchnorrSigProgram};
+use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgramPerf};
 
 fn perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {
     let input = SchnorrSigInput::new_random();
-    SchnorrSigProver::perf_report(&input, host).unwrap()
+    SchnorrSigProgram::perf_report(&input, host).unwrap()
 }
 
 #[cfg(feature = "sp1")]

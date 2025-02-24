@@ -30,9 +30,9 @@ pub enum ZkVmError {
     InvalidELF(String),
 
     /// This error occurs if the verification key is invalid.
-    /// It wraps the underlying [`ZkVmVerificationKeyError`].
+    /// It wraps the underlying [`ZkVmVerifyingKeyError`].
     #[error("Invalid Verification Key")]
-    InvalidVerificationKey(#[from] ZkVmVerificationKeyError),
+    InvalidVerifyingKey(#[from] ZkVmVerifyingKeyError),
 
     /// This error occurs if the proof receipt is invalid.
     /// It wraps the underlying [`ZkVmProofError`].
@@ -93,7 +93,7 @@ pub enum ZkVmInputError {
 
     /// An input verification key issue occurred.
     #[error("Input verification key error")]
-    VerificationKey(#[source] ZkVmVerificationKeyError),
+    VerifyingKey(#[source] ZkVmVerifyingKeyError),
 
     /// An input build process error occurred.
     #[error("Input build error: {0}")]
@@ -102,14 +102,14 @@ pub enum ZkVmInputError {
 
 /// Errors related to verification key usage or parsing in ZkVM.
 #[derive(Debug, Error)]
-pub enum ZkVmVerificationKeyError {
+pub enum ZkVmVerifyingKeyError {
     /// An error occurred due to a verification key data format issue.
     #[error("Verification Key format error")]
     DataFormat(#[source] DataFormatError),
 
     /// The provided verification key is of an invalid size.
     #[error("Verification Key size error")]
-    InvalidVerificationKeySize,
+    InvalidVerifyingKeySize,
 }
 
 /// Errors related to proof usage in ZkVM.
@@ -130,7 +130,7 @@ pub enum ZkVmProofError {
 
 /// Errors that can occur when attempting to parse or handle a verification key.
 #[derive(Debug, Error)]
-pub enum InvalidVerificationKeySource {
+pub enum InvalidVerifyingKeySource {
     /// A verification key data format issue occurred.
     #[error("Verification Key format error")]
     DataFormat(#[from] DataFormatError),

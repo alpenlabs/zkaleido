@@ -1,5 +1,5 @@
 use sha2::{Digest, Sha256};
-use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver, ZkVmProverPerf};
+use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProgram, ZkVmProgramPerf};
 
 const MESSAGE_TO_HASH: &str = "Hello, world!";
 
@@ -27,9 +27,9 @@ fn hash_n_rounds(message: &str, rounds: u32) -> [u8; 32] {
     current_hash.into()
 }
 
-pub struct ShaChainProver;
+pub struct ShaChainProgram;
 
-impl ZkVmProver for ShaChainProver {
+impl ZkVmProgram for ShaChainProgram {
     type Input = u32;
     type Output = [u8; 32];
 
@@ -58,17 +58,17 @@ impl ZkVmProver for ShaChainProver {
     }
 }
 
-impl ZkVmProverPerf for ShaChainProver {}
+impl ZkVmProgramPerf for ShaChainProgram {}
 
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
 
-    use zkaleido::ZkVmProver;
+    use zkaleido::ZkVmProgram;
     use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
     use super::process_sha2_chain;
-    use crate::ShaChainProver;
+    use crate::ShaChainProgram;
 
     fn get_native_host() -> NativeHost {
         NativeHost {
@@ -83,9 +83,9 @@ mod tests {
     fn test_native() {
         let input = 5;
         let host = get_native_host();
-        let receipt = ShaChainProver::prove(&input, &host).unwrap();
+        let receipt = ShaChainProgram::prove(&input, &host).unwrap();
         let public_params =
-            ShaChainProver::process_output::<NativeHost>(receipt.public_values()).unwrap();
+            ShaChainProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
 
         assert!(public_params != [0; 32]);
     }

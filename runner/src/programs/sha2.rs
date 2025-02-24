@@ -1,9 +1,9 @@
-use sha2_chain::ShaChainProver;
-use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProverPerf};
+use sha2_chain::ShaChainProgram;
+use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgramPerf};
 
 fn sha2_prover_perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {
     let input = 5;
-    ShaChainProver::perf_report(&input, host).unwrap()
+    ShaChainProgram::perf_report(&input, host).unwrap()
 }
 
 #[cfg(feature = "sp1")]

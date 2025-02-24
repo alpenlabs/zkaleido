@@ -1,4 +1,4 @@
-use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProver, ZkVmProverPerf};
+use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProgram, ZkVmProgramPerf};
 
 pub fn process_fibonacci(zkvm: &impl ZkVmEnv) {
     // Read an input to the program.
@@ -18,9 +18,9 @@ pub fn process_fibonacci(zkvm: &impl ZkVmEnv) {
     zkvm.commit_serde(&a);
 }
 
-pub struct FibProver;
+pub struct FibProgram;
 
-impl ZkVmProver for FibProver {
+impl ZkVmProgram for FibProgram {
     type Input = u32;
     type Output = u32;
 
@@ -49,17 +49,17 @@ impl ZkVmProver for FibProver {
     }
 }
 
-impl ZkVmProverPerf for FibProver {}
+impl ZkVmProgramPerf for FibProgram {}
 
 #[cfg(test)]
 pub mod tests {
     use std::sync::Arc;
 
-    use zkaleido::ZkVmProver;
+    use zkaleido::ZkVmProgram;
     use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
     use super::process_fibonacci;
-    use crate::FibProver;
+    use crate::FibProgram;
 
     pub fn get_native_host() -> NativeHost {
         NativeHost {
@@ -74,8 +74,8 @@ pub mod tests {
     fn test_native() {
         let input = 5;
         let host = get_native_host();
-        let receipt = FibProver::prove(&input, &host).unwrap();
-        let output = FibProver::process_output::<NativeHost>(receipt.public_values()).unwrap();
+        let receipt = FibProgram::prove(&input, &host).unwrap();
+        let output = FibProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
         assert_eq!(output, 5);
     }
 }

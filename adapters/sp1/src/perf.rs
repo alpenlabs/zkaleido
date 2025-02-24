@@ -4,7 +4,7 @@ use sp1_prover::{
 };
 use sp1_sdk::{SP1Context, SP1Prover, SP1Stdin};
 use sp1_stark::SP1ProverOpts;
-use zkaleido::{time_operation, PerformanceReport, ProofMetrics, ZkVmHost, ZkVmHostPerf};
+use zkaleido::{time_operation, PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf};
 
 use crate::SP1Host;
 

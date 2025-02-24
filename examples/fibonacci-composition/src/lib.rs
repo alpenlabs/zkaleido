@@ -1,6 +1,6 @@
 use zkaleido::{
-    AggregationInput, ProofType, VerificationKeyCommitment, ZkVmEnv, ZkVmInputResult, ZkVmProver,
-    ZkVmProverPerf,
+    AggregationInput, ProofType, VerifyingKeyCommitment, ZkVmEnv, ZkVmInputResult, ZkVmProgram,
+    ZkVmProgramPerf,
 };
 
 pub fn process_fibonacci_composition(zkvm: &impl ZkVmEnv) {
@@ -12,12 +12,12 @@ pub fn process_fibonacci_composition(zkvm: &impl ZkVmEnv) {
 
 pub struct FibCompositionInput {
     pub fib_proof_with_vk: AggregationInput,
-    pub fib_vk_commitment: VerificationKeyCommitment,
+    pub fib_vk_commitment: VerifyingKeyCommitment,
 }
 
-pub struct FibCompositionProver;
+pub struct FibCompositionProgram;
 
-impl ZkVmProver for FibCompositionProver {
+impl ZkVmProgram for FibCompositionProgram {
     type Input = FibCompositionInput;
     type Output = u32;
 
@@ -49,4 +49,4 @@ impl ZkVmProver for FibCompositionProver {
     }
 }
 
-impl ZkVmProverPerf for FibCompositionProver {}
+impl ZkVmProgramPerf for FibCompositionProgram {}

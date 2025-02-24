@@ -1,8 +1,8 @@
 use std::{fmt, sync::Arc};
 
 use zkaleido::{
-    Proof, ProofReceipt, ProofType, PublicValues, VerificationKey, VerificationKeyCommitment,
-    ZkVmError, ZkVmHost, ZkVmResult,
+    Proof, ProofReceipt, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError,
+    ZkVmExecutor, ZkVmHost, ZkVmProver, ZkVmResult, ZkVmVerifier,
 };
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
@@ -25,8 +25,23 @@ pub struct NativeHost {
     pub process_proof: Arc<Box<ProcessProofFn>>,
 }
 
-impl ZkVmHost for NativeHost {
+impl ZkVmHost for NativeHost {}
+
+impl ZkVmExecutor for NativeHost {
     type Input<'a> = NativeMachineInputBuilder;
+    fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<PublicValues> {
+        (self.process_proof)(&native_machine)?;
+        let output = native_machine.state.borrow().output.clone();
+        let public_values = PublicValues::new(output);
+        Ok(public_values)
+    }
+
+    fn get_elf(&self) -> &[u8] {
+        &[]
+    }
+}
+
+impl ZkVmProver for NativeHost {
     type ZkVmProofReceipt = NativeProofReceipt;
 
     fn prove_inner<'a>(
@@ -38,24 +53,16 @@ impl ZkVmHost for NativeHost {
         let proof = Proof::default();
         Ok(ProofReceipt::new(proof, public_values).try_into()?)
     }
+}
 
-    fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<PublicValues> {
-        (self.process_proof)(&native_machine)?;
-        let output = native_machine.state.borrow().output.clone();
-        let public_values = PublicValues::new(output);
-        Ok(public_values)
+impl ZkVmVerifier for NativeHost {
+    type ZkVmProofReceipt = NativeProofReceipt;
+    fn vk(&self) -> VerifyingKey {
+        VerifyingKey::default()
     }
 
-    fn get_elf(&self) -> &[u8] {
-        &[]
-    }
-
-    fn get_verification_key(&self) -> VerificationKey {
-        VerificationKey::default()
-    }
-
-    fn get_verification_key_commitment(&self) -> VerificationKeyCommitment {
-        VerificationKeyCommitment::new([0u32; 8])
+    fn vk_commitment(&self) -> VerifyingKeyCommitment {
+        VerifyingKeyCommitment::new([0u32; 8])
     }
 
     fn extract_serde_public_output<T: serde::Serialize + serde::de::DeserializeOwned>(
