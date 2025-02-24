@@ -119,7 +119,7 @@ pub trait ZkVmProgramPerf: ZkVmProgram {
 ///
 /// This trait extends [`ZkVmProgram`] to allow proof generation to be performed using remote
 /// proving capabilities. While the core logic of the program remains host-agnostic, implementations
-/// that use this trait can leverage a remote prover (such as one implementing [`ZkVmRemoteProver`])
+/// that use this trait can leverage a remote prover (one implementing `ZkVmRemoteProver`)
 /// to initiate asynchronous proof generation via the `start_proving` method, and later retrieve the
 /// proof once it is ready.
 #[async_trait(?Send)]
