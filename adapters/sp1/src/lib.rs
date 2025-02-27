@@ -1,6 +1,6 @@
 //! # zkaleido-sp1-adapter
 //!
-//! This crate integrates the [SP1](https://docs.succinct.xyz/docs/introduction) zero-knowledge proof
+//! This crate integrates the [SP1](https://docs.succinct.xyz/docs/sp1/introduction) zero-knowledge proof
 //! framework with the zkVM environment provided by [zkaleido](https://github.com/novifinancial/zkaleido).
 //! It enables both the generation of SP1 proofs and the verification of SP1-based Groth16
 //! proofs within a zkVM context.
