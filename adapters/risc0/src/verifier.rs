@@ -21,17 +21,17 @@ impl ZkVmVerifier for Risc0Host {
     }
 
     fn vk(&self) -> VerifyingKey {
-        VerifyingKey::new(self.vk().as_bytes().to_vec())
+        VerifyingKey::new(self.image_id().as_bytes().to_vec())
     }
 
     fn vk_commitment(&self) -> VerifyingKeyCommitment {
-        VerifyingKeyCommitment::new(self.vk().into())
+        VerifyingKeyCommitment::new(self.image_id().into())
     }
 
     fn verify_inner(&self, proof: &Risc0ProofReceipt) -> ZkVmResult<()> {
         proof
             .as_ref()
-            .verify(self.vk())
+            .verify(self.image_id())
             .map_err(|e| ZkVmError::ProofVerificationError(e.to_string()))?;
         Ok(())
     }

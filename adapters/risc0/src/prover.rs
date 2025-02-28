@@ -56,7 +56,7 @@ impl ZkVmProver for Risc0Host {
 
         // Generate the proof
         let proof_info = prover
-            .prove_with_opts(prover_input, self.elf(), &opts)
+            .prove_with_opts(prover_input, self.get_elf(), &opts)
             .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
 
         Ok(proof_info.receipt.into())
