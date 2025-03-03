@@ -14,16 +14,12 @@
 //!   you don't need to run the actual cryptographic verification:
 
 mod host;
-pub use host::SP1Host;
-
 mod input;
 mod proof;
+mod prover;
+mod verifier;
 
-mod groth16_verifier;
-pub use groth16_verifier::*;
+pub use host::SP1Host;
 
 #[cfg(feature = "perf")]
 mod perf;
-
-mod prover;
-mod verifier;

@@ -7572,7 +7572,6 @@ dependencies = [
  "sp1-prover",
  "sp1-sdk",
  "sp1-stark",
- "sp1-verifier",
  "zkaleido",
 ]
 
