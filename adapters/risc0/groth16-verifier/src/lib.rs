@@ -1,4 +1,7 @@
-//! FIXME: add docstring
+//! # zkaleido-risc0-groth16-verifier
+//!
+//! This crate integrates RISC Zero-based Groth16 proof verification based on zkaleido traits.
+
 use risc0_zkvm::{Groth16Receipt, MaybePruned, ReceiptClaim};
 use sha2::Digest;
 use zkaleido::{ProofReceipt, ZkVmResult};

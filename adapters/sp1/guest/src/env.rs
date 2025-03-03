@@ -38,11 +38,11 @@ impl ZkVmEnv for Sp1ZkVmEnv {
             if #[cfg(feature = "zkvm-verify")] {
                 let pv_digest = Sha256::digest(public_values);
                 verify_sp1_proof(vk_digest, &pv_digest.into());
-            } else if #[cfg(feature = "mock")] {}
+            } else if #[cfg(feature = "mock-verify")] {}
             else {
                 panic!(
                     "No verification feature enabled. \
-                     Please enable either `zkvm-verify` or `mock`."
+                     Please enable either `zkvm-verify` or `mock-verify`."
                 );
             }
         }

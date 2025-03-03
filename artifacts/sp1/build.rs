@@ -25,11 +25,11 @@ fn main() {
     build_args.features = {
         #[cfg(feature = "mock")]
         {
-            vec!["mock".to_string()]
+            vec!["mock-verify".to_string()]
         }
         #[cfg(not(feature = "mock"))]
         {
-            vec![]
+            vec!["zkvm-verify".to_string()]
         }
     };
 

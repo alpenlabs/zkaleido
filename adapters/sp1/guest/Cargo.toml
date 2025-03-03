@@ -23,4 +23,4 @@ sha2 = { workspace = true, optional = true }
 
 [features]
 zkvm-verify = ["sp1-zkvm/verify", "sha2"]
-mock = []
+mock-verify = []

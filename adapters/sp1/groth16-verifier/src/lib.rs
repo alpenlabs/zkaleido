@@ -1,4 +1,7 @@
-//! FIXME: update here
+//! # zkaleido-sp1-groth16-verifier
+//!
+//! This crate integrates SP1-based Groth16 proof verification based on zkaleido traits.
+
 use sp1_verifier::{Groth16Verifier, GROTH16_VK_BYTES};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult};
 

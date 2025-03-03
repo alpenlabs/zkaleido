@@ -1,14 +1,9 @@
-//! # zkaleido-risc0-adapter
+//! # zkaleido-risc0-host
 //!
-//! This crate integrates the [RISC Zero](https://www.risczero.com/) zero-knowledge proof
-//! framework with the zkVM environment provided by [zkaleido](https://github.com/novifinancial/zkaleido).
-//! It enables both the generation of RISC0 proofs and the verification of RISC0-based Groth16
-//! proofs within a zkVM context.
-//!
-//! ## Features
-//!
-//! - **`prover`**: Enables proof generation via the RISC0 host and proof input builder. If you only
-//!   need to perform verification, you can disable this feature.
+//! This crate integrates the [RISC Zero](https://www.risczero.com/) zeroframework
+//! with the zkVM traits defined by [zkaleido](https://github.com/alpenlabs/zkaleido)
+//! on the host side.
+
 mod host;
 mod input;
 mod proof;
