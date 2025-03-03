@@ -21,9 +21,9 @@ zkaleido.workspace = true
 async-trait = { workspace = true, optional = true }
 bincode.workspace = true
 borsh.workspace = true
-hex.workspace = true
+hex = { workspace = true, optional = true }
 serde.workspace = true
 
 [features]
-remote-prover = ["async-trait"]
+remote-prover = ["async-trait", "hex"]
 perf = ["sp1-sdk/profiling", "sp1-prover", "sp1-stark"]
