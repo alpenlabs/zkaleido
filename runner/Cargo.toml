@@ -32,8 +32,6 @@ time = "0.3.26"
 tokio = { version = "1.39.0", features = ["full"] }
 
 [features]
-default = ["sp1-mock", "risc0-mock"]
+default = ["sp1", "risc0"]
 sp1 = ["zkaleido-sp1-artifacts", "zkaleido-sp1-host/perf"]
-sp1-mock = ["sp1", "zkaleido-sp1-artifacts/mock"]
 risc0 = ["zkaleido-risc0-artifacts", "zkaleido-risc0-host/perf"]
-risc0-mock = ["risc0"]
