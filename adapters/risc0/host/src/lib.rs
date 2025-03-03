@@ -9,24 +9,13 @@
 //!
 //! - **`prover`**: Enables proof generation via the RISC0 host and proof input builder. If you only
 //!   need to perform verification, you can disable this feature.
-#[cfg(feature = "prover")]
 mod host;
-#[cfg(feature = "prover")]
 mod input;
-#[cfg(feature = "prover")]
-pub use host::Risc0Host;
-#[cfg(feature = "prover")]
 mod proof;
-#[cfg(feature = "prover")]
 mod prover;
-#[cfg(feature = "prover")]
 mod verifier;
 
-mod groth16_verifier;
-pub use groth16_verifier::*;
-
-mod env;
-pub use env::Risc0ZkVmEnv;
+pub use host::Risc0Host;
 
 #[cfg(feature = "perf")]
 mod perf;

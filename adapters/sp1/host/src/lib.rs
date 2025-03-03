@@ -13,20 +13,11 @@
 //!   `verify_groth16_receipt`) become no-ops. This is useful for testing or local development where
 //!   you don't need to run the actual cryptographic verification:
 
-#[cfg(feature = "prover")]
 mod host;
-#[cfg(feature = "prover")]
 pub use host::SP1Host;
 
-#[cfg(feature = "prover")]
 mod input;
-#[cfg(feature = "prover")]
 mod proof;
-
-#[cfg(feature = "zkvm")]
-mod env;
-#[cfg(feature = "zkvm")]
-pub use env::Sp1ZkVmEnv;
 
 mod groth16_verifier;
 pub use groth16_verifier::*;
@@ -34,7 +25,5 @@ pub use groth16_verifier::*;
 #[cfg(feature = "perf")]
 mod perf;
 
-#[cfg(feature = "prover")]
 mod prover;
-#[cfg(feature = "prover")]
 mod verifier;

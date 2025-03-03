@@ -1,3 +1,4 @@
+//! FIXME: add docstring
 use risc0_zkvm::{Groth16Receipt, MaybePruned, ReceiptClaim};
 use sha2::Digest;
 use zkaleido::{ProofReceipt, ZkVmResult};

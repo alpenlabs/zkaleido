@@ -7,7 +7,7 @@ edition = "{{ edition }}"
 
 [dependencies]
 {{ program_dir }} = { path = "../../../examples/{{ program_dir }}" }
-zkaleido-sp1-adapter = { path = "../../../adapters/sp1", features = ["zkvm"] }
+zkaleido-sp1-adapter = { path = "../../../adapters/sp1/guest", features = ["zkvm"] }
 sp1-zkvm = "4.1.0"
 
 [features]
