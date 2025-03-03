@@ -17,3 +17,4 @@
 
 mod env;
 pub use env::Sp1ZkVmEnv;
+pub use sp1_zkvm::entrypoint;

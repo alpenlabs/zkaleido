@@ -5,3 +5,4 @@
 
 mod env;
 pub use env::Risc0ZkVmEnv;
+pub use risc0_zkvm::guest::entry;
