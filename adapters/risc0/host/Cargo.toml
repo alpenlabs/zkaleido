@@ -22,6 +22,4 @@ hex.workspace = true
 serde.workspace = true
 
 [features]
-default = []
-mock = []
 perf = ["risc0-zkvm/prove"]
