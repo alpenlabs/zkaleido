@@ -5,10 +5,7 @@ use sha2::{Digest, Sha256};
 use sp1_zkvm::io;
 #[cfg(feature = "zkvm-verify")]
 use sp1_zkvm::lib::verify::verify_sp1_proof;
-use zkaleido::{ProofReceipt, ZkVmEnv};
-
-#[cfg(not(feature = "mock"))]
-use crate::verify_groth16;
+use zkaleido::ZkVmEnv;
 
 /// An environment adapter for the SP1 proof system implementing [`ZkVmEnv`].
 ///
@@ -49,14 +46,6 @@ impl ZkVmEnv for Sp1ZkVmEnv {
                 );
             }
         }
-    }
-
-    #[cfg(feature = "mock")]
-    fn verify_groth16_receipt(&self, _receipt: &ProofReceipt, _verification_key: &[u8; 32]) {}
-
-    #[cfg(not(feature = "mock"))]
-    fn verify_groth16_receipt(&self, receipt: &ProofReceipt, verification_key: &[u8; 32]) {
-        verify_groth16(receipt, verification_key).expect("groth16 verification failed");
     }
 
     fn read_verified_serde<T: DeserializeOwned>(&self, vk_digest: &[u32; 8]) -> T {

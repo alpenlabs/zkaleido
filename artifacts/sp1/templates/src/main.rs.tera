@@ -6,7 +6,7 @@
 sp1_zkvm::entrypoint!(main);
 
 use {{program}}::process_{{program}};
-use zkaleido_sp1_adapter::Sp1ZkVmEnv;
+use zkaleido_sp1_guest_env::Sp1ZkVmEnv;
 
 pub fn main() {
     process_{{program}}(&Sp1ZkVmEnv)

@@ -14,15 +14,14 @@ rustdoc.all = "warn"
 
 [dependencies]
 zkaleido.workspace = true
-
-bincode = { workspace = true, optional = true }
-borsh = { workspace = true, optional = true }
-hex = { workspace = true, optional = true }
 risc0-zkvm = "1.2.3"
+
+bincode.workspace = true
+borsh.workspace = true
+hex.workspace = true
 serde.workspace = true
 
 [features]
 default = []
 mock = []
-prover = ["bincode", "borsh", "hex"]
-perf = ["prover", "risc0-zkvm/prove"]
+perf = ["risc0-zkvm/prove"]
