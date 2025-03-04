@@ -1,8 +1,6 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{de::DeserializeOwned, Serialize};
 
-use crate::ProofReceipt;
-
 /// A trait representing a Zero-Knowledge Virtual Machine (ZkVM) interface.
 /// Provides methods for reading inputs, committing outputs, and verifying proofs
 /// within the ZkVM environment.
@@ -51,16 +49,6 @@ pub trait ZkVmEnv {
     /// This method checks the validity of the proof against the provided verification key digest
     /// and public values. It will panic if the proof fails to verify.
     fn verify_native_proof(&self, vk_digest: &[u32; 8], public_values: &[u8]);
-
-    /// Verifies a Groth16 proof receipt.
-    ///
-    /// # Parameters
-    ///
-    /// * `receipt`: [ProofReceipt]
-    /// * `verification_key`: A byte slice containing the serialized verification key.
-    ///
-    /// It will panic if the proof fails to verify.
-    fn verify_groth16_receipt(&self, receipt: &ProofReceipt, verification_key: &[u8; 32]);
 
     /// Reads and verifies a committed output from another guest function.
     ///

@@ -7,11 +7,11 @@ edition = "{{ edition }}"
 
 [dependencies]
 {{ program_dir }} = { path = "../../../examples/{{ program_dir }}" }
-zkaleido-sp1-adapter = { path = "../../../adapters/sp1", features = ["zkvm"] }
-sp1-zkvm = "4.1.0"
+zkaleido-sp1-guest-env = { path = "../../../adapters/sp1/guest" }
 
 [features]
-mock = ["zkaleido-sp1-adapter/mock"]
+mock-verify = ["zkaleido-sp1-guest-env/mock-verify"]
+zkvm-verify = ["zkaleido-sp1-guest-env/zkvm-verify"]
 
 [patch.crates-io]
 sha2-v0-10-8 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", branch = "patch-sha2-v0.10.8" }

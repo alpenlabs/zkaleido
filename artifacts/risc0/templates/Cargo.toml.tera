@@ -7,7 +7,7 @@ edition = "{{ edition }}"
 
 [dependencies]
 {{ program_dir }} = { path = "../../../examples/{{ program_dir }}" }
-zkaleido-risc0-adapter = { path = "../../../adapters/risc0" }
+zkaleido-risc0-guest-env = { path = "../../../adapters/risc0/guest" }
 
 [patch.crates-io]
 sha2 = { git = "https://github.com/risc0/RustCrypto-hashes", tag = "sha2-v0.10.8-risczero.0" }

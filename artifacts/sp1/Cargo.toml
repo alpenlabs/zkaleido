@@ -9,6 +9,3 @@ sp1-sdk = "4.1.0"
 [build-dependencies]
 sp1-build = "4.1.0"
 tera = "1.17.0"
-
-[features]
-mock = []

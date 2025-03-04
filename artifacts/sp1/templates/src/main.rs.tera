@@ -3,10 +3,10 @@
 // Under the hood, we wrap your main function with some extra code so that it behaves properly
 // inside the zkVM.
 #![no_main]
-sp1_zkvm::entrypoint!(main);
+zkaleido_sp1_guest_env::entrypoint!(main);
 
 use {{program}}::process_{{program}};
-use zkaleido_sp1_adapter::Sp1ZkVmEnv;
+use zkaleido_sp1_guest_env::Sp1ZkVmEnv;
 
 pub fn main() {
     process_{{program}}(&Sp1ZkVmEnv)

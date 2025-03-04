@@ -13,11 +13,11 @@ sha2-chain.workspace = true
 schnorr-sig-verify.workspace = true
 
 # sp1
-zkaleido-sp1-adapter = { path = "../adapters/sp1", optional = true }
+zkaleido-sp1-host = { path = "../adapters/sp1/host", optional = true }
 zkaleido-sp1-artifacts = { path = "../artifacts/sp1", optional = true }
 
 # risc0
-zkaleido-risc0-adapter = { path = "../adapters/risc0", optional = true }
+zkaleido-risc0-host = { path = "../adapters/risc0/host", optional = true }
 zkaleido-risc0-artifacts = { path = "../artifacts/risc0", optional = true }
 
 anyhow = "1.0.83"
@@ -32,16 +32,6 @@ time = "0.3.26"
 tokio = { version = "1.39.0", features = ["full"] }
 
 [features]
-default = ["sp1-mock", "risc0-mock"]
-sp1 = [
-  "zkaleido-sp1-adapter/prover",
-  "zkaleido-sp1-artifacts",
-  "zkaleido-sp1-adapter/perf",
-]
-sp1-mock = ["sp1", "zkaleido-sp1-adapter/mock", "zkaleido-sp1-artifacts/mock"]
-risc0 = [
-  "zkaleido-risc0-adapter/prover",
-  "zkaleido-risc0-artifacts",
-  "zkaleido-risc0-adapter/perf",
-]
-risc0-mock = ["risc0", "zkaleido-risc0-adapter/mock"]
+default = ["sp1", "risc0"]
+sp1 = ["zkaleido-sp1-artifacts", "zkaleido-sp1-host/perf"]
+risc0 = ["zkaleido-risc0-artifacts", "zkaleido-risc0-host/perf"]

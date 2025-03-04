@@ -7467,7 +7467,34 @@ dependencies = [
 ]
 
 [[package]]
-name = "zkaleido-risc0-adapter"
+name = "zkaleido-risc0-artifacts"
+version = "0.1.0"
+dependencies = [
+ "risc0-build",
+ "tera",
+]
+
+[[package]]
+name = "zkaleido-risc0-groth16-verifier"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "risc0-zkvm",
+ "sha2",
+ "zkaleido",
+]
+
+[[package]]
+name = "zkaleido-risc0-guest-env"
+version = "0.1.0"
+dependencies = [
+ "risc0-zkvm",
+ "serde",
+ "zkaleido",
+]
+
+[[package]]
+name = "zkaleido-risc0-host"
 version = "0.1.0"
 dependencies = [
  "bincode",
@@ -7475,16 +7502,7 @@ dependencies = [
  "hex",
  "risc0-zkvm",
  "serde",
- "sha2",
  "zkaleido",
-]
-
-[[package]]
-name = "zkaleido-risc0-artifacts"
-version = "0.1.0"
-dependencies = [
- "risc0-build",
- "tera",
 ]
 
 [[package]]
@@ -7506,29 +7524,10 @@ dependencies = [
  "time",
  "tokio",
  "zkaleido",
- "zkaleido-risc0-adapter",
  "zkaleido-risc0-artifacts",
- "zkaleido-sp1-adapter",
+ "zkaleido-risc0-host",
  "zkaleido-sp1-artifacts",
-]
-
-[[package]]
-name = "zkaleido-sp1-adapter"
-version = "0.1.0"
-dependencies = [
- "async-trait",
- "bincode",
- "borsh",
- "cfg-if",
- "hex",
- "serde",
- "sha2",
- "sp1-prover",
- "sp1-sdk",
- "sp1-stark",
- "sp1-verifier",
- "sp1-zkvm",
- "zkaleido",
+ "zkaleido-sp1-host",
 ]
 
 [[package]]
@@ -7538,6 +7537,42 @@ dependencies = [
  "sp1-build",
  "sp1-sdk",
  "tera",
+]
+
+[[package]]
+name = "zkaleido-sp1-groth16-verifier"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "sp1-verifier",
+ "zkaleido",
+]
+
+[[package]]
+name = "zkaleido-sp1-guest-env"
+version = "0.1.0"
+dependencies = [
+ "bincode",
+ "cfg-if",
+ "serde",
+ "sha2",
+ "sp1-zkvm",
+ "zkaleido",
+]
+
+[[package]]
+name = "zkaleido-sp1-host"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "bincode",
+ "borsh",
+ "hex",
+ "serde",
+ "sp1-prover",
+ "sp1-sdk",
+ "sp1-stark",
+ "zkaleido",
 ]
 
 [[package]]

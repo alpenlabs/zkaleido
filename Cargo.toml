@@ -1,8 +1,15 @@
 [workspace]
 members = [
   "adapters/native",
-  "adapters/risc0",
-  "adapters/sp1",
+
+  "adapters/risc0/host",
+  "adapters/risc0/guest",
+  "adapters/risc0/groth16-verifier",
+
+  "adapters/sp1/host",
+  "adapters/sp1/guest",
+  "adapters/sp1/groth16-verifier",
+
   "zkaleido",
 
   # binaries
@@ -20,6 +27,8 @@ resolver = "2"
 [workspace.dependencies]
 zkaleido = { path = "zkaleido" }
 zkaleido-native-adapter = { path = "adapters/native" }
+zkaleido-sp1-groth16-verifier = { path = "adapters/sp1/groth16-verifier" }
+zkaleido-risc0-groth16-verifier = { path = "adapters/risc0/groth16-verifier" }
 
 fibonacci = { path = "examples/fibonacci" }
 fibonacci-composition = { path = "examples/fibonacci-composition" }
