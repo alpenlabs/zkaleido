@@ -2131,6 +2131,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "groth16-verifier"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "zkaleido",
+ "zkaleido-native-adapter",
+ "zkaleido-risc0-groth16-verifier",
+ "zkaleido-sp1-groth16-verifier",
+]
+
+[[package]]
 name = "group"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
