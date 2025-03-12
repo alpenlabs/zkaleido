@@ -7,6 +7,15 @@ use risc0_zkvm::{Groth16Receipt, MaybePruned, ReceiptClaim};
 use sha2::Digest;
 use zkaleido::{ProofReceipt, ZkVmResult};
 
+/// Root of the Merkle tree constructed from [ALLOWED_CONTROL_IDS], using Poseidon2.
+pub const ALLOWED_CONTROL_ROOT: Digest =
+    digest!("8cdad9242664be3112aba377c5425a4df735eb1c6966472b561d2855932c0469");
+
+/// Control ID for the identity recursion programs (ZKR), using Poseidon over the BN254 scalar
+/// field.
+pub const BN254_IDENTITY_CONTROL_ID: Digest =
+    digest!("c07a65145c3cb48b6101962ea607a4dd93c753bb26975cb47feb00d3666e4404");
+
 /// Verifies a RISC0-based Groth16 proof, using a 32-byte verification key.
 ///
 /// This function checks whether the given [`ProofReceipt`] satisfies the constraints represented by
