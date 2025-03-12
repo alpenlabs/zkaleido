@@ -15,7 +15,6 @@ rustdoc.all = "warn"
 [dependencies]
 risc0-groth16 = "1.2.3"
 risc0-binfmt = "1.2.3"
-risc0-circuit-recursion = "1.2.3"
 risc0-zkp = "1.2.3"
 zkaleido.workspace = true
 hex.workspace = true
@@ -23,3 +22,4 @@ hex.workspace = true
 [dev-dependencies]
 hex.workspace = true
 risc0-zkvm = "1.2.3"
+risc0-circuit-recursion = "1.2.3"

@@ -3,13 +3,21 @@
 //! This crate integrates RISC Zero-based Groth16 proof verification based on zkaleido traits.
 
 use risc0_binfmt::tagged_struct;
-use risc0_circuit_recursion::control_id::{ALLOWED_CONTROL_ROOT, BN254_IDENTITY_CONTROL_ID};
 use risc0_groth16::{fr_from_hex_string, split_digest, verifying_key, Seal, Verifier};
 use risc0_zkp::core::{
-    digest::Digest,
+    digest::{digest, Digest},
     hash::sha::{Impl as Sha256Impl, Sha256},
 };
 use zkaleido::{DataFormatError, ProofReceipt, ZkVmError, ZkVmProofError, ZkVmResult};
+
+/// Root of the Merkle tree constructed from [ALLOWED_CONTROL_IDS], using Poseidon2.
+pub const ALLOWED_CONTROL_ROOT: Digest =
+    digest!("8cdad9242664be3112aba377c5425a4df735eb1c6966472b561d2855932c0469");
+
+/// Control ID for the identity recursion programs (ZKR), using Poseidon over the BN254 scalar
+/// field.
+pub const BN254_IDENTITY_CONTROL_ID: Digest =
+    digest!("c07a65145c3cb48b6101962ea607a4dd93c753bb26975cb47feb00d3666e4404");
 
 /// Verifies a RISC0-based Groth16 proof, using a 32-byte verification key.
 ///
@@ -27,7 +35,7 @@ pub fn verify_groth16(receipt: &ProofReceipt, verification_key: &[u8; 32]) -> Zk
         ))))
     })?;
 
-    let public_params_hash = *Sha256Impl::hash_bytes(receipt.public_values().as_bytes()).as_ref();
+    let public_params_hash = *Sha256Impl::hash_bytes(receipt.public_values().as_bytes());
     let image_id = Digest::from_bytes(*verification_key);
 
     let claim_digest = compute_claim_digest::<Sha256Impl>(image_id, public_params_hash);
@@ -71,6 +79,10 @@ pub fn compute_claim_digest<S: Sha256>(image_id: Digest, journal: Digest) -> Dig
 
 #[cfg(test)]
 mod tests {
+    use risc0_circuit_recursion::control_id::{
+        ALLOWED_CONTROL_ROOT as RECURSION_CONTROL_ROOT,
+        BN254_IDENTITY_CONTROL_ID as RECURSION_BN256_CONTROL_ID,
+    };
     use risc0_zkvm::{Groth16Receipt, MaybePruned, ReceiptClaim};
     use zkaleido::ProofReceipt;
 
@@ -87,8 +99,7 @@ mod tests {
     }
 
     fn zkvm_verify_groth16(receipt: &ProofReceipt, verification_key: &[u8; 32]) -> ZkVmResult<()> {
-        let public_params_digest =
-            *Sha256Impl::hash_bytes(receipt.public_values().as_bytes()).as_ref();
+        let public_params_digest = *Sha256Impl::hash_bytes(receipt.public_values().as_bytes());
 
         let claim = ReceiptClaim::ok(
             risc0_zkvm::sha::Digest::from_bytes(*verification_key),
@@ -118,5 +129,11 @@ mod tests {
 
         let res = verify_groth16(&receipt, &vk);
         assert!(res.is_ok(), "groth16 proof verification must succeed");
+    }
+
+    #[test]
+    fn test_control_values() {
+        assert_eq!(ALLOWED_CONTROL_ROOT, RECURSION_CONTROL_ROOT);
+        assert_eq!(BN254_IDENTITY_CONTROL_ID, RECURSION_BN256_CONTROL_ID);
     }
 }
