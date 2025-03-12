@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use zkaleido::{ProofReceipt, ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProgram, ZkVmProgramPerf};
 
-pub fn process_groth16_proofs(zkvm: &impl ZkVmEnv) {
+pub fn process_groth16_verify(zkvm: &impl ZkVmEnv) {
     let Groth16VerifierInput {
         risc0_receipt,
         risc0_vk,
@@ -59,7 +59,7 @@ impl ZkVmProgram for Groth16VerifierProgram {
     type Output = (bool, bool);
 
     fn name() -> String {
-        "groth16_verifier".to_string()
+        "groth16_verify".to_string()
     }
 
     fn proof_type() -> zkaleido::ProofType {
@@ -92,13 +92,13 @@ mod tests {
     use zkaleido::ZkVmProgram;
     use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
-    use super::process_groth16_proofs;
+    use super::process_groth16_verify;
     use crate::{Groth16VerifierInput, Groth16VerifierProgram};
 
     fn get_native_host() -> NativeHost {
         NativeHost {
             process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
-                process_groth16_proofs(zkvm);
+                process_groth16_verify(zkvm);
                 Ok(())
             })),
         }

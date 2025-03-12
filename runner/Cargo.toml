@@ -11,6 +11,7 @@ fibonacci.workspace = true
 fibonacci-composition.workspace = true
 sha2-chain.workspace = true
 schnorr-sig-verify.workspace = true
+groth16-verify.workspace = true
 
 # sp1
 zkaleido-sp1-host = { path = "../adapters/sp1/host", optional = true }
