@@ -1,6 +1,7 @@
 //! # zkaleido-risc0-groth16-verifier
 //!
 //! This crate integrates RISC Zero-based Groth16 proof verification based on zkaleido traits.
+pub mod alt_v;
 
 use risc0_zkvm::{Groth16Receipt, MaybePruned, ReceiptClaim};
 use sha2::Digest;
