@@ -2357,7 +2357,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "groth16-verifier"
+name = "groth16-verify"
 version = "0.1.0"
 dependencies = [
  "hex",
@@ -7587,6 +7587,7 @@ dependencies = [
  "clap",
  "fibonacci",
  "fibonacci-composition",
+ "groth16-verify",
  "num-format",
  "reqwest",
  "schnorr-sig-verify",

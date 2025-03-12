@@ -1,5 +1,5 @@
 [package]
-name = "groth16-verifier"
+name = "groth16-verify"
 version = "0.1.0"
 edition = "2021"
 
