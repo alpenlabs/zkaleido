@@ -10,7 +10,7 @@ use risc0_zkp::core::{
 };
 use zkaleido::{DataFormatError, ProofReceipt, ZkVmError, ZkVmProofError, ZkVmResult};
 
-/// Root of the Merkle tree constructed from [ALLOWED_CONTROL_IDS], using Poseidon2.
+/// Root of the Merkle tree constructed from [ALLOWED_CONTROL_IDS](https://github.com/risc0/risc0/blob/main/risc0/circuit/recursion/src/control_id.rs#L23), using Poseidon2.
 pub const ALLOWED_CONTROL_ROOT: Digest =
     digest!("8cdad9242664be3112aba377c5425a4df735eb1c6966472b561d2855932c0469");
 
@@ -23,7 +23,7 @@ pub const BN254_IDENTITY_CONTROL_ID: Digest =
 ///
 /// This function checks whether the given [`ProofReceipt`] satisfies the constraints represented by
 /// the provided `verification_key`. If successful, it returns an empty `Ok(())`; otherwise,
-/// it returns a suitable [`ZkVmError`](zkaleido::ZkVmError).
+/// it returns a suitable [`ZkVmError`].
 pub fn verify_groth16(receipt: &ProofReceipt, verification_key: &[u8; 32]) -> ZkVmResult<()> {
     let vk = verifying_key();
     let seal = Seal::from_vec(receipt.proof().as_bytes()).unwrap();
