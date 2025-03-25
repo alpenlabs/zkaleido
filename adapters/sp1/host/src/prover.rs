@@ -1,9 +1,6 @@
-use sp1_sdk::ProverClient;
+use sp1_sdk::{network::FulfillmentStrategy, ProverClient};
 #[cfg(feature = "remote-prover")]
-use sp1_sdk::{
-    network::{FulfillmentStrategy, B256},
-    SP1ProofMode,
-};
+use sp1_sdk::{network::B256, SP1ProofMode};
 #[cfg(feature = "remote-prover")]
 use zkaleido::ZkVmRemoteProver;
 use zkaleido::{
@@ -50,6 +47,34 @@ impl ZkVmProver for SP1Host {
             .unwrap_or(false)
         {
             std::env::set_var("SP1_PROVER", "mock");
+        }
+
+        let is_network_prover = std::env::var("SP1_PROVER")
+            .map(|v| v == "network")
+            .unwrap_or(false);
+
+        if is_network_prover {
+            let prover_client = ProverClient::builder().network().build();
+            let strategy = std::env::var("SP1_PROOF_STRATEGY")
+                .ok()
+                .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
+                .unwrap_or(FulfillmentStrategy::Hosted);
+
+            let network_prover_builder = prover_client
+                .prove(&self.proving_key, &prover_input)
+                .strategy(strategy);
+
+            let network_prover = match proof_type {
+                ProofType::Compressed => network_prover_builder.compressed(),
+                ProofType::Core => network_prover_builder.core(),
+                ProofType::Groth16 => network_prover_builder.groth16(),
+            };
+
+            let proof_info = network_prover
+                .run()
+                .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
+
+            return Ok(proof_info.into());
         }
 
         let client = ProverClient::from_env();
