@@ -26,3 +26,4 @@ runs:
         export PATH=~/.risc0/bin:$PATH
         rzup check
         rzup install cargo-risczero 1.2.5
+        rzup install r0vm 1.2.5
