@@ -25,3 +25,4 @@ runs:
         curl -fsSL --proto '=https' --tlsv1.2 https://risczero.com/install | bash && ~/.risc0/bin/rzup install
         export PATH=~/.risc0/bin:$PATH
         rzup check
+        rzup install cargo-risczero 1.2.5
