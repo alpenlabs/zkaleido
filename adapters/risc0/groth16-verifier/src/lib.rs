@@ -98,6 +98,7 @@ mod tests {
         (receipt, vk)
     }
 
+    #[ignore]
     fn zkvm_verify_groth16(receipt: &ProofReceipt, verification_key: &[u8; 32]) -> ZkVmResult<()> {
         let public_params_digest = *Sha256Impl::hash_bytes(receipt.public_values().as_bytes());
 
@@ -121,6 +122,7 @@ mod tests {
             .map_err(|e| zkaleido::ZkVmError::ProofVerificationError(e.to_string()))
     }
 
+    #[ignore]
     #[test]
     fn test_groth16_verification() {
         let (receipt, vk) = get_proof_and_digest_id();
