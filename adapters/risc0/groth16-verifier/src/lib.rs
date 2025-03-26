@@ -12,7 +12,7 @@ use zkaleido::{DataFormatError, ProofReceipt, ZkVmError, ZkVmProofError, ZkVmRes
 
 /// Root of the Merkle tree constructed from [ALLOWED_CONTROL_IDS](https://github.com/risc0/risc0/blob/main/risc0/circuit/recursion/src/control_id.rs#L23-L37), using Poseidon2.
 pub const ALLOWED_CONTROL_ROOT: Digest =
-    digest!("8cdad9242664be3112aba377c5425a4df735eb1c6966472b561d2855932c0469");
+    digest!("539032186827b06719244873b17b2d4c122e2d02cfb1994fe958b2523b844576");
 
 /// Control ID for the identity recursion programs (ZKR), using Poseidon over the BN254 scalar
 /// field.
