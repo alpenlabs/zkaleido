@@ -29,7 +29,7 @@ impl ZkVmProgram for FibProgram {
     }
 
     fn proof_type() -> zkaleido::ProofType {
-        ProofType::Compressed
+        ProofType::Groth16
     }
 
     fn prepare_input<'a, B>(input: &'a Self::Input) -> ZkVmInputResult<B::Input>

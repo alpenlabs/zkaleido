@@ -13,7 +13,7 @@ rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
 [dependencies]
-risc0-zkvm = "1.2.5"
+risc0-zkvm = "2.0.0"
 zkaleido.workspace = true
 
 bincode.workspace = true

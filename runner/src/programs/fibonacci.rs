@@ -1,8 +1,10 @@
 use fibonacci::FibProgram;
-use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgramPerf};
+use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgram, ZkVmProgramPerf};
 
 fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {
     let input = 5;
+    FibProgram::prove(&input, host).unwrap();
+    std::env::set_var("ZKVM_MOCK", "1");
     FibProgram::perf_report(&input, host).unwrap()
 }
 
