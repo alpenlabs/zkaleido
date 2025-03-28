@@ -22,6 +22,9 @@ runs:
     - name: Install RISC0 Toolchain
       shell: bash
       run: |
-        curl -fsSL --proto '=https' --tlsv1.2 https://risczero.com/install | bash && ~/.risc0/bin/rzup install
+        curl -fsSL --proto '=https' --tlsv1.2 https://risczero.com/install | bash
         export PATH=~/.risc0/bin:$PATH
-        cargo risczero --version
+        rzup install rust 1.81.0
+        rzup install cpp 2024.1.5
+        rzup install r0vm 2.0.0
+        rzup install cargo-risczero 2.0.0
