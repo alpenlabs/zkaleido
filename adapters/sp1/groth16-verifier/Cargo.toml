@@ -13,7 +13,7 @@ rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
 [dependencies]
-sp1-verifier = "4.1.3"
+sp1-verifier = "4.1.6"
 zkaleido.workspace = true
 
 hex.workspace = true
