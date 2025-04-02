@@ -21,5 +21,5 @@ hex.workspace = true
 
 [dev-dependencies]
 hex.workspace = true
-risc0-zkvm = "2.0.0"
-risc0-circuit-recursion = "1.4.0"
+risc0-zkvm = "2.0.1"
+risc0-circuit-recursion = "2.0.0"
