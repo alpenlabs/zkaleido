@@ -13,7 +13,7 @@ rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
 [dependencies]
-risc0-groth16 = "1.4.0"
+risc0-groth16 = "2.0.0"
 risc0-binfmt = "2.0.0"
 risc0-zkp = "2.0.0"
 zkaleido.workspace = true
