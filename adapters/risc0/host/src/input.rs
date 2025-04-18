@@ -36,7 +36,7 @@ impl<'a> ZkVmInputBuilder<'a> for Risc0ProofInputBuilder<'a> {
         self.write_buf(&slice)
     }
 
-    // TODO: replace this with `write_frame` once the API stabilizies
+    // TODO: replace this with `write_frame` once the API stabilize
     fn write_buf(&mut self, item: &[u8]) -> ZkVmInputResult<&mut Self> {
         let len = item.len() as u32;
         self.0
