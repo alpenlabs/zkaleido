@@ -13,10 +13,10 @@ jobs:
     name: Update nightly Rustc
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
         with:
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@nightly
+      - uses: dtolnay/rust-toolchain@a02741459ec5e501b9843ed30b535ca0a0376ae4 # nightly
       - name: Update rust-toolchain.toml to use latest nightly
         run: |
           set -xe
@@ -47,7 +47,7 @@ jobs:
           fi
       - name: Create Pull Request
         if: env.changes_made == 'true'
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@271a8d0340265f705b14b6d32b9829c1cb33d45e # v7
         env:
           NIGHTLY_DATE: ${{ env.nightly_date }}
         with:
