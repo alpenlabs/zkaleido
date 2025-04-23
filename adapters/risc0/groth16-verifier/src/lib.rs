@@ -89,7 +89,7 @@ mod tests {
     use super::*;
 
     fn get_proof_and_digest_id() -> (ProofReceipt, [u8; 32]) {
-        let vk_hex = "0963493f27db6efac281ea2900ff4c611a93703cb9109dbd2231484121d08384";
+        let vk_hex = "25eaa741d5cb0d99fe15ce60c4bf3886f96932f22ee67041f0b4165203ef5a02";
         let vk: [u8; 32] = hex::decode(vk_hex).unwrap().try_into().unwrap();
         let proof_file = format!("./proofs/fibonacci_risc0_{}.proof.bin", vk_hex);
 
@@ -98,7 +98,6 @@ mod tests {
         (receipt, vk)
     }
 
-    #[ignore]
     fn zkvm_verify_groth16(receipt: &ProofReceipt, verification_key: &[u8; 32]) -> ZkVmResult<()> {
         let public_params_digest = *Sha256Impl::hash_bytes(receipt.public_values().as_bytes());
 
@@ -122,7 +121,6 @@ mod tests {
             .map_err(|e| zkaleido::ZkVmError::ProofVerificationError(e.to_string()))
     }
 
-    #[ignore]
     #[test]
     fn test_groth16_verification() {
         let (receipt, vk) = get_proof_and_digest_id();
