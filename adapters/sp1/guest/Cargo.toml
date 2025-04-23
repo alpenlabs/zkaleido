@@ -22,5 +22,6 @@ serde.workspace = true
 sha2 = { workspace = true, optional = true }
 
 [features]
+blake3 = ["sp1-zkvm/blake3"]
 zkvm-verify = ["sp1-zkvm/verify", "sha2"]
 mock-verify = []
