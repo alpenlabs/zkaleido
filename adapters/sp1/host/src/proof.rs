@@ -40,6 +40,7 @@ impl TryFrom<&ProofReceipt> for SP1ProofReceipt {
             proof,
             public_values,
             sp1_version,
+            tee_proof: None,
         };
         Ok(SP1ProofReceipt(proof_receipt))
     }
