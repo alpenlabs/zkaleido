@@ -6,7 +6,7 @@ version = "0.1.0"
 [dependencies]
 
 [build-dependencies]
-risc0-build = "2.1.0"
+risc0-build = "2.1.1"
 tera = "1.17.0"
 
 [package.metadata.risc0]
