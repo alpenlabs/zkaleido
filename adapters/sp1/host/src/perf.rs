@@ -75,7 +75,7 @@ fn gen_proof_metrics(
     let context = SP1Context::default();
     let opts = SP1ProverOpts::auto();
 
-    let (pv, _) = prover.execute(elf, &input, context.clone()).unwrap();
+    let (pv, _, _) = prover.execute(elf, &input, context.clone()).unwrap();
 
     // Core Proof
     let (_, pk_d, program, vk) = prover.setup(elf);

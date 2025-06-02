@@ -4,8 +4,8 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-sp1-sdk = "4.2.0"
+sp1-sdk = "5.0.0"
 
 [build-dependencies]
-sp1-build = "4.2.0"
+sp1-build = "5.0.0"
 tera = "1.17.0"

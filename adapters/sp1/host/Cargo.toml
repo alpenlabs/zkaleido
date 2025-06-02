@@ -13,9 +13,9 @@ rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
 [dependencies]
-sp1-sdk = "4.2.0"
-sp1-prover = { version = "4.2.0", optional = true }
-sp1-stark = { version = "4.2.0", optional = true }
+sp1-sdk = "5.0.0"
+sp1-prover = { version = "5.0.0", optional = true }
+sp1-stark = { version = "5.0.0", optional = true }
 zkaleido.workspace = true
 
 async-trait = { workspace = true, optional = true }

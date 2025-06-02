@@ -35,7 +35,7 @@ mod tests {
 
     #[test]
     fn test_groth16_verification() {
-        let vk_hex = "00bf077c28baa685b0a9ec0b8d47eb51bc98f5c048f5aa386ea156fe24995a35";
+        let vk_hex = "0000e3572a33647cba427acbaecac23a01e237a8140d2c91b3873457beb5be13";
         let vk: [u8; 32] = hex::decode(vk_hex).unwrap().try_into().unwrap();
         let proof_file = format!("./proofs/fibonacci_sp1_0x{}.proof.bin", vk_hex);
 
