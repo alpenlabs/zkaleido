@@ -7454,6 +7454,7 @@ dependencies = [
  "ark-groth16",
  "ark-serialize 0.5.0",
  "hex",
+ "num-bigint 0.4.6",
  "sp1-verifier",
  "substrate-bn",
  "thiserror 1.0.69",

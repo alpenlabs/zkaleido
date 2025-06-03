@@ -6,6 +6,7 @@ use sp1_verifier::{Groth16Verifier, GROTH16_VK_BYTES};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult};
 
 mod constants;
+mod converter;
 mod error;
 mod types;
 
