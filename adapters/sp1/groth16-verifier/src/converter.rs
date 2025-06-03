@@ -1,38 +1,47 @@
 use core::cmp::Ordering;
 
-use bn::{AffineG1, AffineG2, FieldError, Fq, Fq2};
+use bn::{AffineG1, AffineG2, FieldError, Fq, Fq2, Group, G1};
 use num_bigint::BigUint;
 
 use crate::{
-    constants::{CompressedPointFlag, MASK},
+    constants::{
+        CompressedPointFlag, COMPRESSED_INFINITY, COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK,
+    },
     error::Error,
 };
 
-/// Deserializes an Fq element from a buffer.
-///
-/// If this Fq element is part of a compressed point, the flag that indicates the sign of the
-/// y coordinate is also returned.
-pub(crate) fn deserialize_with_flags(buf: &[u8]) -> Result<(Fq, CompressedPointFlag), Error> {
+fn convert_from_gnark_compressed_to_bn_compressed_g1_bytes(buf: &[u8]) -> Result<[u8; 33], Error> {
     if buf.len() != 32 {
         return Err(Error::InvalidXLength);
+    }
+
+    let flag = buf[0] & MASK;
+    let mut result = [0u8; 33];
+
+    // Set sign byte
+    result[0] = match flag {
+        COMPRESSED_POSITIVE => 2,
+        COMPRESSED_NEGATIVE => 3,
+        COMPRESSED_INFINITY => return Err(Error::InvalidPoint), // Handle infinity case separately
+        _ => return Err(Error::InvalidPoint),
     };
 
-    let m_data = buf[0] & MASK;
-    if m_data == u8::from(CompressedPointFlag::Infinity) {
-        // Checks if the first byte is zero after masking AND the rest of the bytes are zero.
-        if buf[0] & !MASK == 0 && buf[1..].iter().all(|&b| b == 0) {
-            return Err(Error::InvalidPoint);
-        }
-        Ok((Fq::zero(), CompressedPointFlag::Infinity))
-    } else {
-        let mut x_bytes: [u8; 32] = [0u8; 32];
-        x_bytes.copy_from_slice(buf);
-        x_bytes[0] &= !MASK;
+    // Copy x-coordinate with flags cleared
+    result[1..].copy_from_slice(buf);
+    result[1] &= !MASK; // Clear the flag bits
 
-        let x = fq_from_be_bytes_mod_order(&x_bytes).expect("Failed to convert x bytes to Fq");
+    Ok(result)
+}
 
-        Ok((x, m_data.into()))
-    }
+/// Converts a compressed G1 point to an AffineG1 point.
+///
+/// Asserts that the compressed point is represented as a single fq element: the x coordinate
+/// of the point. The y coordinate is then computed from the x coordinate. The final point
+/// is not checked to be on the curve for efficiency.
+pub(crate) fn compressed_x_to_g1_point(buf: &[u8]) -> Result<AffineG1, Error> {
+    let buf = convert_from_gnark_compressed_to_bn_compressed_g1_bytes(buf)?;
+    let g1 = G1::from_compressed(&buf).map_err(Error::Curve)?;
+    AffineG1::from_jacobian(g1).ok_or(Error::InvalidPoint)
 }
 
 /// Converts an uncompressed G2 point to an AffineG2 point.
