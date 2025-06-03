@@ -214,6 +214,7 @@ dependencies = [
  "digest",
  "fnv",
  "merlin",
+ "rayon",
  "sha2",
 ]
 
@@ -246,6 +247,7 @@ dependencies = [
  "num-bigint 0.4.6",
  "num-integer",
  "num-traits",
+ "rayon",
  "zeroize",
 ]
 
@@ -286,6 +288,7 @@ dependencies = [
  "num-bigint 0.4.6",
  "num-traits",
  "paste",
+ "rayon",
  "zeroize",
 ]
 
@@ -348,6 +351,7 @@ dependencies = [
  "ark-relations",
  "ark-serialize 0.5.0",
  "ark-std 0.5.0",
+ "rayon",
 ]
 
 [[package]]
@@ -363,6 +367,7 @@ dependencies = [
  "educe",
  "fnv",
  "hashbrown 0.15.2",
+ "rayon",
 ]
 
 [[package]]
@@ -416,6 +421,7 @@ dependencies = [
  "arrayvec",
  "digest",
  "num-bigint 0.4.6",
+ "rayon",
 ]
 
 [[package]]
@@ -459,6 +465,7 @@ checksum = "246a225cc6131e9ee4f24619af0f19d67761fff15d7ccc22e42b80846e69449a"
 dependencies = [
  "num-traits",
  "rand 0.8.5",
+ "rayon",
 ]
 
 [[package]]
@@ -5978,6 +5985,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-bn"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b5bbfa79abbae15dd642ea8176a21a635ff3c00059961d1ea27ad04e5b441c"
+dependencies = [
+ "byteorder",
+ "crunchy",
+ "lazy_static",
+ "rand 0.8.5",
+ "rustc-hex",
+]
+
+[[package]]
 name = "substrate-bn-succinct"
 version = "0.6.0-v5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7428,8 +7448,15 @@ dependencies = [
 name = "zkaleido-sp1-groth16-verifier"
 version = "0.1.0"
 dependencies = [
+ "ark-bn254",
+ "ark-ec",
+ "ark-ff 0.5.0",
+ "ark-groth16",
+ "ark-serialize 0.5.0",
  "hex",
  "sp1-verifier",
+ "substrate-bn",
+ "thiserror 1.0.69",
  "zkaleido",
 ]
 

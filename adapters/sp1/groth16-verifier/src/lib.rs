@@ -5,6 +5,10 @@
 use sp1_verifier::{Groth16Verifier, GROTH16_VK_BYTES};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult};
 
+mod constants;
+mod error;
+mod types;
+
 /// Verifies a SP1-based Groth16 proof, using a 32-byte verification key.
 ///
 /// This function checks whether the given [`ProofReceipt`] satisfies the constraints represented by

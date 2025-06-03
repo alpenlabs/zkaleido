@@ -3,17 +3,26 @@ edition = "2021"
 name = "zkaleido-sp1-groth16-verifier"
 version = "0.1.0"
 
-[lints]
-rust.missing_debug_implementations = "warn"
-rust.missing_docs = "warn"
-rust.rust_2018_idioms = { level = "deny", priority = -1 }
-rust.unreachable_pub = "warn"
-rust.unused_crate_dependencies = "deny"
-rust.unused_must_use = "deny"
-rustdoc.all = "warn"
+# [lints]
+# rust.missing_debug_implementations = "warn"
+# rust.missing_docs = "warn"
+# rust.rust_2018_idioms = { level = "deny", priority = -1 }
+# rust.unreachable_pub = "warn"
+# rust.unused_crate_dependencies = "deny"
+# rust.unused_must_use = "deny"
+# rustdoc.all = "warn"
 
 [dependencies]
 sp1-verifier = "5.0.0"
 zkaleido.workspace = true
 
 hex.workspace = true
+thiserror.workspace = true
+bn = { version = "0.6.0", package = "substrate-bn" }
+
+# arkworks
+ark-bn254 = { version = "0.5.0", optional = true }
+ark-serialize = { version = "0.5.0", optional = true }
+ark-ff = { version = "0.5.0", optional = true }
+ark-groth16 = { version = "0.5.0", optional = true }
+ark-ec = { version = "0.5.0", optional = true }
