@@ -7454,6 +7454,7 @@ dependencies = [
  "ark-groth16",
  "ark-serialize 0.5.0",
  "blake3",
+ "borsh",
  "hex",
  "num-bigint 0.4.6",
  "sha2",

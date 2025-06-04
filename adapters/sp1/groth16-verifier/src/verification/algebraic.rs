@@ -1,36 +1,9 @@
-use bn::{pairing_batch, AffineG1, AffineG2, Fr, Gt, G1, G2};
-use borsh::BorshSerialize;
+use bn::{pairing_batch, Fr, Gt, G1, G2};
 
-use crate::error::Groth16Error;
-
-/// G1 elements of the verification key.
-#[derive(Clone, PartialEq)]
-pub(crate) struct Groth16G1 {
-    pub(crate) alpha: AffineG1,
-    pub(crate) k: Vec<AffineG1>,
-}
-
-/// G2 elements of the verification key.
-#[derive(Clone, PartialEq)]
-pub(crate) struct Groth16G2 {
-    pub(crate) beta: AffineG2,
-    pub(crate) delta: AffineG2,
-    pub(crate) gamma: AffineG2,
-}
-
-/// Verification key for the Groth16 proof.
-#[derive(Clone, PartialEq)]
-pub(crate) struct Groth16VerifyingKey {
-    pub(crate) g1: Groth16G1,
-    pub(crate) g2: Groth16G2,
-}
-
-/// Proof for the Groth16 verification.
-pub(crate) struct Groth16Proof {
-    pub(crate) ar: AffineG1,
-    pub(crate) krs: AffineG1,
-    pub(crate) bs: AffineG2,
-}
+use crate::{
+    error::Groth16Error,
+    types::{Groth16Proof, Groth16VerifyingKey},
+};
 
 /// Prepare the inputs for the Groth16 verification by combining the public inputs with the
 /// corresponding elements of the verification key.

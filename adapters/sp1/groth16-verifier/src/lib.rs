@@ -5,12 +5,13 @@
 use sp1_verifier::{Groth16Verifier, GROTH16_VK_BYTES};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult};
 
-use crate::verify::SP1Groth16Verifier;
+use crate::verification::SP1Groth16Verifier;
 
-mod converter;
+mod conversion;
 mod error;
 mod types;
 mod utils;
+mod verification;
 mod verify;
 
 /// Verifies a SP1-based Groth16 proof, using a 32-byte verification key.
