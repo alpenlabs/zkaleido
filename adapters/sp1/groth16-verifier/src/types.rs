@@ -1,4 +1,7 @@
-use std::io::{Error, ErrorKind, Read, Result, Write};
+use std::{
+    fmt::{self, Debug, Formatter},
+    io::{Error, ErrorKind, Read, Result, Write},
+};
 
 use bn::{arith::U256, AffineG1, AffineG2, Fq, Fq2, G1, G2};
 use borsh::{BorshDeserialize, BorshSerialize};
@@ -19,7 +22,7 @@ pub(crate) struct Groth16G2 {
 }
 
 /// Verification key for the Groth16 proof.
-#[derive(Clone, PartialEq, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug, PartialEq, BorshSerialize, BorshDeserialize)]
 pub(crate) struct Groth16VerifyingKey {
     pub(crate) g1: Groth16G1,
     pub(crate) g2: Groth16G2,
@@ -158,6 +161,29 @@ fn deserialize_fq2<R: Read>(reader: &mut R) -> Result<Fq2> {
     Ok(Fq2::new(real, imaginary))
 }
 
+impl Debug for Groth16G1 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Groth16G1")
+            .field("alpha", &self.alpha) // AffineG1 already implements Debug
+            .field("k", &self.k) // Vec<AffineG1> implements Debug
+            .finish()
+    }
+}
+
+impl Debug for Groth16G2 {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Groth16G2")
+            // We call `{:?}` on the inner `groups::AffineG2` via `self.beta.0`
+            .field("beta_x", &format_args!("{:?}", self.beta.x()))
+            .field("beta_y", &format_args!("{:?}", self.beta.y()))
+            .field("delta_x", &format_args!("{:?}", self.delta.x()))
+            .field("delta_y", &format_args!("{:?}", self.delta.y()))
+            .field("gamma_x", &format_args!("{:?}", self.gamma.x()))
+            .field("gamma_y", &format_args!("{:?}", self.gamma.y()))
+            .finish()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use sp1_verifier::GROTH16_VK_BYTES;
@@ -171,6 +197,6 @@ mod tests {
         let serialized = borsh::to_vec(&vk).unwrap();
         let deserialized: Groth16VerifyingKey = borsh::from_slice(&serialized).unwrap();
 
-        assert!(vk == deserialized);
+        assert_eq!(vk, deserialized);
     }
 }
