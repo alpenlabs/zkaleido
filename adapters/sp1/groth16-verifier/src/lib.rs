@@ -1,6 +1,6 @@
 //! # zkaleido-sp1-groth16-verifier
 //!
-//! This crate integrates SP1-based Groth16 proof verification based on zkaleido traits.
+//! This crate integrates SP1-based Groth16 proof verification.
 
 mod conversion;
 mod error;
