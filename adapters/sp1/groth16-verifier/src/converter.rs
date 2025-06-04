@@ -4,6 +4,7 @@ use bn::{
     arith::{U256, U512},
     AffineG1, AffineG2, Fq, Fq2, G1, G2,
 };
+use num_bigint::BigUint;
 
 use crate::{
     constants::{
@@ -31,7 +32,14 @@ fn convert_from_gnark_compressed_to_bn_compressed_g1_bytes(buf: &[u8]) -> Result
 
     // Copy x-coordinate with flags cleared
     result[1..].copy_from_slice(buf);
-    result[1] &= !MASK; // Clear the flag bits
+    result[1] &= !MASK;
+
+    let mut modulus_bytes = [0u8; 32];
+    Fq::modulus().to_big_endian(&mut modulus_bytes).unwrap();
+    let modulus = BigUint::from_bytes_be(&modulus_bytes);
+
+    let num = BigUint::from_bytes_be(&result[1..]) % modulus;
+    result[1..].copy_from_slice(&num.to_bytes_be());
 
     Ok(result)
 }
@@ -59,6 +67,13 @@ fn convert_from_gnark_compressed_to_bn_compressed_g2_bytes(
     let mut c1_bytes = [0u8; 32];
     c1_bytes.copy_from_slice(&bytes_64[0..32]);
     c1_bytes[0] &= !MASK; // clear the two high‐bits
+
+    let mut modulus_bytes = [0u8; 32];
+    Fq::modulus().to_big_endian(&mut modulus_bytes).unwrap();
+    let modulus = BigUint::from_bytes_be(&modulus_bytes);
+
+    let num = BigUint::from_bytes_be(&c1_bytes) % modulus;
+    c1_bytes.copy_from_slice(&num.to_bytes_be());
 
     // c₀ is just bytes_64[32..64], no flag bits there.
     let mut c0_bytes = [0u8; 32];
@@ -205,15 +220,66 @@ pub(crate) fn load_groth16_verifying_key_from_bytes(
 
 #[cfg(test)]
 mod tests {
+
     use sp1_verifier::GROTH16_VK_BYTES;
 
     use super::*;
 
     #[test]
     fn test_load_g16_key() {
-        match load_groth16_verifying_key_from_bytes(&GROTH16_VK_BYTES) {
-            Ok(_) => {}
-            Err(e) => println!("{}", e),
+        // dbg!(&GROTH16_VK_BYTES.to_vec());
+        let mut be = [0u8; 32];
+        let vk = load_groth16_verifying_key_from_bytes(&GROTH16_VK_BYTES).unwrap();
+        vk.g1.alpha.x().to_big_endian(&mut be).unwrap();
+        println!("alpha x{:?}", be);
+        vk.g1.alpha.y().to_big_endian(&mut be).unwrap();
+        println!("alpha y{:?}", be);
+
+        for k in vk.g1.k {
+            k.x().to_big_endian(&mut be).unwrap();
+            println!("kx{:?}", be);
+            k.y().to_big_endian(&mut be).unwrap();
+            println!("ky{:?}", be);
         }
+
+        vk.g2.beta.x().real().to_big_endian(&mut be).unwrap();
+        println!("beta x real{:?}", be);
+        vk.g2.beta.x().imaginary().to_big_endian(&mut be).unwrap();
+        println!("beta y im{:?}", be);
+        vk.g2.beta.y().real().to_big_endian(&mut be).unwrap();
+        println!("beta y real{:?}", be);
+        vk.g2.beta.y().imaginary().to_big_endian(&mut be).unwrap();
+        println!("beta y im{:?}", be);
+
+        vk.g2.delta.x().real().to_big_endian(&mut be).unwrap();
+        println!("delta x real{:?}", be);
+        vk.g2.delta.x().imaginary().to_big_endian(&mut be).unwrap();
+        println!("delta x im{:?}", be);
+        vk.g2.delta.y().real().to_big_endian(&mut be).unwrap();
+        println!("delta y real {:?}", be);
+        vk.g2.delta.y().imaginary().to_big_endian(&mut be).unwrap();
+        println!("delta y im{:?}", be);
+
+        vk.g2.gamma.x().real().to_big_endian(&mut be).unwrap();
+        println!("gamma x real{:?}", be);
+        vk.g2.gamma.x().imaginary().to_big_endian(&mut be).unwrap();
+        println!("gamma x im{:?}", be);
+        vk.g2.gamma.y().real().to_big_endian(&mut be).unwrap();
+        println!("gamma y real{:?}", be);
+        vk.g2.gamma.y().imaginary().to_big_endian(&mut be).unwrap();
+        println!("gamma y im{:?}", be);
+    }
+
+    #[test]
+    fn test_fq() {
+        let slice = &[
+            45, 77, 154, 167, 227, 2, 217, 223, 65, 116, 157, 85, 7, 148, 157, 5, 219, 234, 51,
+            251, 177, 108, 100, 59, 34, 245, 153, 162, 190, 109, 242, 226,
+        ];
+        let mut be = [0u8; 32];
+        let fq = Fq::from_slice(slice).unwrap();
+        fq.to_big_endian(&mut be).unwrap();
+        dbg!(fq);
+        println!("{:?}", be);
     }
 }
