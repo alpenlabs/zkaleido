@@ -7442,6 +7442,7 @@ name = "zkaleido-sp1-groth16-verifier"
 version = "0.1.0"
 dependencies = [
  "blake3",
+ "borsh",
  "hex",
  "sha2",
  "sp1-verifier",
