@@ -8,3 +8,5 @@ mod types;
 mod utils;
 mod verification;
 mod verifier;
+
+pub use verifier::SP1Groth16Verifier;

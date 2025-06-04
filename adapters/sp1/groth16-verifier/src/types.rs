@@ -1,7 +1,4 @@
-use bn::{pairing_batch, AffineG1, AffineG2, Fr, Gt, G1, G2};
-use borsh::BorshSerialize;
-
-use crate::error::Groth16Error;
+use bn::{AffineG1, AffineG2};
 
 /// G1 elements of the verification key.
 #[derive(Clone, PartialEq)]
