@@ -14,34 +14,41 @@ use crate::{
     types::{Groth16G1, Groth16G2, Groth16Proof, Groth16VerifyingKey},
 };
 
-fn convert_from_gnark_compressed_to_bn_compressed_g1_bytes(buf: &[u8]) -> Result<[u8; 33], Error> {
+fn compressed_bytes_to_affine_g1(buf: &[u8]) -> Result<AffineG1, Error> {
     if buf.len() != 32 {
         return Err(Error::InvalidXLength);
     }
 
     let flag = buf[0] & MASK;
-    let mut result = [0u8; 33];
-
-    // Set sign byte
-    result[0] = match flag {
-        COMPRESSED_POSITIVE => 2,
-        COMPRESSED_NEGATIVE => 3,
-        COMPRESSED_INFINITY => return Err(Error::InvalidPoint), // Handle infinity case separately
-        _ => return Err(Error::InvalidPoint),
-    };
 
     // Copy x-coordinate with flags cleared
-    result[1..].copy_from_slice(buf);
-    result[1] &= !MASK;
+    let mut x_bytes = [0u8; 32];
+    x_bytes.copy_from_slice(buf);
+    x_bytes[0] &= !MASK;
 
     let mut modulus_bytes = [0u8; 32];
     Fq::modulus().to_big_endian(&mut modulus_bytes).unwrap();
     let modulus = BigUint::from_bytes_be(&modulus_bytes);
+    let num = BigUint::from_bytes_be(&x_bytes) % modulus;
 
-    let num = BigUint::from_bytes_be(&result[1..]) % modulus;
-    result[1..].copy_from_slice(&num.to_bytes_be());
+    // Create Fq from reduced x-coordinate
+    let x_fq = Fq::from_slice(&num.to_bytes_be()).map_err(|_| Error::InvalidPoint)?;
 
-    Ok(result)
+    // Compute both possible y-coordinates
+    let y_squared = (x_fq * x_fq * x_fq) + G1::b();
+    let y = y_squared.sqrt().ok_or(Error::InvalidPoint)?;
+    let neg_y = -y;
+
+    let mut final_y = y;
+    if y.into_u256() > neg_y.into_u256() {
+        if flag == COMPRESSED_POSITIVE {
+            final_y = -y;
+        }
+    } else if flag == COMPRESSED_NEGATIVE {
+        final_y = -y
+    }
+
+    AffineG1::new(x_fq, final_y).map_err(Error::Group)
 }
 
 fn convert_from_gnark_compressed_to_bn_compressed_g2_bytes(
@@ -98,24 +105,6 @@ fn convert_from_gnark_compressed_to_bn_compressed_g2_bytes(
     Ok(result)
 }
 
-/// Converts a compressed G1 point to an G1 point.
-///
-/// Asserts that the compressed point is represented as a single fq element: the x coordinate
-/// of the point. The y coordinate is then computed from the x coordinate. The final point
-/// is not checked to be on the curve for efficiency.
-pub(crate) fn uncompress_g1(buf: &[u8]) -> Result<G1, Error> {
-    let buf = convert_from_gnark_compressed_to_bn_compressed_g1_bytes(buf)?;
-    G1::from_compressed(&buf).map_err(Error::Curve)
-}
-
-fn to_g1_affine(g1: G1) -> Result<AffineG1, Error> {
-    AffineG1::from_jacobian(g1).ok_or(Error::InvalidPoint)
-}
-
-fn to_g2_affine(g2: G2) -> Result<AffineG2, Error> {
-    AffineG2::from_jacobian(g2).ok_or(Error::InvalidPoint)
-}
-
 /// Converts a compressed G2 point to an AffineG2 point.
 ///
 /// Asserts that the compressed point is represented as a single fq2 element: the x coordinate
@@ -125,6 +114,10 @@ fn to_g2_affine(g2: G2) -> Result<AffineG2, Error> {
 pub(crate) fn uncompress_g2(buf: &[u8]) -> Result<G2, Error> {
     let buf = convert_from_gnark_compressed_to_bn_compressed_g2_bytes(buf)?;
     G2::from_compressed(&buf).map_err(Error::Curve)
+}
+
+fn to_g2_affine(g2: G2) -> Result<AffineG2, Error> {
+    AffineG2::from_jacobian(g2).ok_or(Error::InvalidPoint)
 }
 
 /// Converts an uncompressed G1 point to an AffineG1 point.
@@ -191,7 +184,7 @@ pub(crate) fn load_groth16_verifying_key_from_bytes(
     // We don't need to check each compressed point because the Groth16 vkey is a public constant
     // that doesn't usually change. The party using the Groth16 vkey will usually clearly know
     // how the vkey was generated.
-    let g1_alpha = uncompress_g1(&buffer[..32])?;
+    let g1_alpha = compressed_bytes_to_affine_g1(&buffer[..32])?;
     let g2_beta = uncompress_g2(&buffer[64..128])?;
     let g2_gamma = uncompress_g2(&buffer[128..192])?;
     let g2_delta = uncompress_g2(&buffer[224..288])?;
@@ -200,16 +193,13 @@ pub(crate) fn load_groth16_verifying_key_from_bytes(
     let mut k = Vec::new();
     let mut offset = 292;
     for _ in 0..num_k {
-        let point = to_g1_affine(uncompress_g1(&buffer[offset..offset + 32])?)?;
+        let point = compressed_bytes_to_affine_g1(&buffer[offset..offset + 32])?;
         k.push(point);
         offset += 32;
     }
 
     Ok(Groth16VerifyingKey {
-        g1: Groth16G1 {
-            alpha: to_g1_affine(g1_alpha)?,
-            k,
-        },
+        g1: Groth16G1 { alpha: g1_alpha, k },
         g2: Groth16G2 {
             beta: to_g2_affine(-g2_beta)?,
             gamma: to_g2_affine(g2_gamma)?,
