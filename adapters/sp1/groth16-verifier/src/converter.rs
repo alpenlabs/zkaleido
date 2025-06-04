@@ -1,10 +1,6 @@
-use std::io::Read;
+use std::cmp::Ordering;
 
-use bn::{
-    arith::{U256, U512},
-    AffineG1, AffineG2, Fq, Fq2, G1, G2,
-};
-use num_bigint::BigUint;
+use bn::{AffineG1, AffineG2, Fq, Fq2, Group, G1, G2};
 
 use crate::{
     constants::{
@@ -26,98 +22,85 @@ fn compressed_bytes_to_affine_g1(buf: &[u8]) -> Result<AffineG1, Error> {
     x_bytes.copy_from_slice(buf);
     x_bytes[0] &= !MASK;
 
-    let mut modulus_bytes = [0u8; 32];
-    Fq::modulus().to_big_endian(&mut modulus_bytes).unwrap();
-    let modulus = BigUint::from_bytes_be(&modulus_bytes);
-    let num = BigUint::from_bytes_be(&x_bytes) % modulus;
-
     // Create Fq from reduced x-coordinate
-    let x_fq = Fq::from_slice(&num.to_bytes_be()).map_err(|_| Error::InvalidPoint)?;
+    let x_fq = Fq::from_slice(&x_bytes).map_err(|_| Error::InvalidPoint)?;
 
     // Compute both possible y-coordinates
-    let y_squared = (x_fq * x_fq * x_fq) + G1::b();
-    let y = y_squared.sqrt().ok_or(Error::InvalidPoint)?;
-    let neg_y = -y;
-
-    let mut final_y = y;
-    if y.into_u256() > neg_y.into_u256() {
-        if flag == COMPRESSED_POSITIVE {
-            final_y = -y;
-        }
-    } else if flag == COMPRESSED_NEGATIVE {
-        final_y = -y
+    let (y, neg_y) = get_ys_from_x_g1(x_fq)?;
+    match flag {
+        COMPRESSED_NEGATIVE => AffineG1::new(x_fq, neg_y).map_err(Error::Group),
+        COMPRESSED_POSITIVE => AffineG1::new(x_fq, y).map_err(Error::Group),
+        _ => Err(Error::InvalidData),
     }
-
-    AffineG1::new(x_fq, final_y).map_err(Error::Group)
 }
 
-fn convert_from_gnark_compressed_to_bn_compressed_g2_bytes(
-    bytes_64: &[u8],
-) -> Result<[u8; 65], Error> {
-    if bytes_64.len() != 64 {
+fn compressed_bytes_to_affine_g2(buf: &[u8]) -> Result<AffineG2, Error> {
+    if buf.len() != 64 {
         return Err(Error::InvalidXLength);
     }
 
-    let flag = bytes_64[0] & MASK;
-    let mut result = [0u8; 65];
+    let flag = buf[0] & MASK;
 
-    // Set sign byte
-    result[0] = match flag {
-        COMPRESSED_POSITIVE => 10,
-        COMPRESSED_NEGATIVE => 11,
-        COMPRESSED_INFINITY => return Err(Error::InvalidPoint), // Handle infinity case separately
-        _ => return Err(Error::InvalidPoint),
-    };
-
-    // Copy out c₁‐bytes (first 32 bytes) and mask out the two MSBs because they were used for
-    // gnark's flag.
-    let mut c1_bytes = [0u8; 32];
-    c1_bytes.copy_from_slice(&bytes_64[0..32]);
-    c1_bytes[0] &= !MASK; // clear the two high‐bits
-
-    let mut modulus_bytes = [0u8; 32];
-    Fq::modulus().to_big_endian(&mut modulus_bytes).unwrap();
-    let modulus = BigUint::from_bytes_be(&modulus_bytes);
-
-    let num = BigUint::from_bytes_be(&c1_bytes) % modulus;
-    c1_bytes.copy_from_slice(&num.to_bytes_be());
-
-    // c₀ is just bytes_64[32..64], no flag bits there.
-    let mut c0_bytes = [0u8; 32];
-    c0_bytes.copy_from_slice(&bytes_64[32..64]);
-
-    // Step 4. Turn both 32‐byte big‐endian limbs into U256
-    let c1_u256 = U256::from_slice(&c1_bytes).map_err(|_| Error::InvalidData)?;
-    let c0_u256 = U256::from_slice(&c0_bytes).map_err(|_| Error::InvalidData)?;
-
-    let fq_modulus: U256 = Fq::modulus();
-    let u512: U512 = U512::new(&c1_u256, &c0_u256, &fq_modulus);
-
-    let limbs: [u128; 4] = u512.0;
-    for (i, limb) in limbs.iter().enumerate() {
-        // byte‐offset within the 64‐byte big‐endian field
-        let offset_within_64 = (3 - i) * 16;
-        // BUT we must shift by +1 to account for result[0] = sign.
-        let dest_offset = 1 + offset_within_64;
-        result[dest_offset..dest_offset + 16].copy_from_slice(&limb.to_be_bytes());
+    if flag == COMPRESSED_INFINITY {
+        return AffineG2::from_jacobian(G2::one()).ok_or(Error::InvalidData);
     }
 
-    Ok(result)
+    // Copy x-coordinate with flags cleared
+    let mut x1_bytes = [0u8; 32];
+    x1_bytes.copy_from_slice(&buf[0..32]);
+    x1_bytes[0] &= !MASK;
+    let x1 = Fq::from_slice(&x1_bytes).map_err(Error::Field)?;
+
+    let mut x0_bytes = [0u8; 32];
+    x0_bytes.copy_from_slice(&buf[32..64]);
+    let x0 = Fq::from_slice(&x0_bytes).map_err(Error::Field)?;
+
+    // Create Fq2 from reduced x-coordinate
+    let x_fq = Fq2::new(x0, x1);
+
+    let (y, neg_y) = get_ys_from_x_g2(x_fq)?;
+    match flag {
+        COMPRESSED_NEGATIVE => AffineG2::new(x_fq, neg_y).map_err(Error::Group),
+        COMPRESSED_POSITIVE => AffineG2::new(x_fq, y).map_err(Error::Group),
+        _ => Err(Error::InvalidData),
+    }
 }
 
-/// Converts a compressed G2 point to an AffineG2 point.
-///
-/// Asserts that the compressed point is represented as a single fq2 element: the x coordinate
-/// of the point.
-/// Then, gets the y coordinate from the x coordinate.
-/// For efficiency, this function does not check that the final point is on the curve.
-pub(crate) fn uncompress_g2(buf: &[u8]) -> Result<G2, Error> {
-    let buf = convert_from_gnark_compressed_to_bn_compressed_g2_bytes(buf)?;
-    G2::from_compressed(&buf).map_err(Error::Curve)
+fn get_ys_from_x_g2(x: Fq2) -> Result<(Fq2, Fq2), Error> {
+    // Compute both possible y-coordinates
+    let y_squared = (x * x * x) + G2::b();
+    let y = y_squared.sqrt().ok_or(Error::InvalidPoint)?;
+    let neg_y = -y;
+
+    // Compare lexicographically: imaginary part first, then real part
+    let is_y_less_than_neg_y = match y
+        .imaginary()
+        .into_u256()
+        .cmp(&neg_y.imaginary().into_u256())
+    {
+        Ordering::Less => true,
+        Ordering::Greater => false,
+        Ordering::Equal => y.real().into_u256() < neg_y.real().into_u256(),
+    };
+
+    if is_y_less_than_neg_y {
+        Ok((y, neg_y))
+    } else {
+        Ok((neg_y, y))
+    }
 }
 
-fn to_g2_affine(g2: G2) -> Result<AffineG2, Error> {
-    AffineG2::from_jacobian(g2).ok_or(Error::InvalidPoint)
+fn get_ys_from_x_g1(x: Fq) -> Result<(Fq, Fq), Error> {
+    // Compute both possible y-coordinates
+    let y_squared = (x * x * x) + G1::b();
+    let y = y_squared.sqrt().ok_or(Error::InvalidPoint)?;
+    let neg_y = -y;
+
+    if y.into_u256() < neg_y.into_u256() {
+        Ok((y, neg_y))
+    } else {
+        Ok((neg_y, y))
+    }
 }
 
 /// Converts an uncompressed G1 point to an AffineG1 point.
@@ -185,9 +168,11 @@ pub(crate) fn load_groth16_verifying_key_from_bytes(
     // that doesn't usually change. The party using the Groth16 vkey will usually clearly know
     // how the vkey was generated.
     let g1_alpha = compressed_bytes_to_affine_g1(&buffer[..32])?;
-    let g2_beta = uncompress_g2(&buffer[64..128])?;
-    let g2_gamma = uncompress_g2(&buffer[128..192])?;
-    let g2_delta = uncompress_g2(&buffer[224..288])?;
+    let g2_beta = compressed_bytes_to_affine_g2(&buffer[64..128])?;
+    let g2_gamma = compressed_bytes_to_affine_g2(&buffer[128..192])?;
+    let g2_delta = compressed_bytes_to_affine_g2(&buffer[224..288])?;
+
+    let neg_g2_beta = AffineG2::from_jacobian(-G2::from(g2_beta)).ok_or(Error::InvalidPoint)?;
 
     let num_k = u32::from_be_bytes([buffer[288], buffer[289], buffer[290], buffer[291]]);
     let mut k = Vec::new();
@@ -201,9 +186,9 @@ pub(crate) fn load_groth16_verifying_key_from_bytes(
     Ok(Groth16VerifyingKey {
         g1: Groth16G1 { alpha: g1_alpha, k },
         g2: Groth16G2 {
-            beta: to_g2_affine(-g2_beta)?,
-            gamma: to_g2_affine(g2_gamma)?,
-            delta: to_g2_affine(g2_delta)?,
+            beta: neg_g2_beta,
+            gamma: g2_gamma,
+            delta: g2_delta,
         },
     })
 }
