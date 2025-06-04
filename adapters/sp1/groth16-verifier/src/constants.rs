@@ -1,13 +1,3 @@
-/// Gnark (and arkworks) use the 2 most significant bits to encode the flag for a compressed
-/// G1 point.
-/// https://github.com/Consensys/gnark-crypto/blob/a7d721497f2a98b1f292886bb685fd3c5a90f930/ecc/bn254/marshal.go#L32-L42
-pub(crate) const MASK: u8 = 0b11 << 6;
-
-/// The flags for a positive, negative, or infinity compressed point.
-pub(crate) const COMPRESSED_POSITIVE: u8 = 0b10 << 6;
-pub(crate) const COMPRESSED_NEGATIVE: u8 = 0b11 << 6;
-pub(crate) const COMPRESSED_INFINITY: u8 = 0b01 << 6;
-
 pub(crate) const VK_HASH_PREFIX_LENGTH: usize = 4;
 pub(crate) const GROTH16_PROOF_LENGTH: usize = 256;
 

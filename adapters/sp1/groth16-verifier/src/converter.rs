@@ -3,12 +3,21 @@ use std::cmp::Ordering;
 use bn::{AffineG1, AffineG2, Fq, Fq2, Group, G1, G2};
 
 use crate::{
-    constants::{
-        COMPRESSED_INFINITY, COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, GROTH16_PROOF_LENGTH, MASK,
-    },
     error::{Error, Groth16Error},
     types::{Groth16G1, Groth16G2, Groth16Proof, Groth16VerifyingKey},
 };
+
+/// Gnark (and arkworks) use the 2 most significant bits to encode the flag for a compressed
+/// G1 point.
+/// https://github.com/Consensys/gnark-crypto/blob/a7d721497f2a98b1f292886bb685fd3c5a90f930/ecc/bn254/marshal.go#L32-L42
+pub(crate) const MASK: u8 = 0b11 << 6;
+
+/// The flags for a positive, negative, or infinity compressed point.
+pub(crate) const COMPRESSED_POSITIVE: u8 = 0b10 << 6;
+pub(crate) const COMPRESSED_NEGATIVE: u8 = 0b11 << 6;
+pub(crate) const COMPRESSED_INFINITY: u8 = 0b01 << 6;
+
+pub(crate) const GROTH16_PROOF_LENGTH: usize = 256;
 
 fn compressed_bytes_to_affine_g1(buf: &[u8]) -> Result<AffineG1, Error> {
     if buf.len() != 32 {

@@ -3,12 +3,13 @@ use sha2::{Digest, Sha256};
 use sp1_verifier::hash_public_inputs_with_fn;
 
 use crate::{
-    constants::VK_HASH_PREFIX_LENGTH,
     converter::{load_groth16_proof_from_bytes, load_groth16_verifying_key_from_bytes},
     error::{Error, Groth16Error},
     types::verify_groth16_algebraic,
     utils::{blake3_hash, hash_public_inputs},
 };
+
+pub(crate) const VK_HASH_PREFIX_LENGTH: usize = 4;
 
 pub struct SP1Groth16Verifier;
 

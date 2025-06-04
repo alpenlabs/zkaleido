@@ -7,7 +7,6 @@ use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult};
 
 use crate::verify::SP1Groth16Verifier;
 
-mod constants;
 mod converter;
 mod error;
 mod types;
