@@ -35,31 +35,32 @@ pub struct SP1Groth16Verifier {
 }
 
 impl SP1Groth16Verifier {
-    /// Loads a new `SP1Groth16Verifier` from a compressed Groth16 verifying key and a program ID.
+    /// Loads a new `SP1Groth16Verifier` from a gnark compressed Groth16 verifying key and a
+    /// program ID.
     ///
     /// # Parameters
-    /// - `vk_bytes`: Byte slice containing the compressed Groth16 verifying key. Typically, this is
-    ///   the [`static@crate::GROTH16_VK_BYTES`] constant for the current SP1 version.
+    /// - `vk_bytes`: Byte slice containing the gnark compressed Groth16 verifying key. Typically,
+    ///   this is the [`static@sp1_verifier::GROTH16_VK_BYTES`] constant for the given SP1 version.
     /// - `program_id`: A 32-byte array representing the Fr-element identifier for the SP1 program.
     ///
     /// # Returns
     /// - `Ok(SP1Groth16Verifier)`: If the verifying key and program ID are successfully parsed.
     /// - `Err(Error)`: If `vk_bytes` is invalid or cannot be parsed into a verifying key.
-    pub fn load(vk_bytes: &[u8], program_vk_hash: [u8; 32]) -> Result<Self, Error> {
+    pub fn load(vk_bytes: &[u8], program_vk_hash: [u8; 32]) -> Result<Self, Groth16Error> {
         // Compute the SHA-256 hash of `vk_bytes` and take the first `VK_HASH_PREFIX_LENGTH` bytes.
         // This prefix is prepended to every raw Groth16 proof by SP1 to signal which verifying key
         // was used during proving.
         let groth16_vk_hash: [u8; 4] = Sha256::digest(vk_bytes)[..VK_HASH_PREFIX_LENGTH]
             .try_into()
-            .map_err(|_| Groth16Error::GeneralError(Error::InvalidData))
-            .unwrap();
+            .map_err(|_| Groth16Error::GeneralError(Error::InvalidData))?;
 
         // Parse the Groth16 verifying key from its byte representation.
         // This returns a `Groth16VerifyingKey` that can be used for algebraic verification.
-        let groth16_vk = load_groth16_verifying_key_from_bytes(vk_bytes).unwrap();
+        let groth16_vk = load_groth16_verifying_key_from_bytes(vk_bytes)?;
 
         // Parse the program ID (Fr element) from its 32-byte big-endian encoding.
-        let program_vk_hash = Fr::from_slice(&program_vk_hash).unwrap();
+        let program_vk_hash =
+            Fr::from_slice(&program_vk_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
 
         Ok(SP1Groth16Verifier {
             vk: groth16_vk,
@@ -71,9 +72,8 @@ impl SP1Groth16Verifier {
     /// Verifies a Groth16 proof against the given public values.
     ///
     /// The proof is expected to be encoded as:
-    /// ```
     /// [ vk_hash_prefix (VK_HASH_PREFIX_LENGTH bytes) || raw_groth16_proof_bytes ]
-    /// ```
+    ///
     /// # Parameters
     /// - `proof`: Byte slice containing the prefixed Groth16 proof.
     /// - `public_values`: Byte slice representing the public values for the SP1 circuit.
@@ -96,13 +96,14 @@ impl SP1Groth16Verifier {
 
         // Extract the raw Groth16 proof (bytes after the prefix) and parse it.
         let raw_proof_bytes = &proof[VK_HASH_PREFIX_LENGTH..];
-        let proof = load_groth16_proof_from_bytes(raw_proof_bytes).unwrap();
+        let proof = load_groth16_proof_from_bytes(raw_proof_bytes)?;
 
         // Compute Fr element for hash(public_values) using SHA-256. SP1’s Groth16 circuit expects
         // two public inputs: a. `program_id`, b. `hash(public_values)`.  Since SP1 allows either
         // SHA-256 or Blake3, we try SHA-256 first.
         let pp_sha2_hash = hash_public_inputs_with_fn(public_values, sha256_hash);
-        let fr_sha2 = Fr::from_slice(&pp_sha2_hash).unwrap();
+        let fr_sha2 =
+            Fr::from_slice(&pp_sha2_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
 
         // Attempt algebraic verification with SHA-256 hash as the second input.
         if verify_groth16_algebraic(&self.vk, &proof, &[self.program_vk_hash, fr_sha2]).is_ok() {
@@ -111,7 +112,8 @@ impl SP1Groth16Verifier {
 
         // If SHA-256 verification fails, compute the Blake3 hash of `public_values` instead.
         let pp_blake3_hash = hash_public_inputs_with_fn(public_values, blake3_hash);
-        let fr_blake3 = Fr::from_slice(&pp_blake3_hash).unwrap();
+        let fr_blake3 =
+            Fr::from_slice(&pp_blake3_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
 
         // Retry algebraic verification using Blake3 hash as the second input.
         verify_groth16_algebraic(&self.vk, &proof, &[self.program_vk_hash, fr_blake3])
