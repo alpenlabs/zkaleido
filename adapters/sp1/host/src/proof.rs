@@ -1,5 +1,5 @@
 use sp1_sdk::{SP1Proof, SP1ProofWithPublicValues, SP1PublicValues};
-use zkaleido::{Proof, ProofReceipt, PublicValues, ZkVmProofError};
+use zkaleido::{Proof, ProofReceipt, PublicValues, ZkVm, ZkVmProofError};
 
 #[derive(Debug, Clone)]
 pub struct SP1ProofReceipt(SP1ProofWithPublicValues);
@@ -62,6 +62,6 @@ impl TryFrom<SP1ProofReceipt> for ProofReceipt {
         let proof = Proof::new(proof_bytes);
         let public_values = PublicValues::new(sp1_receipt.public_values.to_vec());
 
-        Ok(ProofReceipt::new(proof, public_values))
+        Ok(ProofReceipt::new(proof, public_values, ZkVm::SP1))
     }
 }

@@ -1,5 +1,5 @@
 use risc0_zkvm::{InnerReceipt, Receipt};
-use zkaleido::{Proof, ProofReceipt, PublicValues, ZkVmProofError};
+use zkaleido::{Proof, ProofReceipt, PublicValues, ZkVm, ZkVmProofError};
 
 #[derive(Debug, Clone)]
 pub struct Risc0ProofReceipt(Receipt);
@@ -51,6 +51,6 @@ impl TryFrom<Risc0ProofReceipt> for ProofReceipt {
         };
         let proof = Proof::new(proof_bytes);
         let public_values = PublicValues::new(value.0.journal.bytes.to_vec());
-        Ok(ProofReceipt::new(proof, public_values))
+        Ok(ProofReceipt::new(proof, public_values, ZkVm::Risc0))
     }
 }
