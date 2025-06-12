@@ -1,8 +1,8 @@
 use std::{fmt, sync::Arc};
 
 use zkaleido::{
-    Proof, ProofReceipt, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError,
-    ZkVmExecutor, ZkVmHost, ZkVmProver, ZkVmResult, ZkVmVerifier,
+    Proof, ProofReceipt, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm,
+    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmProver, ZkVmResult, ZkVmVerifier,
 };
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
@@ -51,7 +51,7 @@ impl ZkVmProver for NativeHost {
     ) -> ZkVmResult<NativeProofReceipt> {
         let public_values = self.execute(native_machine)?;
         let proof = Proof::default();
-        Ok(ProofReceipt::new(proof, public_values).try_into()?)
+        Ok(ProofReceipt::new(proof, public_values, ZkVm::Native).try_into()?)
     }
 }
 

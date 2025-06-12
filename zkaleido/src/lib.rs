@@ -15,6 +15,9 @@
 //! - **Error Handling**: A set of error enums (e.g., `ZkVmError`) provides comprehensive error
 //!   reporting and integration with Rust's `thiserror` crate for detailed diagnostics.
 
+use std::fmt::{Display, Formatter, Result};
+
+use arbitrary::Arbitrary;
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
@@ -48,12 +51,14 @@ pub use verifier::*;
     Clone,
     Copy,
     PartialEq,
+    Default,
     Eq,
     Hash,
     BorshSerialize,
     BorshDeserialize,
     Serialize,
     Deserialize,
+    Arbitrary,
 )]
 pub enum ZkVm {
     /// SP1 ZKVM
@@ -61,5 +66,17 @@ pub enum ZkVm {
     /// Risc0 ZKVM
     Risc0,
     /// Native ZKVM
+    #[default]
     Native,
+}
+
+impl Display for ZkVm {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        let s = match self {
+            ZkVm::SP1 => "SP1",
+            ZkVm::Risc0 => "Risc0",
+            ZkVm::Native => "Native",
+        };
+        write!(f, "{}", s)
+    }
 }
