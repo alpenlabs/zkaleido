@@ -1,5 +1,5 @@
 use risc0_zkvm::{InnerReceipt, Receipt};
-use zkaleido::{Proof, ProofReceipt, PublicValues, ZkVm, ZkVmProofError};
+use zkaleido::{Mismatched, Proof, ProofReceipt, PublicValues, ZkVm, ZkVmProofError};
 
 #[derive(Debug, Clone)]
 pub struct Risc0ProofReceipt(Receipt);
@@ -32,6 +32,12 @@ impl TryFrom<ProofReceipt> for Risc0ProofReceipt {
 impl TryFrom<&ProofReceipt> for Risc0ProofReceipt {
     type Error = ZkVmProofError;
     fn try_from(value: &ProofReceipt) -> Result<Self, Self::Error> {
+        if value.zkvm() != &ZkVm::Risc0 {
+            Err(Mismatched {
+                expected: ZkVm::Risc0,
+                actual: *value.zkvm(),
+            })?
+        }
         let journal = value.public_values().as_bytes().to_vec();
         let inner: InnerReceipt = bincode::deserialize(value.proof().as_bytes())
             .map_err(|e| ZkVmProofError::DataFormat(e.into()))?;

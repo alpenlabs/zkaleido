@@ -1,5 +1,5 @@
 use sp1_sdk::{SP1Proof, SP1ProofWithPublicValues, SP1PublicValues};
-use zkaleido::{Proof, ProofReceipt, PublicValues, ZkVm, ZkVmProofError};
+use zkaleido::{Mismatched, Proof, ProofReceipt, PublicValues, ZkVm, ZkVmProofError};
 
 #[derive(Debug, Clone)]
 pub struct SP1ProofReceipt(SP1ProofWithPublicValues);
@@ -32,6 +32,12 @@ impl TryFrom<ProofReceipt> for SP1ProofReceipt {
 impl TryFrom<&ProofReceipt> for SP1ProofReceipt {
     type Error = ZkVmProofError;
     fn try_from(value: &ProofReceipt) -> Result<Self, Self::Error> {
+        if value.zkvm() != &ZkVm::SP1 {
+            Err(Mismatched {
+                expected: ZkVm::SP1,
+                actual: *value.zkvm(),
+            })?
+        }
         let public_values = SP1PublicValues::from(value.public_values().as_bytes());
         let proof: SP1Proof = bincode::deserialize(value.proof().as_bytes())
             .map_err(|e| ZkVmProofError::DataFormat(e.into()))?;
