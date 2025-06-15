@@ -13,7 +13,13 @@ rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
 [dependencies]
-sp1-verifier = "5.0.0"
-zkaleido.workspace = true
+borsh.workspace = true
+blake3 = { version = "1.6.1", default-features = false }
+bn = { version = "0.6.0", package = "substrate-bn" }
+sha2.workspace = true
+thiserror.workspace = true
 
+[dev-dependencies]
+sp1-verifier = "5.0.0"
 hex.workspace = true
+zkaleido.workspace = true

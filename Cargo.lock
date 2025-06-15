@@ -5978,6 +5978,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "substrate-bn"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "72b5bbfa79abbae15dd642ea8176a21a635ff3c00059961d1ea27ad04e5b441c"
+dependencies = [
+ "byteorder",
+ "crunchy",
+ "lazy_static",
+ "rand 0.8.5",
+ "rustc-hex",
+]
+
+[[package]]
 name = "substrate-bn-succinct"
 version = "0.6.0-v5.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7428,8 +7441,13 @@ dependencies = [
 name = "zkaleido-sp1-groth16-verifier"
 version = "0.1.0"
 dependencies = [
+ "blake3",
+ "borsh",
  "hex",
+ "sha2",
  "sp1-verifier",
+ "substrate-bn",
+ "thiserror 1.0.69",
  "zkaleido",
 ]
 
