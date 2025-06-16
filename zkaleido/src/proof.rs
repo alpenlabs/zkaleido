@@ -4,7 +4,7 @@ use arbitrary::Arbitrary;
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
-use crate::{ZkVmError, ZkVmResult};
+use crate::{ZkVm, ZkVmError, ZkVmResult};
 
 /// Macro to define a newtype wrapper around `Vec<u8>` with common implementations.
 macro_rules! define_byte_wrapper {
@@ -90,14 +90,17 @@ pub struct ProofReceipt {
     proof: Proof,
     /// The public values associated with the proof.
     public_values: PublicValues,
+    /// ZKVM used to generate this proof
+    zkvm: ZkVm,
 }
 
 impl ProofReceipt {
     /// Creates a new `ProofReceipt` from proof and it's associated public values
-    pub fn new(proof: Proof, public_values: PublicValues) -> Self {
+    pub fn new(proof: Proof, public_values: PublicValues, zkvm: ZkVm) -> Self {
         Self {
             proof,
             public_values,
+            zkvm,
         }
     }
 
@@ -109,6 +112,11 @@ impl ProofReceipt {
     /// Returns the public values associated with the proof.
     pub fn public_values(&self) -> &PublicValues {
         &self.public_values
+    }
+
+    /// Returns the ZKVM used to generate the proof.
+    pub fn zkvm(&self) -> &ZkVm {
+        &self.zkvm
     }
 
     /// Saves the proof to a path.
@@ -181,7 +189,18 @@ impl VerifyingKeyCommitment {
 }
 
 /// Enumeration of proof types supported by the system.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    Eq,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    Arbitrary,
+)]
 pub enum ProofType {
     /// Represents a Groth16 proof.
     Groth16,
