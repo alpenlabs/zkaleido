@@ -15,7 +15,7 @@ CARGO_INSTALL_EXTRA_FLAGS ?=
 FEATURES ?=
 
 # List of programs
-PROGRAMS ?= fibonacci
+PROGRAMS ?= groth16-verify
 
 # ZkVm to use
 ZKVM ?= risc0
