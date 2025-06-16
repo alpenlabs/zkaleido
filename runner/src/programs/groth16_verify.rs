@@ -1,4 +1,4 @@
-use groth16_verify::{Groth16VerifyInput, Groth16VerifyProgram};
+use groth16_verify::{program::Groth16VerifyProgram, input::Groth16VerifyInput};
 use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgramPerf};
 
 fn perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {

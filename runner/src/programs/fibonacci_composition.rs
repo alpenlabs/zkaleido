@@ -1,5 +1,5 @@
-use fibonacci::FibProgram;
-use fibonacci_composition::{FibCompositionInput, FibCompositionProgram};
+use fibonacci::program::FibProgram;
+use fibonacci_composition::program::{FibCompositionInput, FibCompositionProgram};
 use zkaleido::{
     AggregationInput, PerformanceReport, ZkVmHost, ZkVmHostPerf, ZkVmProgram, ZkVmProgramPerf,
 };
