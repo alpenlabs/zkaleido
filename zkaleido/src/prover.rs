@@ -20,6 +20,9 @@ pub trait ZkVmExecutor: Send + Sync + Clone + Debug + 'static {
 
     /// Returns the ELF for the loaded program
     fn get_elf(&self) -> &[u8];
+
+    /// Save the generated trace
+    fn save_trace(&self, trace_name: &str);
 }
 
 /// A trait implemented by types that not only execute zkVM programs, but also produce proofs.

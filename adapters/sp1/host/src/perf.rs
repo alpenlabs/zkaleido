@@ -13,16 +13,6 @@ impl ZkVmHostPerf for SP1Host {
         &self,
         input: <Self::Input<'a> as zkaleido::ZkVmInputBuilder<'a>>::Input,
     ) -> PerformanceReport {
-        // If the environment variable "ZKVM_PROFILING_DUMP" is set to "1" or "true"
-        // (case-insensitive), then enable profiling.
-        if std::env::var("ZKVM_PROFILING_DUMP")
-            .map(|v| v == "1" || v.to_lowercase() == "true")
-            .unwrap_or(false)
-        {
-            let profiling_file_name = format!("{:?}.trace_profile", self);
-            std::env::set_var("TRACE_FILE", profiling_file_name);
-        }
-
         let prover = SP1Prover::<CpuProverComponents>::new();
         let elf = self.get_elf();
 
@@ -32,10 +22,6 @@ impl ZkVmHostPerf for SP1Host {
 
         let (_, execution_duration) =
             time_operation(|| prover.execute(elf, &input, context.clone()).unwrap());
-
-        // Remove the variable after execution to avoid duplication of trace generation in perf
-        // report
-        std::env::remove_var("TRACE_FILE");
 
         // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
         // then do not generate the proof metrics

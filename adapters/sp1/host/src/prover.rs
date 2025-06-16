@@ -30,6 +30,11 @@ impl ZkVmExecutor for SP1Host {
     fn get_elf(&self) -> &[u8] {
         &self.proving_key.elf
     }
+
+    fn save_trace(&self, trace_name: &str) {
+        let profiling_file_name = format!("{}_{:?}.trace_profile", trace_name, &self);
+        std::env::set_var("TRACE_FILE", profiling_file_name);
+    }
 }
 
 impl ZkVmProver for SP1Host {
