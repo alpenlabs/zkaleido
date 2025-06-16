@@ -9,7 +9,7 @@ impl ZkVmProgram for Risc0Groth16VerifyProgram {
     type Output = bool;
 
     fn name() -> String {
-        "risc0_groth16_verify".to_string()
+        "groth16_verify_risc0".to_string()
     }
 
     fn proof_type() -> zkaleido::ProofType {

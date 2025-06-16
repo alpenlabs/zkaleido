@@ -40,7 +40,7 @@ pub mod tests {
     use zkaleido::ZkVmProgram;
     use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
-    use crate::{program::FibProgram, process_fibonacci};
+    use crate::{process_fibonacci, program::FibProgram};
 
     pub fn get_native_host() -> NativeHost {
         NativeHost {

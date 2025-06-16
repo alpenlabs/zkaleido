@@ -40,7 +40,7 @@ mod tests {
     use zkaleido::ZkVmProgram;
     use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
-    use crate::{program::ShaChainProgram, process_sha2_chain};
+    use crate::{process_sha2_chain, program::ShaChainProgram};
 
     fn get_native_host() -> NativeHost {
         NativeHost {
