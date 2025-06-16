@@ -18,7 +18,8 @@ members = [
   # examples
   "examples/fibonacci-composition",
   "examples/fibonacci",
-  "examples/groth16-verify",
+  "examples/groth16-verify-sp1",
+  "examples/groth16-verify-risc0",
   "examples/sha2-chain",
   "examples/schnorr-sig-verify",
 ]
@@ -35,7 +36,8 @@ fibonacci = { path = "examples/fibonacci" }
 fibonacci-composition = { path = "examples/fibonacci-composition" }
 sha2-chain = { path = "examples/sha2-chain" }
 schnorr-sig-verify = { path = "examples/schnorr-sig-verify" }
-groth16-verify = { path = "examples/groth16-verify" }
+groth16-verify-sp1 = { path = "examples/groth16-verify-sp1" }
+groth16-verify-risc0 = { path = "examples/groth16-verify-risc0" }
 
 arbitrary = { version = "1.3.2", features = ["derive"] }
 async-trait = "0.1.86"

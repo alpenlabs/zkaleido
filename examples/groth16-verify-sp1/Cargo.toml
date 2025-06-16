@@ -1,0 +1,11 @@
+[package]
+name = "groth16-verify-sp1"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+serde.workspace = true
+zkaleido-sp1-groth16-verifier = { path = "../../adapters/sp1/groth16-verifier" }
+zkaleido = { path = "../../zkaleido" }
+zkaleido-native-adapter = { path = "../../adapters/native" }
+hex.workspace = true

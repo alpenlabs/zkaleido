@@ -46,6 +46,6 @@ jobs:
           --github-token "${{ secrets.GITHUB_TOKEN }}" \
           --pr-number "${{ github.event.pull_request.number }}" \
           --commit-hash "${{ github.sha }}" \
-          --programs fibonacci,sha2-chain,schnorr-sig-verify
+          --programs fibonacci,sha2-chain,schnorr-sig-verify,groth16-verify-sp1,groth16-verify-risc0
         env:
           RUSTFLAGS: "-C target-cpu=native -C link-arg=-fuse-ld=lld"

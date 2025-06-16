@@ -4,7 +4,8 @@ use clap::ValueEnum;
 
 mod fibonacci;
 mod fibonacci_composition;
-mod groth16_verify;
+mod groth16_verify_risc0;
+mod groth16_verify_sp1;
 mod schnorr;
 mod sha2;
 
@@ -17,7 +18,8 @@ pub enum GuestProgram {
     FibonacciComposition,
     Sha2Chain,
     SchnorrSigVerify,
-    Groth16Verify,
+    Groth16VerifySP1,
+    Groth16VerifyRisc0,
 }
 
 impl FromStr for GuestProgram {
@@ -29,7 +31,8 @@ impl FromStr for GuestProgram {
             "fibonacci-composition" => Ok(GuestProgram::FibonacciComposition),
             "sha2-chain" => Ok(GuestProgram::Sha2Chain),
             "schnorr-sig-verify" => Ok(GuestProgram::SchnorrSigVerify),
-            "groth16-verifier" => Ok(GuestProgram::Groth16Verify),
+            "groth16-verify-sp1" => Ok(GuestProgram::Groth16VerifySP1),
+            "groth16-verify-risc0" => Ok(GuestProgram::Groth16VerifyRisc0),
             // Add more matches
             _ => Err(format!("unknown program: {}", s)),
         }
@@ -50,7 +53,8 @@ pub fn run_sp1_programs(programs: &[GuestProgram]) -> Vec<PerformanceReport> {
             }
             GuestProgram::Sha2Chain => sha2::sp1_sha_report(),
             GuestProgram::SchnorrSigVerify => schnorr::sp1_schnorr_sig_verify_report(),
-            GuestProgram::Groth16Verify => groth16_verify::sp1_groth16_verify(),
+            GuestProgram::Groth16VerifySP1 => groth16_verify_sp1::sp1_groth16_verify(),
+            GuestProgram::Groth16VerifyRisc0 => groth16_verify_risc0::sp1_groth16_verify(),
         })
         .map(Into::into)
         .collect()
@@ -70,7 +74,8 @@ pub fn run_risc0_programs(programs: &[GuestProgram]) -> Vec<PerformanceReport> {
             }
             GuestProgram::Sha2Chain => sha2::risc0_sha_report(),
             GuestProgram::SchnorrSigVerify => schnorr::risc0_schnorr_sig_verify_report(),
-            GuestProgram::Groth16Verify => groth16_verify::risc0_groth16_verify(),
+            GuestProgram::Groth16VerifySP1 => groth16_verify_sp1::risc0_groth16_verify(),
+            GuestProgram::Groth16VerifyRisc0 => groth16_verify_risc0::risc0_groth16_verify(),
         })
         .map(Into::into)
         .collect()

@@ -1,12 +1,12 @@
 use zkaleido::{ProofType, ZkVmInputResult, ZkVmProgram, ZkVmProgramPerf};
 
-use crate::input::Groth16VerifyInput;
+use crate::input::SP1Groth16VerifyInput;
 
-pub struct Groth16VerifyProgram;
+pub struct SP1Groth16VerifyProgram;
 
-impl ZkVmProgram for Groth16VerifyProgram {
-    type Input = Groth16VerifyInput;
-    type Output = (bool, bool);
+impl ZkVmProgram for SP1Groth16VerifyProgram {
+    type Input = SP1Groth16VerifyInput;
+    type Output = bool;
 
     fn name() -> String {
         "groth16_verify".to_string()
@@ -33,7 +33,7 @@ impl ZkVmProgram for Groth16VerifyProgram {
     }
 }
 
-impl ZkVmProgramPerf for Groth16VerifyProgram {}
+impl ZkVmProgramPerf for SP1Groth16VerifyProgram {}
 
 #[cfg(test)]
 mod tests {
@@ -42,12 +42,14 @@ mod tests {
     use zkaleido::ZkVmProgram;
     use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
-    use crate::{program::Groth16VerifyProgram, input::Groth16VerifyInput, process_groth16_verify};
+    use crate::{
+        input::SP1Groth16VerifyInput, process_groth16_verify_sp1, program::SP1Groth16VerifyProgram,
+    };
 
     fn get_native_host() -> NativeHost {
         NativeHost {
             process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
-                process_groth16_verify(zkvm);
+                process_groth16_verify_sp1(zkvm);
                 Ok(())
             })),
         }
@@ -55,12 +57,12 @@ mod tests {
 
     #[test]
     fn test_native() {
-        let input = Groth16VerifyInput::load();
+        let input = SP1Groth16VerifyInput::load();
         let host = get_native_host();
-        let receipt = Groth16VerifyProgram::prove(&input, &host).unwrap();
-        let public_params =
-            Groth16VerifyProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
+        let receipt = SP1Groth16VerifyProgram::prove(&input, &host).unwrap();
+        let is_verified =
+            SP1Groth16VerifyProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
 
-        assert_eq!(public_params, (true, true));
+        assert!(is_verified);
     }
 }

@@ -1,21 +1,16 @@
 use zkaleido::ZkVmEnv;
 use zkaleido_sp1_groth16_verifier::SP1Groth16Verifier;
 
-use crate::input::Groth16VerifyInput;
+use crate::input::SP1Groth16VerifyInput;
 
 pub mod input;
 pub mod program;
 
-pub fn process_groth16_verify(zkvm: &impl ZkVmEnv) {
-    let Groth16VerifyInput {
-        risc0_receipt,
-        risc0_vk,
+pub fn process_groth16_verify_sp1(zkvm: &impl ZkVmEnv) {
+    let SP1Groth16VerifyInput {
         sp1_receipt,
         sp1_vk,
     } = zkvm.read_serde();
-
-    let risc0_verified =
-        zkaleido_risc0_groth16_verifier::verify_groth16(&risc0_receipt, &risc0_vk).is_ok();
 
     let sp1_verifier =
         SP1Groth16Verifier::load(include_bytes!("../vk/sp1_groth16_vk.bin"), sp1_vk).unwrap();
@@ -26,5 +21,5 @@ pub fn process_groth16_verify(zkvm: &impl ZkVmEnv) {
         )
         .is_ok();
 
-    zkvm.commit_serde(&(risc0_verified, sp1_verified));
+    zkvm.commit_serde(&sp1_verified);
 }
