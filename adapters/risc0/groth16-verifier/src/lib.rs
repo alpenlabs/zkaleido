@@ -1,13 +1,15 @@
 //! # zkaleido-risc0-groth16-verifier
 //!
 //! This crate integrates RISC Zero-based Groth16 proof verification based on zkaleido traits.
+mod sha256;
 
 use risc0_binfmt::tagged_struct;
 use risc0_groth16::{fr_from_hex_string, split_digest, verifying_key, Seal, Verifier};
 use risc0_zkp::core::{
     digest::{digest, Digest},
-    hash::sha::{Impl as Sha256Impl, Sha256},
+    hash::sha::Sha256,
 };
+use sha256::Impl as Sha256Impl;
 use zkaleido::{DataFormatError, ProofReceipt, ZkVmError, ZkVmProofError, ZkVmResult};
 
 /// Root of the Merkle tree constructed from [ALLOWED_CONTROL_IDS](https://github.com/risc0/risc0/blob/main/risc0/circuit/recursion/src/control_id.rs#L23-L37), using Poseidon2.
