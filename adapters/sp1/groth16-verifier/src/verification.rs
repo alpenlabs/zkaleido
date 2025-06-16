@@ -14,8 +14,9 @@ fn prepare_inputs(vk: Groth16VerifyingKey, public_inputs: &[Fr]) -> Result<G1, G
     Ok(public_inputs
         .iter()
         .zip(vk.g1.k.iter().skip(1))
-        .fold(G1::from(vk.g1.k[0]), |acc, (i, b)| {
-            acc + (G1::from(*b) * (*i))
+        .fold(vk.g1.k[0].into(), |acc, (i, b)| {
+            let b: G1 = (*b).into();
+            acc + (b * *i)
         }))
 }
 
