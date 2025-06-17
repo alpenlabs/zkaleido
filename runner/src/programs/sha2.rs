@@ -1,4 +1,4 @@
-use sha2_chain::ShaChainProgram;
+use sha2_chain::program::ShaChainProgram;
 use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgramPerf};
 
 fn sha2_prover_perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {

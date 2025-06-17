@@ -1,4 +1,4 @@
-use fibonacci::FibProgram;
+use fibonacci::program::FibProgram;
 use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgram, ZkVmProgramPerf};
 
 fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {

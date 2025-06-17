@@ -2131,6 +2131,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "groth16-verify-risc0"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "zkaleido",
+ "zkaleido-native-adapter",
+ "zkaleido-risc0-groth16-verifier",
+]
+
+[[package]]
+name = "groth16-verify-sp1"
+version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "zkaleido",
+ "zkaleido-native-adapter",
+ "zkaleido-sp1-groth16-verifier",
+]
+
+[[package]]
 name = "group"
 version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -7373,12 +7395,14 @@ dependencies = [
 name = "zkaleido-risc0-groth16-verifier"
 version = "0.1.0"
 dependencies = [
+ "bytemuck",
  "hex",
  "risc0-binfmt",
  "risc0-circuit-recursion",
  "risc0-groth16",
  "risc0-zkp",
  "risc0-zkvm",
+ "sha2",
  "zkaleido",
 ]
 
@@ -7412,6 +7436,8 @@ dependencies = [
  "clap",
  "fibonacci",
  "fibonacci-composition",
+ "groth16-verify-risc0",
+ "groth16-verify-sp1",
  "num-format",
  "reqwest",
  "schnorr-sig-verify",
