@@ -49,6 +49,29 @@ pub trait ZkVmProgram {
     where
         H: ZkVmHost;
 
+    /// Prepares the program’s input for the ZkVM, and—if the `ZKVM_PROFILING_DUMP` environment
+    /// variable is set to `1` or `true` (case‐insensitive)—automatically saves a host trace.
+    fn prepare_input_with_profiling<'a, H>(
+        input: &'a Self::Input,
+        host: &H,
+    ) -> ZkVmInputResult<<H::Input<'a> as ZkVmInputBuilder<'a>>::Input>
+    where
+        H: ZkVmHost,
+        H::Input<'a>: ZkVmInputBuilder<'a>,
+    {
+        // 1) Check for profiling flag
+        if std::env::var("ZKVM_PROFILING_DUMP")
+            .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
+            .unwrap_or(false)
+        {
+            // 2) Dump a trace via the host before building inputs
+            host.save_trace(&Self::name());
+        }
+
+        // 3) Delegate to the implementor’s original prepare_input
+        Self::prepare_input::<H::Input<'a>>(input)
+    }
+
     /// Executes the computation using any zkVM host to get the output.
     fn execute<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<Self::Output>
     where
@@ -56,7 +79,7 @@ pub trait ZkVmProgram {
         H::Input<'a>: ZkVmInputBuilder<'a>,
     {
         // Prepare the input using the host's input builder.
-        let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
+        let zkvm_input = Self::prepare_input_with_profiling(input, host)?;
 
         // Use the host to execute.
         let public_values = host.execute(zkvm_input)?;
@@ -72,7 +95,7 @@ pub trait ZkVmProgram {
         H::Input<'a>: ZkVmInputBuilder<'a>,
     {
         // Prepare the input using the host's input builder.
-        let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
+        let zkvm_input = Self::prepare_input_with_profiling(input, host)?;
 
         // Use the host to prove.
         let receipt = host.prove(zkvm_input, Self::proof_type())?;
@@ -105,7 +128,7 @@ pub trait ZkVmProgramPerf: ZkVmProgram {
         H::Input<'a>: ZkVmInputBuilder<'a>,
     {
         // Prepare the input using the host's input builder.
-        let input = Self::prepare_input::<H::Input<'a>>(input)?;
+        let input = Self::prepare_input_with_profiling(input, host)?;
 
         // Generate the perf report and set proper name in the report
         let mut perf_report = host.perf_report(input);

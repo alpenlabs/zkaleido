@@ -25,6 +25,11 @@ impl ZkVmExecutor for Risc0Host {
     fn get_elf(&self) -> &[u8] {
         self.elf()
     }
+
+    fn save_trace(&self, trace_name: &str) {
+        let profiling_file_name = format!("{}_{:?}.trace_profile", trace_name, self);
+        std::env::set_var("RISC0_PPROF_OUT", profiling_file_name);
+    }
 }
 
 impl ZkVmProver for Risc0Host {

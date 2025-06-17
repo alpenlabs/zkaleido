@@ -39,6 +39,8 @@ impl ZkVmExecutor for NativeHost {
     fn get_elf(&self) -> &[u8] {
         &[]
     }
+
+    fn save_trace(&self, _trace_name: &str) {}
 }
 
 impl ZkVmProver for NativeHost {
