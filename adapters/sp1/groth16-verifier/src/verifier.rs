@@ -1,4 +1,4 @@
-use bn::Fr;
+use bn::{AffineG1, Fr, G1};
 use sha2::{Digest, Sha256};
 
 use crate::{
@@ -6,7 +6,7 @@ use crate::{
     error::{Error, Groth16Error},
     types::Groth16VerifyingKey,
     utils::{blake3_hash, hash_public_inputs_with_fn, sha256_hash},
-    verification::verify_groth16_algebraic,
+    verification::verify_sp1_groth16_algebraic,
 };
 
 /// Number of bytes used from the SHA-256 hash of the Groth16 verifying key.
@@ -30,13 +30,13 @@ pub struct SP1Groth16Verifier {
     /// First `VK_HASH_PREFIX_LENGTH` bytes of `Sha256(groth16_vk)`, used to confirm
     /// the proof was generated with the correct key.
     vk_hash_tag: [u8; 4],
-    /// Unique identifier for the SP1 program, computed from the SP1VerifyingKey::hash_bn254.
-    program_vk_hash: Fr,
 }
 
 impl SP1Groth16Verifier {
     /// Loads a new `SP1Groth16Verifier` from a gnark compressed Groth16 verifying key and a
-    /// program ID.
+    /// program ID. This also directly bakes the SP1 `program_vk_hash` (the first public input)
+    /// into the G1-key vector so that downstream you only ever need to pass the remaining inputs
+    /// (e.g. the hash of your public values)
     ///
     /// # Parameters
     /// - `vk_bytes`: Byte slice containing the gnark compressed Groth16 verifying key. Typically,
@@ -56,16 +56,25 @@ impl SP1Groth16Verifier {
 
         // Parse the Groth16 verifying key from its byte representation.
         // This returns a `Groth16VerifyingKey` that can be used for algebraic verification.
-        let groth16_vk = load_groth16_verifying_key_from_bytes(vk_bytes)?;
+        let mut groth16_vk = load_groth16_verifying_key_from_bytes(vk_bytes)?;
 
         // Parse the program ID (Fr element) from its 32-byte big-endian encoding.
         let program_vk_hash =
             Fr::from_slice(&program_vk_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
 
+        // compute K₀' = K₀ + program_vk_hash * K₁
+        let k0: G1 = groth16_vk.g1.k[0].into();
+        let k1: G1 = groth16_vk.g1.k[1].into();
+        let k0_prime: G1 = k0 + (k1 * program_vk_hash);
+
+        groth16_vk.g1.k = vec![
+            AffineG1::from_jacobian(k0_prime).unwrap(),
+            *groth16_vk.g1.k.last().unwrap(),
+        ];
+
         Ok(SP1Groth16Verifier {
             vk: groth16_vk,
             vk_hash_tag: groth16_vk_hash,
-            program_vk_hash,
         })
     }
 
@@ -106,7 +115,7 @@ impl SP1Groth16Verifier {
             Fr::from_slice(&pp_sha2_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
 
         // Attempt algebraic verification with SHA-256 hash as the second input.
-        if verify_groth16_algebraic(&self.vk, &proof, &[self.program_vk_hash, fr_sha2]).is_ok() {
+        if verify_sp1_groth16_algebraic(&self.vk, &proof, &fr_sha2).is_ok() {
             return Ok(());
         }
 
@@ -116,7 +125,7 @@ impl SP1Groth16Verifier {
             Fr::from_slice(&pp_blake3_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
 
         // Retry algebraic verification using Blake3 hash as the second input.
-        verify_groth16_algebraic(&self.vk, &proof, &[self.program_vk_hash, fr_blake3])
+        verify_sp1_groth16_algebraic(&self.vk, &proof, &fr_blake3)
     }
 }
 
