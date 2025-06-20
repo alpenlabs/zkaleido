@@ -3,9 +3,10 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::{
-    gnark_conversion::{load_groth16_proof_from_bytes, load_groth16_verifying_key_from_bytes},
     error::{Error, Groth16Error},
-    types::Groth16VerifyingKey,
+    types::{
+        load_groth16_proof_from_bytes, load_groth16_verifying_key_from_bytes, Groth16VerifyingKey,
+    },
     utils::{blake3_hash, hash_public_inputs_with_fn, sha256_hash},
     verification::verify_sp1_groth16_algebraic,
 };
@@ -69,7 +70,7 @@ impl SP1Groth16Verifier {
         let k0_prime: G1 = k0 + (k1 * program_vk_hash);
 
         groth16_vk.g1.k = vec![
-            AffineG1::from_jacobian(k0_prime).unwrap(),
+            AffineG1::from_jacobian(k0_prime).unwrap().into(),
             *groth16_vk.g1.k.last().unwrap(),
         ];
 
