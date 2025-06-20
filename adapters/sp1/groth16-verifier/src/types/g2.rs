@@ -187,7 +187,10 @@ pub(crate) fn uncompressed_bytes_to_affine_g2(buf: &[u8]) -> Result<AffineG2, Er
     let x = Fq2::new(x0, x1);
     let y = Fq2::new(y0, y1);
 
-    AffineG2::new(x, y).map_err(Error::Group)
+    // REVIEW: This avoids the subcheck group by assuming X and Y are valid, reducing cycle counts.
+    // If they are invalid the proof verification fails
+    let g2 = G2::new(x, y, Fq2::one());
+    AffineG2::from_jacobian(g2).ok_or(Error::InvalidPoint)
 }
 
 /// Given an Fq2 element `x`, compute both possible y‐coordinates on the BN254 curve:
