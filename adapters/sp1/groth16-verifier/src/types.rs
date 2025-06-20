@@ -260,7 +260,7 @@ impl Debug for Groth16G2 {
 mod tests {
     use sp1_verifier::GROTH16_VK_BYTES;
 
-    use crate::{conversion::load_groth16_verifying_key_from_bytes, types::Groth16VerifyingKey};
+    use crate::{gnark_conversion::load_groth16_verifying_key_from_bytes, types::Groth16VerifyingKey};
 
     #[test]
     fn test_vk_serde() {

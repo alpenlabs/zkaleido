@@ -3,7 +3,7 @@ use std::cmp::Ordering;
 use bn::{AffineG2, Fq, Fq2, Group, G2};
 
 use crate::{
-    conversion::constant::{COMPRESSED_INFINITY, COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
+    gnark_conversion::constant::{COMPRESSED_INFINITY, COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
     error::Error,
 };
 

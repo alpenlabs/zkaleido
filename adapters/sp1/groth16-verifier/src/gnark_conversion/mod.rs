@@ -8,11 +8,11 @@
 use bn::{AffineG2, G2};
 
 use crate::{
-    conversion::{
+    error::{Error, Groth16Error},
+    gnark_conversion::{
         g1::{compressed_bytes_to_affine_g1, uncompressed_bytes_to_affine_g1},
         g2::{compressed_bytes_to_affine_g2, uncompressed_bytes_to_g2_point},
     },
-    error::{Error, Groth16Error},
     types::{Groth16G1, Groth16G2, Groth16Proof, Groth16VerifyingKey},
 };
 mod constant;

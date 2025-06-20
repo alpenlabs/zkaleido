@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::{
-    conversion::{load_groth16_proof_from_bytes, load_groth16_verifying_key_from_bytes},
+    gnark_conversion::{load_groth16_proof_from_bytes, load_groth16_verifying_key_from_bytes},
     error::{Error, Groth16Error},
     types::Groth16VerifyingKey,
     utils::{blake3_hash, hash_public_inputs_with_fn, sha256_hash},

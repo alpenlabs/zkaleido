@@ -1,7 +1,7 @@
 use bn::{AffineG1, Fq, G1};
 
 use crate::{
-    conversion::constant::{COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
+    gnark_conversion::constant::{COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
     error::Error,
 };
 
