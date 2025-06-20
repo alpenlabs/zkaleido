@@ -26,10 +26,10 @@ pub(crate) const VK_HASH_PREFIX_LENGTH: usize = 4;
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SP1Groth16Verifier {
     /// The (uncompressed) Groth16 verifying key for the SP1 circuit.
-    vk: Groth16VerifyingKey,
+    pub(crate) vk: Groth16VerifyingKey,
     /// First `VK_HASH_PREFIX_LENGTH` bytes of `Sha256(groth16_vk)`, used to confirm
     /// the proof was generated with the correct key.
-    vk_hash_tag: [u8; 4],
+    pub(crate) vk_hash_tag: [u8; 4],
 }
 
 impl SP1Groth16Verifier {
@@ -131,23 +131,79 @@ impl SP1Groth16Verifier {
 
 #[cfg(test)]
 mod tests {
+    use bn::{AffineG1, AffineG2, Fq, Fq2, G1, G2};
     use sp1_verifier::GROTH16_VK_BYTES;
     use zkaleido::ProofReceipt;
 
     use crate::verifier::SP1Groth16Verifier;
 
-    #[test]
-    fn test_load_and_verify() {
+    fn load_vk_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
         let program_id_hex = "0000e3572a33647cba427acbaecac23a01e237a8140d2c91b3873457beb5be13";
         let program_id: [u8; 32] = hex::decode(program_id_hex).unwrap().try_into().unwrap();
 
-        let vk = SP1Groth16Verifier::load(&GROTH16_VK_BYTES, program_id).unwrap();
+        let verifier = SP1Groth16Verifier::load(&GROTH16_VK_BYTES, program_id).unwrap();
         let proof_file = format!("./proofs/fibonacci_sp1_0x{}.proof.bin", program_id_hex);
         let receipt = ProofReceipt::load(proof_file).unwrap();
-        let res = vk.verify(
+        (verifier, receipt)
+    }
+
+    #[test]
+    fn test_valid_proof() {
+        let (verifier, receipt) = load_vk_and_proof();
+        let res = verifier.verify(
             receipt.proof().as_bytes(),
             receipt.public_values().as_bytes(),
         );
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_invalid_g1() {
+        let (mut verifier, receipt) = load_vk_and_proof();
+        let vk_alpha = verifier.vk.g1.alpha.0;
+        let alpha_x = vk_alpha.x();
+        let alpha_y = vk_alpha.y();
+        let invalid_alpha_x = alpha_x + Fq::one();
+
+        let res = AffineG1::new(alpha_x, alpha_y);
+        assert!(res.is_ok());
+
+        let res = AffineG1::new(invalid_alpha_x, alpha_y);
+        assert!(res.is_err());
+
+        let invalid_alpha =
+            AffineG1::from_jacobian(G1::new(invalid_alpha_x, alpha_y, Fq::one())).unwrap();
+        verifier.vk.g1.alpha.0 = invalid_alpha;
+
+        let res = verifier.verify(
+            receipt.proof().as_bytes(),
+            receipt.public_values().as_bytes(),
+        );
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_invalid_g2() {
+        let (mut verifier, receipt) = load_vk_and_proof();
+        let vk_gamma = verifier.vk.g2.gamma.0;
+        let gamma_x = vk_gamma.x();
+        let gamma_y = vk_gamma.y();
+        let invalid_gamma_x = gamma_x + Fq2::one();
+
+        let res = AffineG2::new(gamma_x, gamma_y);
+        assert!(res.is_ok());
+
+        let res = AffineG2::new(invalid_gamma_x, gamma_y);
+        assert!(res.is_err());
+
+        let invalid_gamma =
+            AffineG2::from_jacobian(G2::new(invalid_gamma_x, gamma_y, Fq2::one())).unwrap();
+        verifier.vk.g2.gamma.0 = invalid_gamma;
+
+        let res = verifier.verify(
+            receipt.proof().as_bytes(),
+            receipt.public_values().as_bytes(),
+        );
+        assert!(res.is_err());
     }
 }

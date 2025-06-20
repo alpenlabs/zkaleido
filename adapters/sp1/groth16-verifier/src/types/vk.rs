@@ -76,7 +76,6 @@ mod tests {
     #[test]
     fn test_vk_serde() {
         let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
-        dbg!(&vk);
 
         // Pretty print the JSON output
         let json_string = serde_json::to_string_pretty(&vk).unwrap();
