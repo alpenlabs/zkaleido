@@ -4,9 +4,7 @@ use sha2::{Digest, Sha256};
 
 use crate::{
     error::{Error, Groth16Error},
-    types::{
-        load_groth16_proof_from_bytes, load_groth16_verifying_key_from_bytes, Groth16VerifyingKey,
-    },
+    types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
     utils::{blake3_hash, hash_public_inputs_with_fn, sha256_hash},
     verification::verify_sp1_groth16_algebraic,
 };
@@ -58,7 +56,7 @@ impl SP1Groth16Verifier {
 
         // Parse the Groth16 verifying key from its byte representation.
         // This returns a `Groth16VerifyingKey` that can be used for algebraic verification.
-        let mut groth16_vk = load_groth16_verifying_key_from_bytes(vk_bytes)?;
+        let mut groth16_vk = Groth16VerifyingKey::load_from_gnark_bytes(vk_bytes)?;
 
         // Parse the program ID (Fr element) from its 32-byte big-endian encoding.
         let program_vk_hash =
@@ -107,7 +105,7 @@ impl SP1Groth16Verifier {
 
         // Extract the raw Groth16 proof (bytes after the prefix) and parse it.
         let raw_proof_bytes = &proof[VK_HASH_PREFIX_LENGTH..];
-        let proof = load_groth16_proof_from_bytes(raw_proof_bytes)?;
+        let proof = Groth16Proof::load_from_gnark_bytes(raw_proof_bytes)?;
 
         // Compute Fr element for hash(public_values) using SHA-256. SP1’s Groth16 circuit expects
         // two public inputs: a. `program_id`, b. `hash(public_values)`.  Since SP1 allows either

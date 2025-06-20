@@ -2,7 +2,7 @@ use bn::{pairing_batch, Fr, Gt, G1, G2};
 
 use crate::{
     error::Groth16Error,
-    types::{Groth16Proof, Groth16VerifyingKey},
+    types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
 };
 
 /// Verify SP1 Groth16 proof using algebraic inputs.

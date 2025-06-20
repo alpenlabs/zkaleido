@@ -32,7 +32,7 @@ struct SAffineG2Helper {
     y: Fq2Helper,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct Fq2Helper {
     real: String,
     imaginary: String,
@@ -84,10 +84,19 @@ impl<'de> Deserialize<'de> for SAffineG2 {
     }
 }
 
+impl fmt::Debug for Fq2Helper {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Fq2")
+            .field("x", &self.real)
+            .field("y", &self.imaginary)
+            .finish()
+    }
+}
+
 impl fmt::Debug for SAffineG2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let helper = SAffineG2Helper::from(self);
-        f.debug_struct("SAffineG2")
+        f.debug_struct("AffineG2")
             .field("x", &helper.x)
             .field("y", &helper.y)
             .finish()
@@ -161,7 +170,7 @@ pub(crate) fn compressed_bytes_to_affine_g2(buf: &[u8]) -> Result<AffineG2, Erro
 /// - bytes 96..128: y0 (real part of Fq2)
 ///
 /// Ref: https://github.com/succinctlabs/sp1/blob/dev/crates/verifier/src/converter.rs#L104
-pub(crate) fn uncompressed_bytes_to_g2_point(buf: &[u8]) -> Result<AffineG2, Error> {
+pub(crate) fn uncompressed_bytes_to_affine_g2(buf: &[u8]) -> Result<AffineG2, Error> {
     if buf.len() != 128 {
         return Err(Error::InvalidXLength);
     }

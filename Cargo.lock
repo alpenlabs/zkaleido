@@ -7467,9 +7467,11 @@ dependencies = [
 name = "zkaleido-sp1-groth16-verifier"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "blake3",
  "hex",
  "serde",
+ "serde_json",
  "sha2",
  "sp1-verifier",
  "substrate-bn",

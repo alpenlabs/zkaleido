@@ -82,7 +82,7 @@ impl<'de> Deserialize<'de> for SAffineG1 {
 impl fmt::Debug for SAffineG1 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let helper = SAffineG1Helper::from(self);
-        f.debug_struct("SAffineG1")
+        f.debug_struct("AffineG1")
             .field("x", &helper.x)
             .field("y", &helper.y)
             .finish()
