@@ -1,16 +1,6 @@
-use zkaleido::{ProofType, ZkVmEnv, ZkVmInputResult, ZkVmProgram, ZkVmProgramPerf};
+use zkaleido::{ProofType, ZkVmInputResult, ZkVmProgram, ZkVmProgramPerf};
 
-use crate::{verify_schnorr_sig_k256, SchnorrSigInput};
-
-pub fn process_schnorr_sig_verify(zkvm: &impl ZkVmEnv) {
-    let sig = zkvm.read_buf();
-    let msg: [u8; 32] = zkvm.read_serde();
-    let pk: [u8; 32] = zkvm.read_serde();
-
-    let result = verify_schnorr_sig_k256(&sig.try_into().unwrap(), &msg, &pk);
-
-    zkvm.commit_serde(&result);
-}
+use crate::input::SchnorrSigInput;
 
 pub struct SchnorrSigProgram;
 
@@ -57,6 +47,7 @@ mod tests {
     use zkaleido_native_adapter::{NativeHost, NativeMachine};
 
     use super::*;
+    use crate::process_schnorr_sig_verify;
 
     fn get_native_host() -> NativeHost {
         NativeHost {
