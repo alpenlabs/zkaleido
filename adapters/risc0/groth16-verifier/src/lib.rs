@@ -14,7 +14,7 @@ use zkaleido::{DataFormatError, ProofReceipt, ZkVmError, ZkVmProofError, ZkVmRes
 
 /// Root of the Merkle tree constructed from [ALLOWED_CONTROL_IDS](https://github.com/risc0/risc0/blob/main/risc0/circuit/recursion/src/control_id.rs#L23-L37), using Poseidon2.
 pub const ALLOWED_CONTROL_ROOT: Digest =
-    digest!("539032186827b06719244873b17b2d4c122e2d02cfb1994fe958b2523b844576");
+    digest!("884389273e128b32475b334dec75ee619b77cb33d41c332021fe7e44c746ee60");
 
 /// Control ID for the identity recursion programs (ZKR), using Poseidon over the BN254 scalar
 /// field.
@@ -91,7 +91,7 @@ mod tests {
     use super::*;
 
     fn get_proof_and_digest_id() -> (ProofReceipt, [u8; 32]) {
-        let vk_hex = "25eaa741d5cb0d99fe15ce60c4bf3886f96932f22ee67041f0b4165203ef5a02";
+        let vk_hex = "7f3599b6e5c45edc6c2dcd88a9df76d1c9fce38cfb2afc8e5615f154d878009b";
         let vk: [u8; 32] = hex::decode(vk_hex).unwrap().try_into().unwrap();
         let proof_file = format!("./proofs/fibonacci_risc0_{}.proof.bin", vk_hex);
 
