@@ -106,7 +106,7 @@ where
 }
 
 // Serde serialization for Vec<AffineG1>
-fn serialize_affine_g1_vec<S>(points: &Vec<AffineG1>, serializer: S) -> Result<S::Ok, S::Error>
+fn serialize_affine_g1_vec<S>(points: &[AffineG1], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
 {
