@@ -32,14 +32,14 @@ impl Groth16Proof {
     ///
     /// Returns a `Groth16Proof` containing affine points `(ar, bs, krs)`.
     pub(crate) fn load_from_gnark_bytes(buffer: &[u8]) -> Result<Groth16Proof, Groth16Error> {
-        if buffer.len() < GROTH16_PROOF_LENGTH {
+        if buffer.len() != GROTH16_PROOF_LENGTH {
             return Err(Groth16Error::GeneralError(Error::InvalidData));
         }
 
         // Deserialize each component.
         let ar = SAffineG1(uncompressed_bytes_to_affine_g1(&buffer[..64])?);
-        let krs = SAffineG1(uncompressed_bytes_to_affine_g1(&buffer[192..256])?);
         let bs = SAffineG2(uncompressed_bytes_to_affine_g2(&buffer[64..192])?);
+        let krs = SAffineG1(uncompressed_bytes_to_affine_g1(&buffer[192..256])?);
 
         Ok(Groth16Proof { ar, bs, krs })
     }

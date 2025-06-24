@@ -32,7 +32,18 @@ pub(crate) struct Groth16VerifyingKey {
 }
 
 impl Groth16VerifyingKey {
-    /// Load a Groth16 verifying key from the GNARK‐style compressed byte slice.
+    /// Load a Groth16 verifying key from a GNARK-style compressed byte slice.
+    ///
+    /// Byte layout (same as for `SP1Groth16Verifier::load`):
+    /// - [0..32)      : G1 α (compressed)
+    /// - [64..128)    : G2 β
+    /// - [128..192)   : G2 γ (compressed)
+    /// - [224..288)   : G2 δ (compressed)
+    /// - [288..292)   : `num_k` (u32 BE)
+    /// - [292..292+i) : `i = 32 * num_k` bytes of G1 K-points
+    ///
+    /// Note: slicing beyond `buffer.len()` will panic. Validate length before calling if you
+    /// need to gracefully handle malformed input.
     pub(crate) fn load_from_gnark_bytes(buffer: &[u8]) -> Result<Self, Groth16Error> {
         // Parse G1 alpha (compressed).
         let g1_alpha = SAffineG1(compressed_bytes_to_affine_g1(&buffer[..32])?);

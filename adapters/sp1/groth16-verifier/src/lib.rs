@@ -3,7 +3,6 @@
 //! This crate integrates SP1-based Groth16 proof verification.
 
 mod error;
-// mod gnark_conversion;
 mod types;
 mod utils;
 mod verification;
