@@ -15,7 +15,7 @@
 //! Simple wrappers for a CPU-based SHA-256 implementation.
 //!
 //! Re-export the CPU SHA-256 implementation from `risc0-zkp` to expose it on other zkVM targets
-//! for guest support.
+//! for guest support. https://github.com/risc0/risc0/blob/main/risc0/zkp/src/core/hash/sha/cpu.rs
 
 use core::slice;
 

@@ -1,4 +1,4 @@
-use schnorr_sig_verify::{SchnorrSigInput, SchnorrSigProgram};
+use schnorr_sig_verify::{input::SchnorrSigInput, program::SchnorrSigProgram};
 use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgramPerf};
 
 fn perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {

@@ -1,7 +1,7 @@
 use rand::{rngs::OsRng, Rng};
 use secp256k1::{SecretKey, SECP256K1};
 
-use crate::sign_schnorr_sig;
+use crate::logic::sign_schnorr_sig;
 
 #[derive(Debug, Clone)]
 pub struct SchnorrSigInput {
