@@ -131,7 +131,8 @@ impl SP1Groth16Verifier {
 
 #[cfg(test)]
 mod tests {
-    use bn::{AffineG1, AffineG2, Fq, Fq2, G1, G2};
+    use bn::{AffineG1, AffineG2, Fq, Fq2, Group, G1, G2};
+    use rand::thread_rng;
     use sp1_verifier::GROTH16_VK_BYTES;
     use zkaleido::ProofReceipt;
 
@@ -163,7 +164,9 @@ mod tests {
         let vk_alpha = verifier.vk.g1.alpha.0;
         let alpha_x = vk_alpha.x();
         let alpha_y = vk_alpha.y();
-        let invalid_alpha_x = alpha_x + Fq::one();
+
+        let mut rng = thread_rng();
+        let invalid_alpha_x = Fq::random(&mut rng);
 
         let res = AffineG1::new(alpha_x, alpha_y);
         assert!(res.is_ok());
@@ -175,6 +178,14 @@ mod tests {
             AffineG1::from_jacobian(G1::new(invalid_alpha_x, alpha_y, Fq::one())).unwrap();
         verifier.vk.g1.alpha.0 = invalid_alpha;
 
+        let res = verifier.verify(
+            receipt.proof().as_bytes(),
+            receipt.public_values().as_bytes(),
+        );
+        assert!(res.is_err());
+
+        let random_alpha = AffineG1::from_jacobian(G1::random(&mut rng)).unwrap();
+        verifier.vk.g1.alpha.0 = random_alpha;
         let res = verifier.verify(
             receipt.proof().as_bytes(),
             receipt.public_values().as_bytes(),
@@ -200,6 +211,15 @@ mod tests {
             AffineG2::from_jacobian(G2::new(invalid_gamma_x, gamma_y, Fq2::one())).unwrap();
         verifier.vk.g2.gamma.0 = invalid_gamma;
 
+        let res = verifier.verify(
+            receipt.proof().as_bytes(),
+            receipt.public_values().as_bytes(),
+        );
+        assert!(res.is_err());
+
+        let mut rng = thread_rng();
+        let random_gamma = AffineG2::from_jacobian(G2::random(&mut rng)).unwrap();
+        verifier.vk.g2.gamma.0 = random_gamma;
         let res = verifier.verify(
             receipt.proof().as_bytes(),
             receipt.public_values().as_bytes(),
