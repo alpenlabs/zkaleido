@@ -74,6 +74,8 @@ impl Risc0Groth16Verifier {
     /// 4. Builds a verifier with the combined inputs: `(allowed_root.0, allowed_root.1,
     ///    claim_limb0, claim_limb1, bn254_id)`.
     /// 5. Runs verification and returns `true` on success.
+    ///
+    /// Ref: https://github.com/risc0/risc0/blob/786d7/risc0/zkvm/src/receipt/groth16.rs#L77-L114
     pub fn verify(&self, proof: &[u8], public_values: &[u8]) -> Result<(), Risc0VerifierError> {
         // Parse the proof bytes into a Groth16 seal
         let seal =
@@ -103,12 +105,9 @@ impl Risc0Groth16Verifier {
     }
 }
 
-/// Computes the digest of a Risc0 receipt claim without building the full receipt structure.
-///
-/// This function implements the Risc0 claim computation algorithm using the "tagged_struct"
-/// pattern to create a structured hash. The claim represents what the zkVM execution
-/// committed to, including the program identity and the public outputs.
-///
+/// Computes the “pruned” ReceiptClaim digest for a normal (exit=0) zkVM execution,
+/// without pulling in the full `risc0-zkvm` crate. This is a hash-only implementation
+/// that can be used across different ZKVMs.
 ///
 /// # Arguments
 /// * `image_id` - The ELF image identifier of the program that was executed
@@ -116,6 +115,8 @@ impl Risc0Groth16Verifier {
 ///
 /// # Returns
 /// A digest representing the complete receipt claim that can be verified against a proof.
+///
+/// Ref: https://github.com/risc0/risc0/blob/1ea37d6/risc0/zkvm/src/receipt_claim.rs#L71-L92
 fn compute_claim_digest<S: Sha256>(image_id: Digest, journal: Digest) -> Digest {
     // Create the post-execution system state digest (empty state with zero journal)
     let post_digest = tagged_struct::<S>("risc0.SystemState", &[Digest::ZERO], &[0]);
