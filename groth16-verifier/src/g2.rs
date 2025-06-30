@@ -9,7 +9,7 @@ use crate::{
 };
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-pub(crate) struct SAffineG2(pub AffineG2);
+pub struct SAffineG2(pub AffineG2);
 
 impl From<AffineG2> for SAffineG2 {
     fn from(value: AffineG2) -> Self {

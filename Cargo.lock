@@ -7488,6 +7488,7 @@ dependencies = [
  "substrate-bn",
  "thiserror 1.0.69",
  "zkaleido",
+ "zkaleido-groth16-verifier",
 ]
 
 [[package]]

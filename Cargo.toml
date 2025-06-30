@@ -29,6 +29,7 @@ resolver = "2"
 
 [workspace.dependencies]
 zkaleido = { path = "zkaleido" }
+zkaleido-groth16-verifier = { path = "groth16-verifier" }
 zkaleido-native-adapter = { path = "adapters/native" }
 zkaleido-sp1-groth16-verifier = { path = "adapters/sp1/groth16-verifier" }
 zkaleido-risc0-groth16-verifier = { path = "adapters/risc0/groth16-verifier" }

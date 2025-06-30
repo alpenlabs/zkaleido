@@ -1,10 +1,11 @@
 use bn::{AffineG1, Fr, G1};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use zkaleido_groth16_verifier::vk::Groth16VerifyingKey;
 
 use crate::{
     error::{Error, Groth16Error},
-    types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
+    gnark_conversion::{proof::load_proof_from_gnark_bytes, vk::load_vk_from_gnark_bytes},
     utils::{blake3_hash, hash_public_inputs_with_fn, sha256_hash},
     verification::verify_sp1_groth16_algebraic,
 };
@@ -56,7 +57,7 @@ impl SP1Groth16Verifier {
 
         // Parse the Groth16 verifying key from its byte representation.
         // This returns a `Groth16VerifyingKey` that can be used for algebraic verification.
-        let mut groth16_vk = Groth16VerifyingKey::load_from_gnark_bytes(vk_bytes)?;
+        let mut groth16_vk = load_vk_from_gnark_bytes(vk_bytes)?;
 
         // Parse the program ID (Fr element) from its 32-byte big-endian encoding.
         let program_vk_hash =
@@ -105,7 +106,7 @@ impl SP1Groth16Verifier {
 
         // Extract the raw Groth16 proof (bytes after the prefix) and parse it.
         let raw_proof_bytes = &proof[VK_HASH_PREFIX_LENGTH..];
-        let proof = Groth16Proof::load_from_gnark_bytes(raw_proof_bytes)?;
+        let proof = load_proof_from_gnark_bytes(raw_proof_bytes)?;
 
         // Compute Fr element for hash(public_values) using SHA-256. SP1’s Groth16 circuit expects
         // two public inputs: a. `program_id`, b. `hash(public_values)`.  Since SP1 allows either
