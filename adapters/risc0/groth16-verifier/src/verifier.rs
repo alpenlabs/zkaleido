@@ -2,6 +2,7 @@ use risc0_binfmt::tagged_struct;
 use risc0_groth16::{fr_from_hex_string, split_digest, Fr, Seal, Verifier, VerifyingKey};
 use risc0_zkp::core::{digest::Digest, hash::sha::Sha256};
 use serde::{Deserialize, Serialize};
+use zkaleido::{ProofReceipt, ZkVmError, ZkVmProofError, ZkVmResult, ZkVmVerifier};
 
 use crate::{errors::Risc0VerifierError, sha256::Impl as Sha256Impl};
 
@@ -136,6 +137,35 @@ fn compute_claim_digest<S: Sha256>(image_id: Digest, journal: Digest) -> Digest 
         &[input_digest, image_id, post_digest, output_digest],
         &[sys_exit, user_exit],
     )
+}
+
+#[derive(Debug, Clone)]
+pub struct Risc0Groth16ProofReceipt(ProofReceipt);
+
+impl TryFrom<ProofReceipt> for Risc0Groth16ProofReceipt {
+    type Error = ZkVmProofError;
+    fn try_from(value: ProofReceipt) -> Result<Self, Self::Error> {
+        Ok(Risc0Groth16ProofReceipt(value))
+    }
+}
+
+impl TryFrom<Risc0Groth16ProofReceipt> for ProofReceipt {
+    type Error = ZkVmProofError;
+    fn try_from(value: Risc0Groth16ProofReceipt) -> Result<Self, Self::Error> {
+        Ok(value.0)
+    }
+}
+
+impl ZkVmVerifier for Risc0Groth16Verifier {
+    type ZkVmProofReceipt = Risc0Groth16ProofReceipt;
+
+    fn verify_inner(&self, receipt: &Self::ZkVmProofReceipt) -> ZkVmResult<()> {
+        self.verify(
+            receipt.0.proof().as_bytes(),
+            receipt.0.public_values().as_bytes(),
+        )
+        .map_err(|e| ZkVmError::ProofVerificationError(e.to_string()))
+    }
 }
 
 #[cfg(test)]

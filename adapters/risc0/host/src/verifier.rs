@@ -1,7 +1,8 @@
 use risc0_zkvm::Journal;
 use serde::{de::DeserializeOwned, Serialize};
 use zkaleido::{
-    PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError, ZkVmResult, ZkVmVerifier,
+    PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError, ZkVmOutputExtractor, ZkVmResult,
+    ZkVmVerifier, ZkVmVkProvider,
 };
 
 use crate::{proof::Risc0ProofReceipt, Risc0Host};
@@ -9,6 +10,26 @@ use crate::{proof::Risc0ProofReceipt, Risc0Host};
 impl ZkVmVerifier for Risc0Host {
     type ZkVmProofReceipt = Risc0ProofReceipt;
 
+    fn verify_inner(&self, proof: &Risc0ProofReceipt) -> ZkVmResult<()> {
+        proof
+            .as_ref()
+            .verify(self.image_id())
+            .map_err(|e| ZkVmError::ProofVerificationError(e.to_string()))?;
+        Ok(())
+    }
+}
+
+impl ZkVmVkProvider for Risc0Host {
+    fn vk(&self) -> VerifyingKey {
+        VerifyingKey::new(self.image_id().as_bytes().to_vec())
+    }
+
+    fn vk_commitment(&self) -> VerifyingKeyCommitment {
+        VerifyingKeyCommitment::new(self.image_id().into())
+    }
+}
+
+impl ZkVmOutputExtractor for Risc0Host {
     fn extract_serde_public_output<T: Serialize + DeserializeOwned>(
         proof: &PublicValues,
     ) -> ZkVmResult<T> {
@@ -18,21 +39,5 @@ impl ZkVmVerifier for Risc0Host {
             .map_err(|e| ZkVmError::OutputExtractionError {
                 source: zkaleido::DataFormatError::Serde(e.to_string()),
             })
-    }
-
-    fn vk(&self) -> VerifyingKey {
-        VerifyingKey::new(self.image_id().as_bytes().to_vec())
-    }
-
-    fn vk_commitment(&self) -> VerifyingKeyCommitment {
-        VerifyingKeyCommitment::new(self.image_id().into())
-    }
-
-    fn verify_inner(&self, proof: &Risc0ProofReceipt) -> ZkVmResult<()> {
-        proof
-            .as_ref()
-            .verify(self.image_id())
-            .map_err(|e| ZkVmError::ProofVerificationError(e.to_string()))?;
-        Ok(())
     }
 }

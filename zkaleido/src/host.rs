@@ -1,5 +1,6 @@
 use crate::{
-    input::ZkVmInputBuilder, PerformanceReport, ZkVmProver, ZkVmRemoteProver, ZkVmVerifier,
+    input::ZkVmInputBuilder, PerformanceReport, ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver,
+    ZkVmVerifier, ZkVmVkProvider,
 };
 
 /// A trait implemented by the host of a zkVM program.
@@ -11,7 +12,7 @@ use crate::{
 ///
 /// The host combines the capabilities of both a zkVM prover and a zkVM verifier, as
 /// indicated by its inheritance from the `ZkVmProver` and `ZkVmVerifier` traits.
-pub trait ZkVmHost: ZkVmProver + ZkVmVerifier {}
+pub trait ZkVmHost: ZkVmProver + ZkVmVerifier + ZkVmOutputExtractor + ZkVmVkProvider {}
 
 /// Extends the [`ZkVmHost`] trait by providing functionality to generate performance reports.
 ///

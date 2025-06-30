@@ -5,7 +5,7 @@ use risc0_zkvm::{
     VerifierContext,
 };
 use zkaleido::{
-    time_operation, PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf, ZkVmVerifier,
+    time_operation, PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf, ZkVmVkProvider,
 };
 
 use crate::Risc0Host;

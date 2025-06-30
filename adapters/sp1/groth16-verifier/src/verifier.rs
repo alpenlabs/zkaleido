@@ -1,6 +1,7 @@
 use bn::{AffineG1, Fr, G1};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
+use zkaleido::{ProofReceipt, ZkVmError, ZkVmProofError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
     error::{Error, Groth16Error},
@@ -126,6 +127,35 @@ impl SP1Groth16Verifier {
 
         // Retry algebraic verification using Blake3 hash as the second input.
         verify_sp1_groth16_algebraic(&self.vk, &proof, &fr_blake3)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct SP1Groth16ProofReceipt(ProofReceipt);
+
+impl TryFrom<ProofReceipt> for SP1Groth16ProofReceipt {
+    type Error = ZkVmProofError;
+    fn try_from(value: ProofReceipt) -> Result<Self, Self::Error> {
+        Ok(SP1Groth16ProofReceipt(value))
+    }
+}
+
+impl TryFrom<SP1Groth16ProofReceipt> for ProofReceipt {
+    type Error = ZkVmProofError;
+    fn try_from(value: SP1Groth16ProofReceipt) -> Result<Self, Self::Error> {
+        Ok(value.0)
+    }
+}
+
+impl ZkVmVerifier for SP1Groth16Verifier {
+    type ZkVmProofReceipt = SP1Groth16ProofReceipt;
+
+    fn verify_inner(&self, receipt: &Self::ZkVmProofReceipt) -> ZkVmResult<()> {
+        self.verify(
+            receipt.0.proof().as_bytes(),
+            receipt.0.public_values().as_bytes(),
+        )
+        .map_err(|e| ZkVmError::ProofVerificationError(e.to_string()))
     }
 }
 
