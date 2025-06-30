@@ -18,11 +18,12 @@ risc0-groth16 = "2.0.1"
 risc0-binfmt = "2.0.1"
 risc0-zkp = "2.0.1"
 bytemuck = { version = "1.12", features = ["derive"] }
-zkaleido.workspace = true
 hex.workspace = true
 sha2.workspace = true
+thiserror.workspace = true
 
 [dev-dependencies]
 hex.workspace = true
 risc0-zkvm = "2.0.2"
 risc0-circuit-recursion = "2.0.1"
+zkaleido.workspace = true
