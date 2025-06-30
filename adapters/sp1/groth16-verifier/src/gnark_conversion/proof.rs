@@ -1,4 +1,4 @@
-use zkaleido_groth16_verifier::{g1::SAffineG1, g2::SAffineG2, proof::Groth16Proof};
+use zkaleido_bn_groth16_types::{g1::SAffineG1, g2::SAffineG2, proof::Groth16Proof};
 
 use crate::{
     error::{Error, Groth16Error},

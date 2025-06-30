@@ -1,5 +1,5 @@
 use bn::{pairing_batch, Fr, Gt, G1, G2};
-use zkaleido_groth16_verifier::{proof::Groth16Proof, vk::Groth16VerifyingKey};
+use zkaleido_bn_groth16_types::{proof::Groth16Proof, vk::Groth16VerifyingKey};
 
 use crate::error::Groth16Error;
 

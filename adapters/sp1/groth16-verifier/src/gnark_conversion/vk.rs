@@ -1,5 +1,5 @@
 use bn::{AffineG2, G2};
-use zkaleido_groth16_verifier::{
+use zkaleido_bn_groth16_types::{
     g1::SAffineG1,
     g2::SAffineG2,
     vk::{Groth16G1, Groth16G2, Groth16VerifyingKey},

@@ -7374,7 +7374,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "zkaleido-groth16-verifier"
+name = "zkaleido-bn-groth16-types"
 version = "0.1.0"
 dependencies = [
  "hex",
@@ -7488,7 +7488,7 @@ dependencies = [
  "substrate-bn",
  "thiserror 1.0.69",
  "zkaleido",
- "zkaleido-groth16-verifier",
+ "zkaleido-bn-groth16-types",
 ]
 
 [[package]]
