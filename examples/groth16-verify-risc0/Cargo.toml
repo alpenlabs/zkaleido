@@ -9,3 +9,5 @@ zkaleido-risc0-groth16-verifier = { path = "../../adapters/risc0/groth16-verifie
 zkaleido = { path = "../../zkaleido" }
 zkaleido-native-adapter = { path = "../../adapters/native" }
 hex.workspace = true
+risc0-groth16 = "2.0.1"
+risc0-zkp = "2.0.1"
