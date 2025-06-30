@@ -2135,6 +2135,8 @@ name = "groth16-verify-risc0"
 version = "0.1.0"
 dependencies = [
  "hex",
+ "risc0-groth16",
+ "risc0-zkp",
  "serde",
  "zkaleido",
  "zkaleido-native-adapter",
