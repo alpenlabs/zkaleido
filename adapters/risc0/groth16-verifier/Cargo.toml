@@ -13,6 +13,7 @@ rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
 [dependencies]
+serde.workspace = true
 risc0-groth16 = "2.0.1"
 risc0-binfmt = "2.0.1"
 risc0-zkp = "2.0.1"

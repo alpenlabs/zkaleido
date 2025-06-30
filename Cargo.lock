@@ -7402,6 +7402,7 @@ dependencies = [
  "risc0-groth16",
  "risc0-zkp",
  "risc0-zkvm",
+ "serde",
  "sha2",
  "zkaleido",
 ]

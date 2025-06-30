@@ -2,6 +2,7 @@
 //!
 //! This crate integrates RISC Zero-based Groth16 proof verification based on zkaleido traits.
 mod sha256;
+mod verifier;
 
 use risc0_binfmt::tagged_struct;
 use risc0_groth16::{fr_from_hex_string, split_digest, verifying_key, Seal, Verifier};
