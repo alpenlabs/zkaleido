@@ -7376,6 +7376,12 @@ dependencies = [
 [[package]]
 name = "zkaleido-groth16-verifier"
 version = "0.1.0"
+dependencies = [
+ "hex",
+ "serde",
+ "substrate-bn",
+ "thiserror 1.0.69",
+]
 
 [[package]]
 name = "zkaleido-native-adapter"
