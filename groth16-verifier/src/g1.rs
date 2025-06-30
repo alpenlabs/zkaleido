@@ -96,5 +96,5 @@ pub(super) fn serialize_fq_to_hex(fq: &Fq) -> String {
 
 pub(super) fn deserialize_fq_from_hex(hex_str: &str) -> Result<Fq, Error> {
     let bytes = hex_to_bytes(hex_str)?;
-    Fq::from_slice(&bytes).map_err(|_| Error::FailedToGetFrFromRandomBytes)
+    Fq::from_slice(&bytes).map_err(Error::Field)
 }

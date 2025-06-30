@@ -13,10 +13,6 @@ pub enum Error {
     #[error("Invalid point in subgroup check")]
     InvalidPoint,
 
-    // Conversion Errors
-    #[error("Failed to get Fr from random bytes")]
-    FailedToGetFrFromRandomBytes,
-
     // External Library Errors
     #[error("BN254 Field Error")]
     Field(FieldError),
@@ -24,8 +20,4 @@ pub enum Error {
     Group(GroupError),
     #[error("BN254 Curve Error")]
     Curve(CurveError),
-
-    // SP1 Errors
-    #[error("Invalid program vkey hash")]
-    InvalidProgramVkeyHash,
 }
