@@ -6,5 +6,5 @@ edition = "2024"
 [dependencies]
 serde.workspace = true
 hex.workspace = true
-bn = { version = "0.6.0", package = "substrate-bn" }
+bn.workspace = true
 thiserror.workspace = true
