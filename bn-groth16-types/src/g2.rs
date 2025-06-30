@@ -8,6 +8,7 @@ use crate::{
     g1::{deserialize_fq_from_hex, serialize_fq_to_hex},
 };
 
+/// A wrapper around an `AffineG2` point in the G22 group.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct SAffineG2(pub AffineG2);
 

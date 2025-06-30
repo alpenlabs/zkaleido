@@ -8,6 +8,7 @@ use crate::{
     utils::{bytes_to_hex, hex_to_bytes},
 };
 
+/// A wrapper around an `AffineG1` point in the G1 group.
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub struct SAffineG1(pub AffineG1);
 

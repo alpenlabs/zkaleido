@@ -1,7 +1,7 @@
 use bn::{AffineG1, Fr, G1};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use zkaleido_bn_groth16_types::vk::Groth16VerifyingKey;
+use zkaleido_bn_groth16_types::Groth16VerifyingKey;
 
 use crate::{
     error::{Error, Groth16Error},

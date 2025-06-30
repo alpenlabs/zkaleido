@@ -1,9 +1,5 @@
 use bn::{AffineG2, G2};
-use zkaleido_bn_groth16_types::{
-    g1::SAffineG1,
-    g2::SAffineG2,
-    vk::{Groth16G1, Groth16G2, Groth16VerifyingKey},
-};
+use zkaleido_bn_groth16_types::{Groth16G1, Groth16G2, Groth16VerifyingKey, SAffineG1, SAffineG2};
 
 use crate::{
     error::{Error, Groth16Error},
