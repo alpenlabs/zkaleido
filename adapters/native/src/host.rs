@@ -2,7 +2,7 @@ use std::{fmt, sync::Arc};
 
 use zkaleido::{
     Proof, ProofReceipt, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm,
-    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmProver, ZkVmResult, ZkVmVerifier,
+    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmResult, ZkVmVerifier,
 };
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
@@ -67,16 +67,18 @@ impl ZkVmVerifier for NativeHost {
         VerifyingKeyCommitment::new([0u32; 8])
     }
 
+    fn verify_inner(&self, _proof: &NativeProofReceipt) -> ZkVmResult<()> {
+        Ok(())
+    }
+}
+
+impl ZkVmOutputExtractor for NativeHost {
     fn extract_serde_public_output<T: serde::Serialize + serde::de::DeserializeOwned>(
         public_values_raw: &PublicValues,
     ) -> ZkVmResult<T> {
         let public_params: T = bincode::deserialize(public_values_raw.as_bytes())
             .map_err(|e| ZkVmError::OutputExtractionError { source: e.into() })?;
         Ok(public_params)
-    }
-
-    fn verify_inner(&self, _proof: &NativeProofReceipt) -> ZkVmResult<()> {
-        Ok(())
     }
 }
 
