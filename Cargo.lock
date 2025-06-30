@@ -7374,6 +7374,10 @@ dependencies = [
 ]
 
 [[package]]
+name = "zkaleido-groth16-verifier"
+version = "0.1.0"
+
+[[package]]
 name = "zkaleido-native-adapter"
 version = "0.1.0"
 dependencies = [

@@ -10,6 +10,7 @@ members = [
   "adapters/sp1/guest",
   "adapters/sp1/groth16-verifier",
 
+  "groth16-verifier",
   "zkaleido",
 
   # binaries
