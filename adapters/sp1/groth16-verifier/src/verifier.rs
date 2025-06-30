@@ -1,12 +1,12 @@
-use bn::Fr;
+use bn::{AffineG1, Fr, G1};
+use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 
 use crate::{
-    conversion::{load_groth16_proof_from_bytes, load_groth16_verifying_key_from_bytes},
     error::{Error, Groth16Error},
-    types::Groth16VerifyingKey,
+    types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
     utils::{blake3_hash, hash_public_inputs_with_fn, sha256_hash},
-    verification::verify_groth16_algebraic,
+    verification::verify_sp1_groth16_algebraic,
 };
 
 /// Number of bytes used from the SHA-256 hash of the Groth16 verifying key.
@@ -23,20 +23,20 @@ pub(crate) const VK_HASH_PREFIX_LENGTH: usize = 4;
 /// 2. The Groth16 proof is valid with respect to two public inputs:
 ///    - `program_vk_hash`: a unique identifier for the SP1 program (as an Fr element).
 ///    - a hash of the supplied public values (either SHA-256 or Blake3).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SP1Groth16Verifier {
     /// The (uncompressed) Groth16 verifying key for the SP1 circuit.
-    vk: Groth16VerifyingKey,
+    pub(crate) vk: Groth16VerifyingKey,
     /// First `VK_HASH_PREFIX_LENGTH` bytes of `Sha256(groth16_vk)`, used to confirm
     /// the proof was generated with the correct key.
-    vk_hash_tag: [u8; 4],
-    /// Unique identifier for the SP1 program, computed from the SP1VerifyingKey::hash_bn254.
-    program_vk_hash: Fr,
+    pub(crate) vk_hash_tag: [u8; 4],
 }
 
 impl SP1Groth16Verifier {
     /// Loads a new `SP1Groth16Verifier` from a gnark compressed Groth16 verifying key and a
-    /// program ID.
+    /// program ID. This also directly bakes the SP1 `program_vk_hash` (the first public input)
+    /// into the G1-key vector so that downstream you only ever need to pass the remaining inputs
+    /// (e.g. the hash of your public values)
     ///
     /// # Parameters
     /// - `vk_bytes`: Byte slice containing the gnark compressed Groth16 verifying key. Typically,
@@ -56,16 +56,25 @@ impl SP1Groth16Verifier {
 
         // Parse the Groth16 verifying key from its byte representation.
         // This returns a `Groth16VerifyingKey` that can be used for algebraic verification.
-        let groth16_vk = load_groth16_verifying_key_from_bytes(vk_bytes)?;
+        let mut groth16_vk = Groth16VerifyingKey::load_from_gnark_bytes(vk_bytes)?;
 
         // Parse the program ID (Fr element) from its 32-byte big-endian encoding.
         let program_vk_hash =
             Fr::from_slice(&program_vk_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
 
+        // compute K₀' = K₀ + program_vk_hash * K₁
+        let k0: G1 = groth16_vk.g1.k[0].into();
+        let k1: G1 = groth16_vk.g1.k[1].into();
+        let k0_prime: G1 = k0 + (k1 * program_vk_hash);
+
+        groth16_vk.g1.k = vec![
+            AffineG1::from_jacobian(k0_prime).unwrap().into(),
+            *groth16_vk.g1.k.last().unwrap(),
+        ];
+
         Ok(SP1Groth16Verifier {
             vk: groth16_vk,
             vk_hash_tag: groth16_vk_hash,
-            program_vk_hash,
         })
     }
 
@@ -96,7 +105,7 @@ impl SP1Groth16Verifier {
 
         // Extract the raw Groth16 proof (bytes after the prefix) and parse it.
         let raw_proof_bytes = &proof[VK_HASH_PREFIX_LENGTH..];
-        let proof = load_groth16_proof_from_bytes(raw_proof_bytes)?;
+        let proof = Groth16Proof::load_from_gnark_bytes(raw_proof_bytes)?;
 
         // Compute Fr element for hash(public_values) using SHA-256. SP1’s Groth16 circuit expects
         // two public inputs: a. `program_id`, b. `hash(public_values)`.  Since SP1 allows either
@@ -106,7 +115,7 @@ impl SP1Groth16Verifier {
             Fr::from_slice(&pp_sha2_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
 
         // Attempt algebraic verification with SHA-256 hash as the second input.
-        if verify_groth16_algebraic(&self.vk, &proof, &[self.program_vk_hash, fr_sha2]).is_ok() {
+        if verify_sp1_groth16_algebraic(&self.vk, &proof, &fr_sha2).is_ok() {
             return Ok(());
         }
 
@@ -116,29 +125,105 @@ impl SP1Groth16Verifier {
             Fr::from_slice(&pp_blake3_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
 
         // Retry algebraic verification using Blake3 hash as the second input.
-        verify_groth16_algebraic(&self.vk, &proof, &[self.program_vk_hash, fr_blake3])
+        verify_sp1_groth16_algebraic(&self.vk, &proof, &fr_blake3)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use bn::{AffineG1, AffineG2, Fq, Fq2, Group, G1, G2};
+    use rand::thread_rng;
     use sp1_verifier::GROTH16_VK_BYTES;
     use zkaleido::ProofReceipt;
 
     use crate::verifier::SP1Groth16Verifier;
 
-    #[test]
-    fn test_load_and_verify() {
+    fn load_vk_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
         let program_id_hex = "0000e3572a33647cba427acbaecac23a01e237a8140d2c91b3873457beb5be13";
         let program_id: [u8; 32] = hex::decode(program_id_hex).unwrap().try_into().unwrap();
 
-        let vk = SP1Groth16Verifier::load(&GROTH16_VK_BYTES, program_id).unwrap();
+        let verifier = SP1Groth16Verifier::load(&GROTH16_VK_BYTES, program_id).unwrap();
         let proof_file = format!("./proofs/fibonacci_sp1_0x{}.proof.bin", program_id_hex);
         let receipt = ProofReceipt::load(proof_file).unwrap();
-        let res = vk.verify(
+        (verifier, receipt)
+    }
+
+    #[test]
+    fn test_valid_proof() {
+        let (verifier, receipt) = load_vk_and_proof();
+        let res = verifier.verify(
             receipt.proof().as_bytes(),
             receipt.public_values().as_bytes(),
         );
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_invalid_g1() {
+        let (mut verifier, receipt) = load_vk_and_proof();
+        let vk_alpha = verifier.vk.g1.alpha.0;
+        let alpha_x = vk_alpha.x();
+        let alpha_y = vk_alpha.y();
+
+        let mut rng = thread_rng();
+        let invalid_alpha_x = Fq::random(&mut rng);
+
+        let res = AffineG1::new(alpha_x, alpha_y);
+        assert!(res.is_ok());
+
+        let res = AffineG1::new(invalid_alpha_x, alpha_y);
+        assert!(res.is_err());
+
+        let invalid_alpha =
+            AffineG1::from_jacobian(G1::new(invalid_alpha_x, alpha_y, Fq::one())).unwrap();
+        verifier.vk.g1.alpha.0 = invalid_alpha;
+
+        let res = verifier.verify(
+            receipt.proof().as_bytes(),
+            receipt.public_values().as_bytes(),
+        );
+        assert!(res.is_err());
+
+        let random_alpha = AffineG1::from_jacobian(G1::random(&mut rng)).unwrap();
+        verifier.vk.g1.alpha.0 = random_alpha;
+        let res = verifier.verify(
+            receipt.proof().as_bytes(),
+            receipt.public_values().as_bytes(),
+        );
+        assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_invalid_g2() {
+        let (mut verifier, receipt) = load_vk_and_proof();
+        let vk_gamma = verifier.vk.g2.gamma.0;
+        let gamma_x = vk_gamma.x();
+        let gamma_y = vk_gamma.y();
+        let invalid_gamma_x = gamma_x + Fq2::one();
+
+        let res = AffineG2::new(gamma_x, gamma_y);
+        assert!(res.is_ok());
+
+        let res = AffineG2::new(invalid_gamma_x, gamma_y);
+        assert!(res.is_err());
+
+        let invalid_gamma =
+            AffineG2::from_jacobian(G2::new(invalid_gamma_x, gamma_y, Fq2::one())).unwrap();
+        verifier.vk.g2.gamma.0 = invalid_gamma;
+
+        let res = verifier.verify(
+            receipt.proof().as_bytes(),
+            receipt.public_values().as_bytes(),
+        );
+        assert!(res.is_err());
+
+        let mut rng = thread_rng();
+        let random_gamma = AffineG2::from_jacobian(G2::random(&mut rng)).unwrap();
+        verifier.vk.g2.gamma.0 = random_gamma;
+        let res = verifier.verify(
+            receipt.proof().as_bytes(),
+            receipt.public_values().as_bytes(),
+        );
+        assert!(res.is_err());
     }
 }

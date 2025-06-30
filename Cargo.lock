@@ -5226,9 +5226,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.139"
+version = "1.0.140"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "44f86c3acccc9c65b153fe1b85a3be07fe5515274ec9f0653b4a0875731c72a6"
+checksum = "20068b6e96dc6c9bd23e01df8827e6c7e1f2fddd43c21810382803c136b99373"
 dependencies = [
  "itoa",
  "memchr",
@@ -7467,9 +7467,12 @@ dependencies = [
 name = "zkaleido-sp1-groth16-verifier"
 version = "0.1.0"
 dependencies = [
+ "bincode",
  "blake3",
- "borsh",
  "hex",
+ "rand 0.8.5",
+ "serde",
+ "serde_json",
  "sha2",
  "sp1-verifier",
  "substrate-bn",
