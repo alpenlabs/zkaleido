@@ -3,6 +3,7 @@ use std::{fmt, sync::Arc};
 use zkaleido::{
     Proof, ProofReceipt, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm,
     ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmResult, ZkVmVerifier,
+    ZkVmVkProvider,
 };
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
@@ -59,16 +60,19 @@ impl ZkVmProver for NativeHost {
 
 impl ZkVmVerifier for NativeHost {
     type ZkVmProofReceipt = NativeProofReceipt;
+
+    fn verify_inner(&self, _proof: &NativeProofReceipt) -> ZkVmResult<()> {
+        Ok(())
+    }
+}
+
+impl ZkVmVkProvider for NativeHost {
     fn vk(&self) -> VerifyingKey {
         VerifyingKey::default()
     }
 
     fn vk_commitment(&self) -> VerifyingKeyCommitment {
         VerifyingKeyCommitment::new([0u32; 8])
-    }
-
-    fn verify_inner(&self, _proof: &NativeProofReceipt) -> ZkVmResult<()> {
-        Ok(())
     }
 }
 
