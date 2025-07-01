@@ -1,4 +1,4 @@
-use crate::{AggregationInput, ProofReceipt, ZkVmInputError};
+use crate::{AggregationInput, ProofReceiptWithMetadata, ZkVmInputError};
 
 /// A convenient alias for results in the ZkVM.
 pub type ZkVmInputResult<T> = Result<T, ZkVmInputError>;
@@ -12,7 +12,7 @@ pub trait ZkVmInputBuilder<'a> {
 
     /// The type of proof receipt that this builder can handle, typically convertible
     /// from a generic [`ProofReceipt`].
-    type ZkVmProofReceipt: TryFrom<ProofReceipt>;
+    type ZkVmProofReceipt: TryFrom<ProofReceiptWithMetadata>;
 
     /// Creates a new instance of the `ProverInputs` struct.
     fn new() -> Self;

@@ -1,5 +1,8 @@
-use risc0_zkvm::{InnerReceipt, Receipt};
-use zkaleido::{Mismatched, Proof, ProofReceipt, PublicValues, ZkVm, ZkVmProofError};
+use risc0_zkvm::{InnerReceipt, Receipt, VERSION};
+use zkaleido::{
+    Mismatched, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, PublicValues, ZkVm,
+    ZkVmProofError,
+};
 
 #[derive(Debug, Clone)]
 pub struct Risc0ProofReceipt(Receipt);
@@ -22,30 +25,41 @@ impl AsRef<Receipt> for Risc0ProofReceipt {
     }
 }
 
-impl TryFrom<ProofReceipt> for Risc0ProofReceipt {
+impl TryFrom<ProofReceiptWithMetadata> for Risc0ProofReceipt {
     type Error = ZkVmProofError;
-    fn try_from(value: ProofReceipt) -> Result<Self, Self::Error> {
+    fn try_from(value: ProofReceiptWithMetadata) -> Result<Self, Self::Error> {
         Risc0ProofReceipt::try_from(&value)
     }
 }
 
-impl TryFrom<&ProofReceipt> for Risc0ProofReceipt {
+impl TryFrom<&ProofReceiptWithMetadata> for Risc0ProofReceipt {
     type Error = ZkVmProofError;
-    fn try_from(value: &ProofReceipt) -> Result<Self, Self::Error> {
-        if value.zkvm() != &ZkVm::Risc0 {
+    fn try_from(value: &ProofReceiptWithMetadata) -> Result<Self, Self::Error> {
+        let zkvm_in_proof = value.metadata().zkvm();
+        if zkvm_in_proof != &ZkVm::Risc0 {
             Err(Mismatched {
                 expected: ZkVm::Risc0,
-                actual: *value.zkvm(),
+                actual: *zkvm_in_proof,
             })?
         }
-        let journal = value.public_values().as_bytes().to_vec();
-        let inner: InnerReceipt = bincode::deserialize(value.proof().as_bytes())
+
+        let version_in_proof = value.metadata().version().to_string();
+        let risc0_version = VERSION.to_string();
+        if version_in_proof != risc0_version {
+            Err(Mismatched {
+                expected: risc0_version.clone(),
+                actual: version_in_proof,
+            })?
+        }
+
+        let journal = value.receipt().public_values().as_bytes().to_vec();
+        let inner: InnerReceipt = bincode::deserialize(value.receipt().proof().as_bytes())
             .map_err(|e| ZkVmProofError::DataFormat(e.into()))?;
         Ok(Receipt::new(inner, journal).into())
     }
 }
 
-impl TryFrom<Risc0ProofReceipt> for ProofReceipt {
+impl TryFrom<Risc0ProofReceipt> for ProofReceiptWithMetadata {
     type Error = ZkVmProofError;
     fn try_from(value: Risc0ProofReceipt) -> Result<Self, Self::Error> {
         // If there's a Groth16 representation, directly use its bytes;
@@ -57,6 +71,9 @@ impl TryFrom<Risc0ProofReceipt> for ProofReceipt {
         };
         let proof = Proof::new(proof_bytes);
         let public_values = PublicValues::new(value.0.journal.bytes.to_vec());
-        Ok(ProofReceipt::new(proof, public_values, ZkVm::Risc0))
+        let receipt = ProofReceipt::new(proof, public_values);
+
+        let metadata = ProofMetadata::new(ZkVm::Risc0, risc0_zkvm::VERSION);
+        Ok(ProofReceiptWithMetadata::new(receipt, metadata))
     }
 }

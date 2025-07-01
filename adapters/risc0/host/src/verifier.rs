@@ -2,12 +2,12 @@ use risc0_zkvm::Journal;
 use serde::{de::DeserializeOwned, Serialize};
 use zkaleido::{
     PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError, ZkVmOutputExtractor, ZkVmResult,
-    ZkVmVerifier, ZkVmVkProvider,
+    ZkVmTypedVerifier, ZkVmVkProvider,
 };
 
 use crate::{proof::Risc0ProofReceipt, Risc0Host};
 
-impl ZkVmVerifier for Risc0Host {
+impl ZkVmTypedVerifier for Risc0Host {
     type ZkVmProofReceipt = Risc0ProofReceipt;
 
     fn verify_inner(&self, proof: &Risc0ProofReceipt) -> ZkVmResult<()> {

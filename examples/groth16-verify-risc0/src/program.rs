@@ -60,7 +60,10 @@ mod tests {
     fn test_native() {
         let input = Risc0Groth16VerifyInput::load();
         let host = get_native_host();
-        let receipt = Risc0Groth16VerifyProgram::prove(&input, &host).unwrap();
+        let receipt = Risc0Groth16VerifyProgram::prove(&input, &host)
+            .unwrap()
+            .receipt()
+            .clone();
         let risc0_verified =
             Risc0Groth16VerifyProgram::process_output::<NativeHost>(receipt.public_values())
                 .unwrap();

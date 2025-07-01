@@ -90,17 +90,14 @@ pub struct ProofReceipt {
     proof: Proof,
     /// The public values associated with the proof.
     public_values: PublicValues,
-    /// ZKVM used to generate this proof
-    zkvm: ZkVm,
 }
 
 impl ProofReceipt {
     /// Creates a new `ProofReceipt` from proof and it's associated public values
-    pub fn new(proof: Proof, public_values: PublicValues, zkvm: ZkVm) -> Self {
+    pub fn new(proof: Proof, public_values: PublicValues) -> Self {
         Self {
             proof,
             public_values,
-            zkvm,
         }
     }
 
@@ -113,10 +110,86 @@ impl ProofReceipt {
     pub fn public_values(&self) -> &PublicValues {
         &self.public_values
     }
+}
 
-    /// Returns the ZKVM used to generate the proof.
+/// Metadata associated with a proof.
+///
+/// Contains information about the ZKVM that generated the proof and the version of the proving
+/// system used. This metadata is essential for proof verification, compatibility checking, and
+/// debugging.
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    PartialEq,
+    Eq,
+    Arbitrary,
+    Default,
+)]
+pub struct ProofMetadata {
+    /// The zero-knowledge virtual machine that generated this proof.
+    zkvm: ZkVm,
+    /// Version string of the ZKVM
+    version: String,
+}
+
+impl ProofMetadata {
+    /// Creates new proof metadata.
+    pub fn new(zkvm: ZkVm, version: impl Into<String>) -> Self {
+        Self {
+            zkvm,
+            version: version.into(),
+        }
+    }
+
+    /// Returns the ZKVM that generated this proof.
     pub fn zkvm(&self) -> &ZkVm {
         &self.zkvm
+    }
+
+    /// Returns the version string of the proving system.
+    pub fn version(&self) -> &str {
+        &self.version
+    }
+}
+
+/// A receipt containing a `Proof` and associated `PublicValues`.
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    PartialEq,
+    Eq,
+    Arbitrary,
+    Default,
+)]
+pub struct ProofReceiptWithMetadata {
+    /// The validity proof receipt.
+    receipt: ProofReceipt,
+    /// ZKVM used to generate this proof
+    metadata: ProofMetadata,
+}
+
+impl ProofReceiptWithMetadata {
+    /// Creates new proof receipt with metadata.
+    pub fn new(receipt: ProofReceipt, metadata: ProofMetadata) -> Self {
+        Self { receipt, metadata }
+    }
+
+    /// Returns the reference to the proof receipt
+    pub fn receipt(&self) -> &ProofReceipt {
+        &self.receipt
+    }
+
+    /// Returns the metadata of the proof
+    pub fn metadata(&self) -> &ProofMetadata {
+        &self.metadata
     }
 
     /// Saves the proof to a path.
@@ -138,19 +211,19 @@ impl ProofReceipt {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AggregationInput {
     /// The proof receipt containing the proof and its public values.
-    receipt: ProofReceipt,
+    receipt: ProofReceiptWithMetadata,
     /// The verification key for validating the proof.
     vk: VerifyingKey,
 }
 
 impl AggregationInput {
     /// Creates a new `AggregationInput`.
-    pub fn new(receipt: ProofReceipt, vk: VerifyingKey) -> Self {
+    pub fn new(receipt: ProofReceiptWithMetadata, vk: VerifyingKey) -> Self {
         Self { receipt, vk }
     }
 
     /// Returns a reference to the `ProofReceipt`.
-    pub fn receipt(&self) -> &ProofReceipt {
+    pub fn receipt(&self) -> &ProofReceiptWithMetadata {
         &self.receipt
     }
 

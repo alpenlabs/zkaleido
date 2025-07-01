@@ -59,7 +59,10 @@ mod tests {
     fn test_native() {
         let input = SP1Groth16VerifyInput::load();
         let host = get_native_host();
-        let receipt = SP1Groth16VerifyProgram::prove(&input, &host).unwrap();
+        let receipt = SP1Groth16VerifyProgram::prove(&input, &host)
+            .unwrap()
+            .receipt()
+            .clone();
         let is_verified =
             SP1Groth16VerifyProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
 

@@ -1,7 +1,7 @@
 use bn::{AffineG1, Fr, G1};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
-use zkaleido::{ProofReceipt, ZkVmError, ZkVmProofError, ZkVmResult, ZkVmVerifier};
+use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
     error::{Error, Groth16Error},
@@ -130,30 +130,11 @@ impl SP1Groth16Verifier {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct SP1Groth16ProofReceipt(ProofReceipt);
-
-impl TryFrom<ProofReceipt> for SP1Groth16ProofReceipt {
-    type Error = ZkVmProofError;
-    fn try_from(value: ProofReceipt) -> Result<Self, Self::Error> {
-        Ok(SP1Groth16ProofReceipt(value))
-    }
-}
-
-impl TryFrom<SP1Groth16ProofReceipt> for ProofReceipt {
-    type Error = ZkVmProofError;
-    fn try_from(value: SP1Groth16ProofReceipt) -> Result<Self, Self::Error> {
-        Ok(value.0)
-    }
-}
-
 impl ZkVmVerifier for SP1Groth16Verifier {
-    type ZkVmProofReceipt = SP1Groth16ProofReceipt;
-
-    fn verify_inner(&self, receipt: &Self::ZkVmProofReceipt) -> ZkVmResult<()> {
+    fn verify(&self, receipt: &ProofReceipt) -> ZkVmResult<()> {
         self.verify(
-            receipt.0.proof().as_bytes(),
-            receipt.0.public_values().as_bytes(),
+            receipt.proof().as_bytes(),
+            receipt.public_values().as_bytes(),
         )
         .map_err(|e| ZkVmError::ProofVerificationError(e.to_string()))
     }
@@ -164,17 +145,21 @@ mod tests {
     use bn::{AffineG1, AffineG2, Fq, Fq2, Group, G1, G2};
     use rand::thread_rng;
     use sp1_verifier::GROTH16_VK_BYTES;
-    use zkaleido::ProofReceipt;
+    use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
     use crate::verifier::SP1Groth16Verifier;
 
     fn load_vk_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
-        let program_id_hex = "0000e3572a33647cba427acbaecac23a01e237a8140d2c91b3873457beb5be13";
+        let program_id_hex = "00eb7fd5709e4b833db86054ba4acca001a3aa5f18b7e7d0d96d0f1d340b4e34";
         let program_id: [u8; 32] = hex::decode(program_id_hex).unwrap().try_into().unwrap();
 
         let verifier = SP1Groth16Verifier::load(&GROTH16_VK_BYTES, program_id).unwrap();
         let proof_file = format!("./proofs/fibonacci_sp1_0x{}.proof.bin", program_id_hex);
-        let receipt = ProofReceipt::load(proof_file).unwrap();
+        let receipt = ProofReceiptWithMetadata::load(proof_file)
+            .unwrap()
+            .receipt()
+            .clone();
+
         (verifier, receipt)
     }
 
