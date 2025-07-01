@@ -14,7 +14,7 @@ impl SP1Groth16VerifyInput {
     pub fn load() -> Self {
         let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-        let sp1_program_vk_hex = "0000e3572a33647cba427acbaecac23a01e237a8140d2c91b3873457beb5be13";
+        let sp1_program_vk_hex = "00eb7fd5709e4b833db86054ba4acca001a3aa5f18b7e7d0d96d0f1d340b4e34";
         let sp1_program_vk: [u8; 32] = hex::decode(sp1_program_vk_hex).unwrap().try_into().unwrap();
 
         let sp1_vk_bytes = include_bytes!("../vk/sp1_groth16_vk.bin");

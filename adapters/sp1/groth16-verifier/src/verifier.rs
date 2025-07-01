@@ -150,7 +150,7 @@ mod tests {
     use crate::verifier::SP1Groth16Verifier;
 
     fn load_vk_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
-        let program_id_hex = "0000e3572a33647cba427acbaecac23a01e237a8140d2c91b3873457beb5be13";
+        let program_id_hex = "00eb7fd5709e4b833db86054ba4acca001a3aa5f18b7e7d0d96d0f1d340b4e34";
         let program_id: [u8; 32] = hex::decode(program_id_hex).unwrap().try_into().unwrap();
 
         let verifier = SP1Groth16Verifier::load(&GROTH16_VK_BYTES, program_id).unwrap();
