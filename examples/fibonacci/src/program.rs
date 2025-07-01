@@ -55,7 +55,7 @@ pub mod tests {
     fn test_native() {
         let input = 5;
         let host = get_native_host();
-        let receipt = FibProgram::prove(&input, &host).unwrap();
+        let receipt = FibProgram::prove(&input, &host).unwrap().receipt().clone();
         let output = FibProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
         assert_eq!(output, 5);
     }

@@ -55,7 +55,10 @@ mod tests {
     fn test_native() {
         let input = 5;
         let host = get_native_host();
-        let receipt = ShaChainProgram::prove(&input, &host).unwrap();
+        let receipt = ShaChainProgram::prove(&input, &host)
+            .unwrap()
+            .receipt()
+            .clone();
         let public_params =
             ShaChainProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
 

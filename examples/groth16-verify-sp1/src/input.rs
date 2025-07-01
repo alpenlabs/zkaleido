@@ -1,12 +1,12 @@
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
-use zkaleido::ProofReceiptWithMetadata;
+use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 use zkaleido_sp1_groth16_verifier::SP1Groth16Verifier;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SP1Groth16VerifyInput {
-    pub sp1_receipt: ProofReceiptWithMetadata,
+    pub sp1_receipt: ProofReceipt,
     pub sp1_verifier: SP1Groth16Verifier,
 }
 
@@ -24,7 +24,10 @@ impl SP1Groth16VerifyInput {
             "../../adapters/sp1/groth16-verifier/proofs/fibonacci_sp1_0x{}.proof.bin",
             sp1_program_vk_hex
         ));
-        let sp1_receipt = ProofReceiptWithMetadata::load(sp1_proof_file).unwrap();
+        let sp1_receipt = ProofReceiptWithMetadata::load(sp1_proof_file)
+            .unwrap()
+            .receipt()
+            .clone();
 
         SP1Groth16VerifyInput {
             sp1_receipt,

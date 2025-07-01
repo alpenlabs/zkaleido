@@ -62,7 +62,10 @@ mod tests {
     fn test_native() {
         let input = SchnorrSigInput::new_random();
         let host = get_native_host();
-        let receipt = SchnorrSigProgram::prove(&input, &host).unwrap();
+        let receipt = SchnorrSigProgram::prove(&input, &host)
+            .unwrap()
+            .receipt()
+            .clone();
         let output =
             SchnorrSigProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
         assert!(output);
