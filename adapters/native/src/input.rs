@@ -1,4 +1,4 @@
-use zkaleido::{AggregationInput, ProofReceipt, ZkVmInputBuilder, ZkVmInputResult};
+use zkaleido::{AggregationInput, ProofReceiptWithMetadata, ZkVmInputBuilder, ZkVmInputResult};
 
 use crate::env::NativeMachine;
 
@@ -12,7 +12,7 @@ pub struct NativeMachineInputBuilder(pub NativeMachine);
 
 impl ZkVmInputBuilder<'_> for NativeMachineInputBuilder {
     type Input = NativeMachine;
-    type ZkVmProofReceipt = ProofReceipt;
+    type ZkVmProofReceipt = ProofReceiptWithMetadata;
 
     fn new() -> NativeMachineInputBuilder {
         Self(NativeMachine::new())
@@ -36,7 +36,7 @@ impl ZkVmInputBuilder<'_> for NativeMachineInputBuilder {
     fn write_proof(&mut self, item: &AggregationInput) -> ZkVmInputResult<&mut Self> {
         // For the native mode we only write the public values since the proof is expected to be
         // empty
-        self.write_buf(item.receipt().public_values().as_bytes())
+        self.write_buf(item.receipt().receipt().public_values().as_bytes())
     }
 
     fn build(&mut self) -> ZkVmInputResult<Self::Input> {

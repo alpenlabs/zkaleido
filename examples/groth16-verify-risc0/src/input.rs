@@ -3,12 +3,12 @@ use std::path::PathBuf;
 use risc0_groth16::verifying_key;
 use risc0_zkp::core::digest::{digest, Digest};
 use serde::{Deserialize, Serialize};
-use zkaleido::ProofReceipt;
+use zkaleido::ProofReceiptWithMetadata;
 use zkaleido_risc0_groth16_verifier::Risc0Groth16Verifier;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Risc0Groth16VerifyInput {
-    pub risc0_receipt: ProofReceipt,
+    pub risc0_receipt: ProofReceiptWithMetadata,
     pub risc0_verifier: Risc0Groth16Verifier,
 }
 
@@ -24,7 +24,7 @@ impl Risc0Groth16VerifyInput {
             "../../adapters/risc0/groth16-verifier/proofs/fibonacci_risc0_{}.proof.bin",
             image_id_hex
         ));
-        let risc0_receipt = ProofReceipt::load(proof_file).unwrap();
+        let risc0_receipt = ProofReceiptWithMetadata::load(proof_file).unwrap();
 
         let vk = verifying_key();
 

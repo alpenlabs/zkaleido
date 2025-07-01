@@ -1,16 +1,16 @@
-use zkaleido::{ProofReceipt, ZkVmProofError};
+use zkaleido::{ProofReceiptWithMetadata, ZkVmProofError};
 
 #[derive(Debug, Clone)]
-pub struct NativeProofReceipt(ProofReceipt);
+pub struct NativeProofReceipt(ProofReceiptWithMetadata);
 
-impl TryFrom<ProofReceipt> for NativeProofReceipt {
+impl TryFrom<ProofReceiptWithMetadata> for NativeProofReceipt {
     type Error = ZkVmProofError;
-    fn try_from(value: ProofReceipt) -> Result<Self, Self::Error> {
+    fn try_from(value: ProofReceiptWithMetadata) -> Result<Self, Self::Error> {
         Ok(NativeProofReceipt(value))
     }
 }
 
-impl TryFrom<NativeProofReceipt> for ProofReceipt {
+impl TryFrom<NativeProofReceipt> for ProofReceiptWithMetadata {
     type Error = ZkVmProofError;
     fn try_from(value: NativeProofReceipt) -> Result<Self, Self::Error> {
         Ok(value.0)

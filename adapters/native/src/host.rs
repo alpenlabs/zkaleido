@@ -1,9 +1,9 @@
-use std::{fmt, sync::Arc};
+use std::{env, fmt, sync::Arc};
 
 use zkaleido::{
-    Proof, ProofReceipt, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm,
-    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmResult, ZkVmVerifier,
-    ZkVmVkProvider,
+    Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, ProofType, PublicValues,
+    VerifyingKey, VerifyingKeyCommitment, ZkVm, ZkVmError, ZkVmExecutor, ZkVmHost,
+    ZkVmOutputExtractor, ZkVmProver, ZkVmResult, ZkVmTypedVerifier, ZkVmVkProvider,
 };
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
@@ -54,11 +54,17 @@ impl ZkVmProver for NativeHost {
     ) -> ZkVmResult<NativeProofReceipt> {
         let public_values = self.execute(native_machine)?;
         let proof = Proof::default();
-        Ok(ProofReceipt::new(proof, public_values, ZkVm::Native).try_into()?)
+        let receipt = ProofReceipt::new(proof, public_values);
+
+        let version: &str = env!("CARGO_PKG_VERSION");
+        let metadata = ProofMetadata::new(ZkVm::Native, version.to_string());
+
+        let receipt = ProofReceiptWithMetadata::new(receipt, metadata);
+        Ok(receipt.try_into()?)
     }
 }
 
-impl ZkVmVerifier for NativeHost {
+impl ZkVmTypedVerifier for NativeHost {
     type ZkVmProofReceipt = NativeProofReceipt;
 
     fn verify_inner(&self, _proof: &NativeProofReceipt) -> ZkVmResult<()> {

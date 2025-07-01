@@ -2,12 +2,12 @@ use serde::{de::DeserializeOwned, Serialize};
 use sp1_sdk::{HashableKey, ProverClient};
 use zkaleido::{
     PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError, ZkVmOutputExtractor, ZkVmResult,
-    ZkVmVerifier, ZkVmVkProvider,
+    ZkVmTypedVerifier, ZkVmVkProvider,
 };
 
 use crate::{proof::SP1ProofReceipt, SP1Host};
 
-impl ZkVmVerifier for SP1Host {
+impl ZkVmTypedVerifier for SP1Host {
     type ZkVmProofReceipt = SP1ProofReceipt;
     fn verify_inner(&self, proof: &SP1ProofReceipt) -> ZkVmResult<()> {
         let client = ProverClient::from_env();
