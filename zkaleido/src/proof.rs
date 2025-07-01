@@ -110,18 +110,6 @@ impl ProofReceipt {
     pub fn public_values(&self) -> &PublicValues {
         &self.public_values
     }
-
-    /// Saves the proof to a path.
-    pub fn save(&self, path: impl AsRef<Path>) -> ZkVmResult<()> {
-        bincode::serialize_into(File::create(path).expect("failed to open file"), self)
-            .map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))
-    }
-
-    /// Loads a proof from a path.
-    pub fn load(path: impl AsRef<Path>) -> ZkVmResult<Self> {
-        bincode::deserialize_from(File::open(path).expect("failed to open file"))
-            .map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))
-    }
 }
 
 /// Metadata associated with a proof.
@@ -203,6 +191,18 @@ impl ProofReceiptWithMetadata {
     pub fn metadata(&self) -> &ProofMetadata {
         &self.metadata
     }
+
+    /// Saves the proof to a path.
+    pub fn save(&self, path: impl AsRef<Path>) -> ZkVmResult<()> {
+        bincode::serialize_into(File::create(path).expect("failed to open file"), self)
+            .map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))
+    }
+
+    /// Loads a proof from a path.
+    pub fn load(path: impl AsRef<Path>) -> ZkVmResult<Self> {
+        bincode::deserialize_from(File::open(path).expect("failed to open file"))
+            .map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))
+    }
 }
 
 /// An input to the aggregation program.
@@ -211,19 +211,19 @@ impl ProofReceiptWithMetadata {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AggregationInput {
     /// The proof receipt containing the proof and its public values.
-    receipt: ProofReceipt,
+    receipt: ProofReceiptWithMetadata,
     /// The verification key for validating the proof.
     vk: VerifyingKey,
 }
 
 impl AggregationInput {
     /// Creates a new `AggregationInput`.
-    pub fn new(receipt: ProofReceipt, vk: VerifyingKey) -> Self {
+    pub fn new(receipt: ProofReceiptWithMetadata, vk: VerifyingKey) -> Self {
         Self { receipt, vk }
     }
 
     /// Returns a reference to the `ProofReceipt`.
-    pub fn receipt(&self) -> &ProofReceipt {
+    pub fn receipt(&self) -> &ProofReceiptWithMetadata {
         &self.receipt
     }
 

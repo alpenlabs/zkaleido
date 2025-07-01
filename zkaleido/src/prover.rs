@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use async_trait::async_trait;
 
 use crate::{
-    input::ZkVmInputBuilder, ProofReceipt, ProofType, PublicValues, ZkVmError, ZkVmProofError,
-    ZkVmResult,
+    input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, PublicValues,
+    ZkVmError, ZkVmProofError, ZkVmResult,
 };
 
 /// A trait implemented by types that execute zkVM programs.
@@ -31,11 +31,11 @@ pub trait ZkVmExecutor: Send + Sync + Clone + Debug + 'static {
 /// generating proofs in a zero-knowledge context.
 pub trait ZkVmProver: ZkVmExecutor {
     /// The proof receipt type, specific to this host, that can be
-    /// converted to and from a generic [`ProofReceipt`].
+    /// converted to and from a generic [`ProofReceiptWithMetadata`].
     ///
     /// This allows flexibility for different proof systems or proof representations
     /// while still providing a way to convert back to a standard [`ProofReceipt`].
-    type ZkVmProofReceipt: TryInto<ProofReceipt, Error = ZkVmProofError>;
+    type ZkVmProofReceipt: TryInto<ProofReceiptWithMetadata, Error = ZkVmProofError>;
 
     /// Executes the guest code within the VM, generating and returning ZkVm specific validity
     /// proof.
@@ -51,7 +51,7 @@ pub trait ZkVmProver: ZkVmExecutor {
         &self,
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
-    ) -> ZkVmResult<ProofReceipt> {
+    ) -> ZkVmResult<ProofReceiptWithMetadata> {
         let receipt = self.prove_inner(input, proof_type)?;
         receipt.try_into().map_err(ZkVmError::InvalidProofReceipt)
     }
@@ -91,7 +91,7 @@ pub trait ZkVmRemoteProver: ZkVmProver {
     /// Internally calls [`get_proof_if_ready_inner`](Self::get_proof_if_ready_inner)
     /// to fetch the proof receipt and attempts to convert it into a
     /// [`ProofReceipt`]. If the proof is not ready, `None` is returned.
-    async fn get_proof_if_ready(&self, id: String) -> ZkVmResult<Option<ProofReceipt>> {
+    async fn get_proof_if_ready(&self, id: String) -> ZkVmResult<Option<ProofReceiptWithMetadata>> {
         let receipt = self.get_proof_if_ready_inner(id).await?;
         let res = match receipt {
             Some(inner_receipt) => Some(inner_receipt.try_into()?),

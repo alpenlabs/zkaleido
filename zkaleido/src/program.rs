@@ -1,8 +1,8 @@
 use async_trait::async_trait;
 
 use crate::{
-    host::ZkVmHost, input::ZkVmInputBuilder, PerformanceReport, ProofReceipt, ProofType,
-    PublicValues, ZkVmHostPerf, ZkVmInputResult, ZkVmRemoteHost, ZkVmResult,
+    host::ZkVmHost, input::ZkVmInputBuilder, PerformanceReport, ProofReceiptWithMetadata,
+    ProofType, PublicValues, ZkVmHostPerf, ZkVmInputResult, ZkVmRemoteHost, ZkVmResult,
 };
 
 /// A trait representing a "program" whose zero-knowledge proofs can be produced using a ZkVM.
@@ -89,7 +89,7 @@ pub trait ZkVmProgram {
     }
 
     /// Proves the computation using any zkVM host.
-    fn prove<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<ProofReceipt>
+    fn prove<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<ProofReceiptWithMetadata>
     where
         H: ZkVmHost,
         H::Input<'a>: ZkVmInputBuilder<'a>,
@@ -98,10 +98,10 @@ pub trait ZkVmProgram {
         let zkvm_input = Self::prepare_input_with_profiling(input, host)?;
 
         // Use the host to prove.
-        let receipt = host.prove(zkvm_input, Self::proof_type())?;
+        let receipt_with_metadata = host.prove(zkvm_input, Self::proof_type())?;
 
         // Process output to see if we are getting the expected type.
-        let _ = Self::process_output::<H>(receipt.public_values())?;
+        let _ = Self::process_output::<H>(receipt_with_metadata.receipt().public_values())?;
 
         // Dump the proof to file if flag is enabled
         if std::env::var("ZKVM_PROOF_DUMP")
@@ -109,10 +109,10 @@ pub trait ZkVmProgram {
             .unwrap_or(false)
         {
             let receipt_name = format!("{}_{:?}.proof", Self::name(), host);
-            receipt.save(receipt_name).unwrap();
+            receipt_with_metadata.save(receipt_name).unwrap();
         }
 
-        Ok(receipt)
+        Ok(receipt_with_metadata)
     }
 }
 

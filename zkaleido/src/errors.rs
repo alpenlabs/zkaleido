@@ -141,6 +141,10 @@ pub enum ZkVmProofError {
     /// The ZkVM instance provided does not match the expected one.
     #[error(transparent)]
     ZkVmMismatch(#[from] Mismatched<ZkVm>),
+
+    /// The ZkVM version provided does not match the expected one.
+    #[error(transparent)]
+    VersionMismatch(#[from] Mismatched<String>),
 }
 
 /// Errors that can occur when attempting to parse or handle a verification key.
