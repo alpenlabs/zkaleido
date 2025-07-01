@@ -3,8 +3,8 @@ use std::fmt::Debug;
 use async_trait::async_trait;
 
 use crate::{
-    input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, PublicValues,
-    ZkVmError, ZkVmProofError, ZkVmResult,
+    input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, PublicValues, ZkVmError,
+    ZkVmProofError, ZkVmResult,
 };
 
 /// A trait implemented by types that execute zkVM programs.
