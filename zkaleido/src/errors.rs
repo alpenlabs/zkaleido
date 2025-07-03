@@ -12,6 +12,10 @@ pub enum ZkVmError {
     #[error("Execution failed: {0}")]
     ExecutionError(String),
 
+    /// Network (or RPC) error that can occur while using prover network.
+    #[error("Network error: {0}")]
+    NetworkRetryableError(String),
+
     /// This error is returned when proof generation fails for any reason.
     #[error("Proof generation failed: {0}")]
     ProofGenerationError(String),

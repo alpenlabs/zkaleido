@@ -1,6 +1,9 @@
-use sp1_sdk::{network::FulfillmentStrategy, ProverClient};
 #[cfg(feature = "remote-prover")]
 use sp1_sdk::{network::B256, SP1ProofMode};
+use sp1_sdk::{
+    network::{Error as NetworkError, FulfillmentStrategy},
+    ProverClient,
+};
 #[cfg(feature = "remote-prover")]
 use zkaleido::ZkVmRemoteProver;
 use zkaleido::{
@@ -70,11 +73,23 @@ impl ZkVmProver for SP1Host {
                 ProofType::Groth16 => network_prover_builder.groth16(),
             };
 
-            let proof_info = network_prover
-                .run()
-                .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
+            let proof_result = network_prover.run();
 
-            return Ok(proof_info.into());
+            // Some error handling.
+            // If SP1 network prover returned Network RPC error - transform it to zkaleido
+            // network error, so the users can handle it gracefully.
+            // Otherwise, return a general error message wrapped in ProofGeneratedError.
+            let proof = match proof_result {
+                Ok(proof) => proof,
+                Err(e) => match e.downcast_ref::<NetworkError>() {
+                    Some(NetworkError::RpcError(status)) => {
+                        return Err(ZkVmError::NetworkRetryableError(status.to_string()));
+                    }
+                    _ => return Err(ZkVmError::ProofGenerationError(e.to_string())),
+                },
+            };
+
+            return Ok(proof.into());
         }
 
         let client = ProverClient::from_env();
