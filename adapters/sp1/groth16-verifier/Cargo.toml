@@ -13,10 +13,11 @@ rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
 [dependencies]
-serde.workspace = true
-hex.workspace = true
 blake3 = { version = "1.6.1", default-features = false }
 bn = { version = "0.6.0", package = "substrate-bn" }
+borsh.workspace = true
+hex.workspace = true
+serde.workspace = true
 sha2.workspace = true
 thiserror.workspace = true
 zkaleido.workspace = true

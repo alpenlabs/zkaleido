@@ -1,4 +1,5 @@
 use bn::{AffineG2, G2};
+use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -10,14 +11,14 @@ use crate::{
 };
 
 /// G1 elements of the verification key.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
 pub(crate) struct Groth16G1 {
     pub(crate) alpha: SAffineG1,
     pub(crate) k: Vec<SAffineG1>,
 }
 
 /// G2 elements of the verification key.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
 pub(crate) struct Groth16G2 {
     pub(crate) beta: SAffineG2,
     pub(crate) delta: SAffineG2,
@@ -25,7 +26,7 @@ pub(crate) struct Groth16G2 {
 }
 
 /// Verification key for the Groth16 proof.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
 pub(crate) struct Groth16VerifyingKey {
     pub(crate) g1: Groth16G1,
     pub(crate) g2: Groth16G2,
@@ -105,6 +106,16 @@ mod tests {
 
         let serialized = bincode::serialize(&vk).unwrap();
         let deserialized: Groth16VerifyingKey = bincode::deserialize(&serialized).unwrap();
+
+        assert_eq!(vk, deserialized);
+    }
+
+    #[test]
+    fn test_vk_borsh() {
+        let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
+
+        let serialized = borsh::to_vec(&vk).unwrap();
+        let deserialized: Groth16VerifyingKey = borsh::from_slice(&serialized).unwrap();
 
         assert_eq!(vk, deserialized);
     }

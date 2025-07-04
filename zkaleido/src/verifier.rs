@@ -1,7 +1,7 @@
 use std::fmt::Debug;
 
-use borsh::BorshDeserialize;
-use serde::{de::DeserializeOwned, Serialize};
+use borsh::{BorshDeserialize, BorshSerialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
 use crate::{
     ProofReceipt, ProofReceiptWithMetadata, PublicValues, VerifyingKey, VerifyingKeyCommitment,
@@ -75,5 +75,18 @@ pub trait ZkVmOutputExtractor: Send + Sync + Clone + Debug + 'static {
     ) -> ZkVmResult<T> {
         borsh::from_slice(public_values.as_bytes())
             .map_err(|e| ZkVmError::OutputExtractionError { source: e.into() })
+    }
+}
+
+/// A no-op verifier: its `verify` method does nothing and always returns success.
+///
+/// Use this when you want to bypass verification logic entirely. It performs
+/// no cryptographic checks on the proof receipt.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
+pub struct NoopVerifier;
+
+impl ZkVmVerifier for NoopVerifier {
+    fn verify(&self, _receipt: &ProofReceipt) -> ZkVmResult<()> {
+        Ok(())
     }
 }

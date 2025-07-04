@@ -1,6 +1,7 @@
 use std::fmt;
 
 use bn::{AffineG1, Fq, Group, G1};
+use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::{
@@ -168,5 +169,67 @@ fn get_ys_from_x_g1(x: Fq) -> Result<(Fq, Fq), Error> {
         Ok((y, neg_y))
     } else {
         Ok((neg_y, y))
+    }
+}
+
+impl BorshSerialize for SAffineG1 {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        // Convert to projective to access coordinates
+        let mut projective: G1 = (self.0).into();
+        projective.normalize();
+        let (x, y) = (projective.x(), projective.y());
+
+        // Serialize x coordinate
+        let mut x_bytes = [0u8; 32];
+        x.to_big_endian(&mut x_bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to serialize x coordinate",
+            )
+        })?;
+        writer.write_all(&x_bytes)?;
+
+        // Serialize y coordinate
+        let mut y_bytes = [0u8; 32];
+        y.to_big_endian(&mut y_bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to serialize y coordinate",
+            )
+        })?;
+        writer.write_all(&y_bytes)?;
+
+        Ok(())
+    }
+}
+
+impl BorshDeserialize for SAffineG1 {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        // Read x coordinate
+        let mut x_bytes = [0u8; 32];
+        reader.read_exact(&mut x_bytes)?;
+        let x = Fq::from_slice(&x_bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to deserialize x coordinate",
+            )
+        })?;
+
+        // Read y coordinate
+        let mut y_bytes = [0u8; 32];
+        reader.read_exact(&mut y_bytes)?;
+        let y = Fq::from_slice(&y_bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to deserialize y coordinate",
+            )
+        })?;
+
+        let z = Fq::one();
+        let projective = G1::new(x, y, z);
+        let g1 = AffineG1::from_jacobian(projective)
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid point"))?;
+
+        Ok(SAffineG1(g1))
     }
 }
