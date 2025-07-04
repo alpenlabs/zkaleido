@@ -7624,6 +7624,7 @@ version = "0.1.0"
 dependencies = [
  "bincode",
  "blake3",
+ "borsh",
  "hex",
  "rand 0.8.5",
  "serde",

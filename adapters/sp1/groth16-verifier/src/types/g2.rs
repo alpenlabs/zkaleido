@@ -1,6 +1,7 @@
 use std::{cmp::Ordering, fmt};
 
 use bn::{AffineG2, Fq, Fq2, Group, G2};
+use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize, Serializer};
 
 use crate::{
@@ -216,5 +217,109 @@ fn get_ys_from_x_g2(x: Fq2) -> Result<(Fq2, Fq2), Error> {
         Ok((y, neg_y))
     } else {
         Ok((neg_y, y))
+    }
+}
+
+impl BorshSerialize for SAffineG2 {
+    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
+        let mut projective: G2 = (self.0).into();
+        projective.normalize();
+        let (x, y) = (projective.x(), projective.y());
+
+        // Serialize x coordinate (Fq2: real + imaginary)
+        let mut x_real_bytes = [0u8; 32];
+        x.real().to_big_endian(&mut x_real_bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to serialize x real part",
+            )
+        })?;
+        writer.write_all(&x_real_bytes)?;
+
+        let mut x_imag_bytes = [0u8; 32];
+        x.imaginary()
+            .to_big_endian(&mut x_imag_bytes)
+            .map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "Failed to serialize x imaginary part",
+                )
+            })?;
+        writer.write_all(&x_imag_bytes)?;
+
+        // Serialize y coordinate (Fq2: real + imaginary)
+        let mut y_real_bytes = [0u8; 32];
+        y.real().to_big_endian(&mut y_real_bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to serialize y real part",
+            )
+        })?;
+        writer.write_all(&y_real_bytes)?;
+
+        let mut y_imag_bytes = [0u8; 32];
+        y.imaginary()
+            .to_big_endian(&mut y_imag_bytes)
+            .map_err(|_| {
+                std::io::Error::new(
+                    std::io::ErrorKind::InvalidData,
+                    "Failed to serialize y imaginary part",
+                )
+            })?;
+        writer.write_all(&y_imag_bytes)?;
+
+        Ok(())
+    }
+}
+
+impl BorshDeserialize for SAffineG2 {
+    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
+        // Read x coordinate components
+        let mut x_real_bytes = [0u8; 32];
+        reader.read_exact(&mut x_real_bytes)?;
+        let x_real = Fq::from_slice(&x_real_bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to deserialize x real part",
+            )
+        })?;
+
+        let mut x_imag_bytes = [0u8; 32];
+        reader.read_exact(&mut x_imag_bytes)?;
+        let x_imag = Fq::from_slice(&x_imag_bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to deserialize x imaginary part",
+            )
+        })?;
+
+        // Read y coordinate components
+        let mut y_real_bytes = [0u8; 32];
+        reader.read_exact(&mut y_real_bytes)?;
+        let y_real = Fq::from_slice(&y_real_bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to deserialize y real part",
+            )
+        })?;
+
+        let mut y_imag_bytes = [0u8; 32];
+        reader.read_exact(&mut y_imag_bytes)?;
+        let y_imag = Fq::from_slice(&y_imag_bytes).map_err(|_| {
+            std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "Failed to deserialize y imaginary part",
+            )
+        })?;
+
+        let x = Fq2::new(x_real, x_imag);
+        let y = Fq2::new(y_real, y_imag);
+        let z = Fq2::one();
+
+        let projective = G2::new(x, y, z);
+        let g2 = AffineG2::from_jacobian(projective)
+            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid point"))?;
+
+        Ok(SAffineG2(g2))
     }
 }

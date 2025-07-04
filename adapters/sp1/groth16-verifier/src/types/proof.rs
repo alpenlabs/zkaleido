@@ -1,3 +1,4 @@
+use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -15,7 +16,7 @@ use crate::{
 pub(crate) const GROTH16_PROOF_LENGTH: usize = 256;
 
 /// Proof for the Groth16 verification.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
 pub(crate) struct Groth16Proof {
     pub(crate) ar: SAffineG1,
     pub(crate) krs: SAffineG1,
