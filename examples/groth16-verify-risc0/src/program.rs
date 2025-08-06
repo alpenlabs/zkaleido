@@ -58,7 +58,7 @@ mod tests {
 
     #[test]
     fn test_native() {
-        let input = Risc0Groth16VerifyInput::load();
+        let input: Risc0Groth16VerifyInput = Risc0Groth16VerifyInput::load();
         let host = get_native_host();
         let receipt = Risc0Groth16VerifyProgram::prove(&input, &host)
             .unwrap()
