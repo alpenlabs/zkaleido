@@ -16,7 +16,7 @@ impl Risc0Groth16VerifyInput {
     pub fn load() -> Self {
         let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-        let image_id_hex = "9486a495e5ac2d1f9937ca66c292e1037c678cfff9a573ab3eff1d551815fdab";
+        let image_id_hex = "12b34ce104b6ab8ef8111cf5532feb9a9975543bdd69937d1fee93073bf00963";
         let image_id: [u8; 32] = hex::decode(image_id_hex).unwrap().try_into().unwrap();
         let image_id = Digest::from_bytes(image_id);
 
