@@ -56,7 +56,6 @@ pub fn run_sp1_programs(programs: &[GuestProgram]) -> Vec<PerformanceReport> {
             GuestProgram::Groth16VerifySP1 => groth16_verify_sp1::sp1_groth16_verify(),
             GuestProgram::Groth16VerifyRisc0 => groth16_verify_risc0::sp1_groth16_verify(),
         })
-        .map(Into::into)
         .collect()
 }
 
@@ -77,6 +76,5 @@ pub fn run_risc0_programs(programs: &[GuestProgram]) -> Vec<PerformanceReport> {
             GuestProgram::Groth16VerifySP1 => groth16_verify_sp1::risc0_groth16_verify(),
             GuestProgram::Groth16VerifyRisc0 => groth16_verify_risc0::risc0_groth16_verify(),
         })
-        .map(Into::into)
         .collect()
 }

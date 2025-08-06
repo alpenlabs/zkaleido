@@ -32,7 +32,7 @@ impl Risc0Groth16VerifyInput {
         let vk = verifying_key();
 
         pub const ALLOWED_CONTROL_ROOT: Digest =
-            digest!("884389273e128b32475b334dec75ee619b77cb33d41c332021fe7e44c746ee60");
+            digest!("ce52bf56033842021af3cf6db8a50d1b7535c125a34f1a22c6fdcf002c5a1529");
 
         pub const BN254_IDENTITY_CONTROL_ID: Digest =
             digest!("c07a65145c3cb48b6101962ea607a4dd93c753bb26975cb47feb00d3666e4404");
