@@ -16,7 +16,7 @@ impl Risc0Groth16VerifyInput {
     pub fn load() -> Self {
         let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
 
-        let image_id_hex = "12b34ce104b6ab8ef8111cf5532feb9a9975543bdd69937d1fee93073bf00963";
+        let image_id_hex = "f4e0413eee665668164b02be80c63b5e71e387ae08b7f9e75e5983cf9eb9518a";
         let image_id: [u8; 32] = hex::decode(image_id_hex).unwrap().try_into().unwrap();
         let image_id = Digest::from_bytes(image_id);
 
@@ -32,18 +32,17 @@ impl Risc0Groth16VerifyInput {
         let vk = verifying_key();
 
         pub const ALLOWED_CONTROL_ROOT: Digest =
-            digest!("ce52bf56033842021af3cf6db8a50d1b7535c125a34f1a22c6fdcf002c5a1529");
+            digest!("a54dc85ac99f851c92d7c96d7318af41dbe7c0194edfcc37eb4d422a998c1f56");
 
         pub const BN254_IDENTITY_CONTROL_ID: Digest =
             digest!("c07a65145c3cb48b6101962ea607a4dd93c753bb26975cb47feb00d3666e4404");
 
-        let risc0_verifier = Risc0Groth16Verifier::load(
+        let risc0_verifier = Risc0Groth16Verifier::new(
             vk,
             BN254_IDENTITY_CONTROL_ID,
             ALLOWED_CONTROL_ROOT,
             image_id,
-        )
-        .unwrap();
+        );
 
         Risc0Groth16VerifyInput {
             risc0_receipt,

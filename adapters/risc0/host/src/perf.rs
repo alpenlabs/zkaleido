@@ -145,7 +145,7 @@ fn gen_groth16_proof_metrics(
     });
     let seal_bytes = bn254_proof.get_seal_bytes();
     let (groth16_proof, groth16_duration) =
-        time_operation(|| risc0_zkvm::stark_to_snark(&seal_bytes).unwrap());
+        time_operation(|| risc0_groth16::prove::shrink_wrap(&seal_bytes).unwrap());
 
     let total_duration = bn254_compress_duration + groth16_duration;
     let speed = cycles as f64 / total_duration.as_secs_f64() / 1_000.0;
