@@ -1,5 +1,5 @@
 use risc0_binfmt::tagged_struct;
-use risc0_groth16::{fr_from_hex_string, split_digest, Fr, Seal, Verifier, VerifyingKey};
+use risc0_groth16::{Verifier, VerifyingKey};
 use risc0_zkp::core::{digest::Digest, hash::sha::Sha256};
 use serde::{Deserialize, Serialize};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
@@ -18,10 +18,10 @@ pub struct Risc0Groth16Verifier {
     vk: VerifyingKey,
     /// Control ID for the identity recursion programs (ZKR), represented as a field element
     /// over the BN254 scalar field using Poseidon hash
-    bn254_id: Fr,
+    bn254_control_id: Digest,
     /// Root of the Merkle tree constructed from allowed control IDs, represented as two
     /// field elements forming a Poseidon2 hash
-    allowed_root: (Fr, Fr),
+    control_root: Digest,
     /// ELF image identifier of the program being verified - this ensures the proof
     /// corresponds to the expected zkVM program
     image_id: Digest,
@@ -39,31 +39,18 @@ impl Risc0Groth16Verifier {
     ///   set of allowed control IDs. This is typically `ALLOWED_CONTROL_ROOT` from the
     ///   `risc0_circuit_recursion::control_id` module.
     /// * `image_id` - The ELF image identifier for the specific program to verify
-    pub fn load(
+    pub fn new(
         vk: VerifyingKey,
-        bn254_control_root: Digest,
-        allowed_control_root: Digest,
+        bn254_control_id: Digest,
+        control_root: Digest,
         image_id: Digest,
-    ) -> Result<Self, Risc0VerifierError> {
-        // Convert BN254 control root to field element
-        // The bytes are reversed to match the expected endianness
-        let mut bn254_id = bn254_control_root;
-        bn254_id.as_mut_bytes().reverse();
-
-        // Split the allowed control root digest into two field elements
-        let (a0, a1) = split_digest(allowed_control_root)
-            .map_err(|e| Risc0VerifierError::SplitDigest(e.to_string()))?;
-
-        // Convert the reversed bytes to a field element via hex encoding
-        let bn254_id = fr_from_hex_string(&hex::encode(bn254_id))
-            .map_err(|e| Risc0VerifierError::InvalidFr(e.to_string()))?;
-
-        Ok(Self {
+    ) -> Self {
+        Self {
             vk,
-            bn254_id,
-            allowed_root: (a0, a1),
+            bn254_control_id,
+            control_root,
             image_id,
-        })
+        }
     }
 
     /// Verify a Groth16 proof against the given public values.
@@ -78,26 +65,22 @@ impl Risc0Groth16Verifier {
     ///
     /// Ref: https://github.com/risc0/risc0/blob/786d7/risc0/zkvm/src/receipt/groth16.rs#L77-L114
     pub fn verify(&self, proof: &[u8], public_values: &[u8]) -> Result<(), Risc0VerifierError> {
-        // Parse the proof bytes into a Groth16 seal
-        let seal =
-            Seal::from_vec(proof).map_err(|e| Risc0VerifierError::ProofParse(e.to_string()))?;
-
         // Compute the SHA-256 hash of the public values (this becomes the journal)
         let public_params_hash = *Sha256Impl::hash_bytes(public_values);
 
         // Construct the claim digest that represents what we're verifying and split it into field
         // elements
         let claim_digest = compute_claim_digest::<Sha256Impl>(self.image_id, public_params_hash);
-        let (c0, c1) = split_digest(claim_digest)
-            .map_err(|e| Risc0VerifierError::SplitDigest(e.to_string()))?;
-
-        // Extract the allowed root components
-        let (a0, a1) = self.allowed_root.clone();
 
         // Create the Groth16 verifier with all public inputs:
-        // [allowed_root_0, allowed_root_1, claim_limb_0, claim_limb_1, bn254_id]
-        let verifier = Verifier::new(&seal, &[a0, a1, c0, c1, self.bn254_id.clone()], &self.vk)
-            .map_err(|e| Risc0VerifierError::VerifierCreation(e.to_string()))?;
+        let verifier = Verifier::new(
+            proof,
+            self.control_root,
+            claim_digest,
+            self.bn254_control_id,
+            &self.vk,
+        )
+        .map_err(|e| Risc0VerifierError::VerifierCreation(e.to_string()))?;
 
         // Execute the proof verification
         verifier
@@ -175,13 +158,12 @@ mod tests {
     fn test_groth16_verification() {
         let (receipt, image_id) = get_proof_and_image_id();
         let vk = verifying_key();
-        let risc0_verifier = Risc0Groth16Verifier::load(
+        let risc0_verifier = Risc0Groth16Verifier::new(
             vk,
             BN254_IDENTITY_CONTROL_ID,
             ALLOWED_CONTROL_ROOT,
             Digest::from_bytes(image_id),
-        )
-        .unwrap();
+        );
 
         let res = risc0_verifier.verify(
             receipt.proof().as_bytes(),

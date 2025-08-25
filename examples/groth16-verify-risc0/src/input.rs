@@ -37,13 +37,12 @@ impl Risc0Groth16VerifyInput {
         pub const BN254_IDENTITY_CONTROL_ID: Digest =
             digest!("c07a65145c3cb48b6101962ea607a4dd93c753bb26975cb47feb00d3666e4404");
 
-        let risc0_verifier = Risc0Groth16Verifier::load(
+        let risc0_verifier = Risc0Groth16Verifier::new(
             vk,
             BN254_IDENTITY_CONTROL_ID,
             ALLOWED_CONTROL_ROOT,
             image_id,
-        )
-        .unwrap();
+        );
 
         Risc0Groth16VerifyInput {
             risc0_receipt,
