@@ -142,7 +142,7 @@ mod tests {
     use crate::verifier::Risc0Groth16Verifier;
 
     fn get_proof_and_image_id() -> (ProofReceipt, [u8; 32]) {
-        let image_id_hex = "12b34ce104b6ab8ef8111cf5532feb9a9975543bdd69937d1fee93073bf00963";
+        let image_id_hex = "f4e0413eee665668164b02be80c63b5e71e387ae08b7f9e75e5983cf9eb9518a";
         let image_id: [u8; 32] = hex::decode(image_id_hex).unwrap().try_into().unwrap();
         let proof_file = format!("./proofs/fibonacci_risc0_{}.proof.bin", image_id_hex);
 
