@@ -14,7 +14,7 @@ rustdoc.all = "warn"
 
 [dependencies]
 risc0-zkvm = "3.0.1"
-risc0-groth16 = "3.0.1"
+risc0-groth16 = { version = "3.0.1", optional = true }
 zkaleido.workspace = true
 
 bincode.workspace = true
@@ -23,4 +23,4 @@ hex.workspace = true
 serde.workspace = true
 
 [features]
-perf = ["risc0-zkvm/prove"]
+perf = ["risc0-zkvm/prove", "dep:risc0-groth16"]
