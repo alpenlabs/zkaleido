@@ -135,7 +135,7 @@ where
 #[derive(Debug, Error)]
 pub enum ZkVmProofError {
     /// An error occurred due to a proof data format issue.
-    #[error("Input data format error")]
+    #[error("Proof data format error")]
     DataFormat(#[source] DataFormatError),
 
     /// The proof type provided does not match the expected proof type.
@@ -173,7 +173,7 @@ impl From<borsh::io::Error> for DataFormatError {
     }
 }
 
-/// Implement automatic conversion for `bincode::Error` to `InvalidProofReceipt`
+/// Implement automatic conversion for `bincode::Error` to `ZkVmProofError`
 impl From<bincode::Error> for ZkVmProofError {
     fn from(err: bincode::Error) -> Self {
         let source = DataFormatError::Bincode { source: err };
@@ -181,7 +181,7 @@ impl From<bincode::Error> for ZkVmProofError {
     }
 }
 
-/// Implement automatic conversion for `borsh::io::Error` to `InvalidProofReceiptSource`
+/// Implement automatic conversion for `borsh::io::Error` to `ZkVmProofError`
 impl From<borsh::io::Error> for ZkVmProofError {
     fn from(err: borsh::io::Error) -> Self {
         let source = DataFormatError::Borsh { source: err };
