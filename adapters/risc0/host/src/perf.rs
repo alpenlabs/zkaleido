@@ -60,7 +60,8 @@ fn gen_proof_metrics(
     Option<ProofMetrics>,
     Option<ProofMetrics>,
 ) {
-    let (core_proof_report, core_proof) = gen_core_proof_metrics(prover.clone(), session, image_id);
+    let (core_proof_report, core_proof) =
+        gen_core_proof_metrics(prover.clone(), session, image_id, cycles);
 
     let (compressed_proof_report, compressed_proof) =
         gen_compressed_proof_metrics(prover.clone(), core_proof, image_id, cycles);
@@ -79,12 +80,12 @@ fn gen_core_proof_metrics(
     prover: Rc<dyn ProverServer>,
     session: Session,
     image_id: impl Into<Digest>,
+    cycles: u64,
 ) -> (ProofMetrics, Receipt) {
     let ctx = VerifierContext::default();
     let (info, core_prove_duration) =
         time_operation(|| prover.prove_session(&ctx, &session).unwrap());
     let receipt = info.receipt;
-    let cycles = info.stats.total_cycles;
 
     // Verify the core proof.
     let ((), core_verify_duration) = time_operation(|| receipt.verify(image_id).unwrap());
