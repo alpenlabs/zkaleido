@@ -1,4 +1,5 @@
 use bn::{AffineG1, Fr, G1};
+use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
@@ -24,7 +25,7 @@ pub(crate) const VK_HASH_PREFIX_LENGTH: usize = 4;
 /// 2. The Groth16 proof is valid with respect to two public inputs:
 ///    - `program_vk_hash`: a unique identifier for the SP1 program (as an Fr element).
 ///    - a hash of the supplied public values (either SHA-256 or Blake3).
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
 pub struct SP1Groth16Verifier {
     /// The (uncompressed) Groth16 verifying key for the SP1 circuit.
     pub(crate) vk: Groth16VerifyingKey,
