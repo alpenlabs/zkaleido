@@ -6,7 +6,7 @@ use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
     error::{Error, Groth16Error},
-    hashes::{blake3_hash, hash_public_inputs_with_fn, sha256_hash},
+    hashes::{blake3_to_fr, sha256_to_fr},
     types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
     verification::verify_sp1_groth16_algebraic,
 };
@@ -109,12 +109,10 @@ impl SP1Groth16Verifier {
         let raw_proof_bytes = &proof[VK_HASH_PREFIX_LENGTH..];
         let proof = Groth16Proof::load_from_gnark_bytes(raw_proof_bytes)?;
 
-        // Compute Fr element for hash(public_values) using SHA-256. SP1’s Groth16 circuit expects
+        // Compute Fr element for hash(public_values) using SHA-256. SP1's Groth16 circuit expects
         // two public inputs: a. `program_id`, b. `hash(public_values)`.  Since SP1 allows either
         // SHA-256 or Blake3, we try SHA-256 first.
-        let pp_sha2_hash = hash_public_inputs_with_fn(public_values, sha256_hash);
-        let fr_sha2 =
-            Fr::from_slice(&pp_sha2_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
+        let fr_sha2 = sha256_to_fr(public_values)?;
 
         // Attempt algebraic verification with SHA-256 hash as the second input.
         if verify_sp1_groth16_algebraic(&self.vk, &proof, &fr_sha2).is_ok() {
@@ -122,9 +120,7 @@ impl SP1Groth16Verifier {
         }
 
         // If SHA-256 verification fails, compute the Blake3 hash of `public_values` instead.
-        let pp_blake3_hash = hash_public_inputs_with_fn(public_values, blake3_hash);
-        let fr_blake3 =
-            Fr::from_slice(&pp_blake3_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
+        let fr_blake3 = blake3_to_fr(public_values)?;
 
         // Retry algebraic verification using Blake3 hash as the second input.
         verify_sp1_groth16_algebraic(&self.vk, &proof, &fr_blake3)
