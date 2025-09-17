@@ -8,4 +8,5 @@ mod utils;
 mod verification;
 mod verifier;
 
+pub use types::{proof::Groth16Proof, vk::Groth16VerifyingKey};
 pub use verifier::SP1Groth16Verifier;

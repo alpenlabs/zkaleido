@@ -27,7 +27,7 @@ pub(crate) struct Groth16G2 {
 
 /// Verification key for the Groth16 proof.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
-pub(crate) struct Groth16VerifyingKey {
+pub struct Groth16VerifyingKey {
     pub(crate) g1: Groth16G1,
     pub(crate) g2: Groth16G2,
 }
@@ -45,7 +45,7 @@ impl Groth16VerifyingKey {
     ///
     /// Note: slicing beyond `buffer.len()` will panic. Validate length before calling if you
     /// need to gracefully handle malformed input.
-    pub(crate) fn load_from_gnark_bytes(buffer: &[u8]) -> Result<Self, Groth16Error> {
+    pub fn load_from_gnark_bytes(buffer: &[u8]) -> Result<Self, Groth16Error> {
         // Parse G1 alpha (compressed).
         let g1_alpha = SAffineG1(compressed_bytes_to_affine_g1(&buffer[..32])?);
 
