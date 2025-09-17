@@ -4,9 +4,10 @@
 
 mod error;
 mod types;
-mod utils;
+pub mod hashes;
 mod verification;
 mod verifier;
 
 pub use types::{proof::Groth16Proof, vk::Groth16VerifyingKey};
+pub use verification::verify_sp1_groth16_algebraic;
 pub use verifier::SP1Groth16Verifier;

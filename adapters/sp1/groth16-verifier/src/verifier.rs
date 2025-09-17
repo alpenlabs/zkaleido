@@ -6,8 +6,8 @@ use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
     error::{Error, Groth16Error},
+    hashes::{blake3_hash, hash_public_inputs_with_fn, sha256_hash},
     types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
-    utils::{blake3_hash, hash_public_inputs_with_fn, sha256_hash},
     verification::verify_sp1_groth16_algebraic,
 };
 

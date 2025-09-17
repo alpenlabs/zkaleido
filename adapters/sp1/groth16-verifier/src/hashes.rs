@@ -1,8 +1,13 @@
+//! Hash functions for SP1 Groth16 proof verification.
+//!
+//! This module provides hash functions for processing public inputs in a format
+//! compatible with Plonk and Groth16 verifiers.
+
 use sha2::{Digest, Sha256};
 
 /// Hashes the public inputs in the same format as the Plonk and Groth16 verifiers,
 /// using the provided hash function.
-pub(crate) fn hash_public_inputs_with_fn<F>(public_inputs: &[u8], hasher: F) -> [u8; 32]
+pub fn hash_public_inputs_with_fn<F>(public_inputs: &[u8], hasher: F) -> [u8; 32]
 where
     F: Fn(&[u8]) -> [u8; 32],
 {
@@ -16,11 +21,11 @@ where
 }
 
 /// Hashes the public input using `Sha256`.
-pub(crate) fn sha256_hash(inputs: &[u8]) -> [u8; 32] {
+pub fn sha256_hash(inputs: &[u8]) -> [u8; 32] {
     Sha256::digest(inputs).into()
 }
 
 /// Hash the input using `Blake3`.
-pub(crate) fn blake3_hash(inputs: &[u8]) -> [u8; 32] {
+pub fn blake3_hash(inputs: &[u8]) -> [u8; 32] {
     *blake3::hash(inputs).as_bytes()
 }

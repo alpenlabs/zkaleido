@@ -9,7 +9,7 @@ use crate::{
 ///
 /// First, prepare the public inputs by folding them with the verification key.
 /// Then, verify the proof by checking the pairing equation.
-pub(crate) fn verify_sp1_groth16_algebraic(
+pub fn verify_sp1_groth16_algebraic(
     vk: &Groth16VerifyingKey,
     proof: &Groth16Proof,
     public_parameters_hash: &Fr,
