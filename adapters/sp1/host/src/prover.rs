@@ -66,7 +66,7 @@ impl ZkVmProver for SP1Host {
             let strategy = std::env::var("SP1_PROOF_STRATEGY")
                 .ok()
                 .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
-                .unwrap_or(FulfillmentStrategy::Hosted);
+                .unwrap_or(FulfillmentStrategy::Auction);
 
             let network_prover_builder = prover_client
                 .prove(&self.proving_key, &prover_input)
@@ -127,7 +127,7 @@ impl ZkVmRemoteProver for SP1Host {
         let strategy = std::env::var("SP1_PROOF_STRATEGY")
             .ok()
             .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
-            .unwrap_or(FulfillmentStrategy::Hosted);
+            .unwrap_or(FulfillmentStrategy::Auction);
 
         let mode = match proof_type {
             ProofType::Core => SP1ProofMode::Core,
