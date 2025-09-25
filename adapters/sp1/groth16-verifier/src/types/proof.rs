@@ -17,7 +17,7 @@ pub(crate) const GROTH16_PROOF_LENGTH: usize = 256;
 
 /// Proof for the Groth16 verification.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
-pub(crate) struct Groth16Proof {
+pub struct Groth16Proof {
     pub(crate) ar: SAffineG1,
     pub(crate) krs: SAffineG1,
     pub(crate) bs: SAffineG2,
@@ -32,7 +32,7 @@ impl Groth16Proof {
     /// - bytes 192..256: uncompressed G1 point `K·R·S`
     ///
     /// Returns a `Groth16Proof` containing affine points `(ar, bs, krs)`.
-    pub(crate) fn load_from_gnark_bytes(buffer: &[u8]) -> Result<Groth16Proof, Groth16Error> {
+    pub fn load_from_gnark_bytes(buffer: &[u8]) -> Result<Groth16Proof, Groth16Error> {
         if buffer.len() != GROTH16_PROOF_LENGTH {
             return Err(Groth16Error::GeneralError(Error::InvalidData));
         }
