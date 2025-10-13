@@ -1,9 +1,6 @@
 use crate::{
     error::{Error, Groth16Error},
-    types::{
-        g1::{uncompressed_bytes_to_affine_g1, SAffineG1},
-        g2::{uncompressed_bytes_to_affine_g2, SAffineG2},
-    },
+    types::{g1::SAffineG1, g2::SAffineG2},
 };
 
 /// Total byte length of a Groth16 proof when encoded as:
@@ -35,45 +32,47 @@ impl Groth16Proof {
         }
 
         // Deserialize each component.
-        let ar = SAffineG1(uncompressed_bytes_to_affine_g1(&buffer[..64])?);
-        let bs = SAffineG2(uncompressed_bytes_to_affine_g2(&buffer[64..192])?);
-        let krs = SAffineG1(uncompressed_bytes_to_affine_g1(&buffer[192..256])?);
+        let ar = SAffineG1::from_uncompressed_bytes(&buffer[..64])?;
+        let bs = SAffineG2::from_uncompressed_bytes(&buffer[64..192])?;
+        let krs = SAffineG1::from_uncompressed_bytes(&buffer[192..256])?;
 
         Ok(Groth16Proof { ar, bs, krs })
     }
 
-    /// Serialize to compressed bytes (160 bytes: 32 + 64 + 32 + 32).
+    /// Serialize to GNARK-compressed bytes (160 bytes: 32 + 64 + 32 + 32).
+    ///
+    /// Uses the GNARK compression scheme.
     ///
     /// Layout:
-    /// - bytes 0..32:    compressed G1 point `A·R`
-    /// - bytes 32..96:   compressed G2 point `B·S`
-    /// - bytes 96..128:  compressed G1 point `K·R·S` (first part)
+    /// - bytes 0..32:    GNARK-compressed G1 point `A·R`
+    /// - bytes 32..96:   GNARK-compressed G2 point `B·S`
+    /// - bytes 96..128:  GNARK-compressed G1 point `K·R·S` (first part)
     ///
     /// Note: This is more compact than GNARK's uncompressed format (256 bytes).
-    pub fn to_compressed_bytes(&self) -> [u8; 160] {
+    pub fn to_gnark_compressed_bytes(&self) -> [u8; 160] {
         let mut bytes = [0u8; 160];
 
-        // Serialize ar (G1 compressed: 32 bytes)
-        bytes[0..32].copy_from_slice(&self.ar.to_compressed_bytes());
+        // Serialize ar (G1 GNARK-compressed: 32 bytes)
+        bytes[0..32].copy_from_slice(&self.ar.to_gnark_compressed_bytes());
 
-        // Serialize bs (G2 compressed: 64 bytes)
-        bytes[32..96].copy_from_slice(&self.bs.to_compressed_bytes());
+        // Serialize bs (G2 GNARK-compressed: 64 bytes)
+        bytes[32..96].copy_from_slice(&self.bs.to_gnark_compressed_bytes());
 
-        // Serialize krs (G1 compressed: 32 bytes)
-        bytes[96..128].copy_from_slice(&self.krs.to_compressed_bytes());
+        // Serialize krs (G1 GNARK-compressed: 32 bytes)
+        bytes[96..128].copy_from_slice(&self.krs.to_gnark_compressed_bytes());
 
         bytes
     }
 
-    /// Deserialize from compressed bytes (160 bytes).
-    pub fn from_compressed_bytes(bytes: &[u8]) -> Result<Self, Groth16Error> {
+    /// Deserialize from GNARK-compressed bytes (160 bytes).
+    pub fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Groth16Error> {
         if bytes.len() != 160 {
             return Err(Groth16Error::GeneralError(Error::InvalidData));
         }
 
-        let ar = SAffineG1::from_compressed_bytes(&bytes[0..32])?;
-        let bs = SAffineG2::from_compressed_bytes(&bytes[32..96])?;
-        let krs = SAffineG1::from_compressed_bytes(&bytes[96..128])?;
+        let ar = SAffineG1::from_gnark_compressed_bytes(&bytes[0..32])?;
+        let bs = SAffineG2::from_gnark_compressed_bytes(&bytes[32..96])?;
+        let krs = SAffineG1::from_gnark_compressed_bytes(&bytes[96..128])?;
 
         Ok(Groth16Proof { ar, bs, krs })
     }
@@ -127,8 +126,8 @@ mod tests {
         let proof = load_test_proof();
 
         // Compress and decompress
-        let compressed = proof.to_compressed_bytes();
-        let decompressed = Groth16Proof::from_compressed_bytes(&compressed).unwrap();
+        let compressed = proof.to_gnark_compressed_bytes();
+        let decompressed = Groth16Proof::from_gnark_compressed_bytes(&compressed).unwrap();
 
         assert_eq!(proof, decompressed);
     }
