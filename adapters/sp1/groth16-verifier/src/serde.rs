@@ -325,3 +325,35 @@ impl<'de> Deserialize<'de> for SP1Groth16Verifier {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use sp1_verifier::GROTH16_VK_BYTES;
+
+    use crate::types::vk::Groth16VerifyingKey;
+
+    #[test]
+    fn test_vk_serde_json() {
+        let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
+
+        // Pretty print the JSON output
+        let json_string = serde_json::to_string_pretty(&vk).unwrap();
+        println!("Groth16VerifyingKey JSON output:");
+        println!("{}", json_string);
+
+        let serialized = serde_json::to_vec(&vk).unwrap();
+        let deserialized: Groth16VerifyingKey = serde_json::from_slice(&serialized).unwrap();
+
+        assert_eq!(vk, deserialized);
+    }
+
+    #[test]
+    fn test_vk_serde_bincode() {
+        let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
+
+        let serialized = bincode::serialize(&vk).unwrap();
+        let deserialized: Groth16VerifyingKey = bincode::deserialize(&serialized).unwrap();
+
+        assert_eq!(vk, deserialized);
+    }
+}

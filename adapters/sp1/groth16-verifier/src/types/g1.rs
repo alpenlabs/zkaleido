@@ -26,7 +26,7 @@ impl SAffineG1 {
     /// Serialize to compressed bytes (32 bytes: x-coordinate with flag bits).
     ///
     /// The first two bits of the first byte encode a flag indicating which y-coordinate to use.
-    pub fn to_compressed_bytes(&self) -> [u8; 32] {
+    pub(crate) fn to_compressed_bytes(self) -> [u8; 32] {
         let mut projective: G1 = self.0.into();
         projective.normalize();
         let (x, y) = (projective.x(), projective.y());
@@ -52,12 +52,12 @@ impl SAffineG1 {
     }
 
     /// Deserialize from compressed bytes (32 bytes: x-coordinate with flag bits).
-    pub fn from_compressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
+    pub(crate) fn from_compressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
         Ok(SAffineG1(compressed_bytes_to_affine_g1(bytes)?))
     }
 
     /// Serialize to uncompressed bytes (64 bytes: x-coordinate + y-coordinate).
-    pub fn to_uncompressed_bytes(&self) -> [u8; 64] {
+    pub(crate) fn to_uncompressed_bytes(self) -> [u8; 64] {
         let mut projective: G1 = self.0.into();
         projective.normalize();
         let (x, y) = (projective.x(), projective.y());
@@ -72,7 +72,7 @@ impl SAffineG1 {
     }
 
     /// Deserialize from uncompressed bytes (64 bytes: x-coordinate + y-coordinate).
-    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
+    pub(crate) fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
         Ok(SAffineG1(uncompressed_bytes_to_affine_g1(bytes)?))
     }
 }

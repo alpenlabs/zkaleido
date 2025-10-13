@@ -169,16 +169,16 @@ impl Groth16VerifyingKey {
 
     /// Serialize to uncompressed bytes.
     ///
-    /// Layout (with GNARK padding):
+    /// Layout:
     /// - bytes 0..64:      G1 α (uncompressed)
     /// - bytes 64..192:    G2 β (uncompressed)
-    /// - bytes 192..256:   G2 γ (uncompressed)
-    /// - bytes 256..384:   G2 δ (uncompressed)
-    /// - bytes 384..388:   `num_k` (u32 BE)
-    /// - bytes 388..:      `64 * num_k` bytes of G1 K-points (uncompressed)
+    /// - bytes 192..320:   G2 γ (uncompressed)
+    /// - bytes 320..448:   G2 δ (uncompressed)
+    /// - bytes 448..452:   `num_k` (u32 BE)
+    /// - bytes 452..:      `64 * num_k` bytes of G1 K-points (uncompressed)
     pub fn to_uncompressed_bytes(&self) -> Vec<u8> {
         let num_k = self.g1.k.len() as u32;
-        let total_size = 388 + (num_k as usize * 64);
+        let total_size = 452 + (num_k as usize * 64);
         let mut bytes = vec![0u8; total_size];
 
         // Serialize G1 alpha (uncompressed)
@@ -190,16 +190,16 @@ impl Groth16VerifyingKey {
         bytes[64..192].copy_from_slice(&beta_point.to_uncompressed_bytes());
 
         // Serialize G2 gamma (uncompressed)
-        bytes[192..256].copy_from_slice(&self.g2.gamma.to_uncompressed_bytes());
+        bytes[192..320].copy_from_slice(&self.g2.gamma.to_uncompressed_bytes());
 
         // Serialize G2 delta (uncompressed)
-        bytes[256..384].copy_from_slice(&self.g2.delta.to_uncompressed_bytes());
+        bytes[320..448].copy_from_slice(&self.g2.delta.to_uncompressed_bytes());
 
         // Serialize num_k
-        bytes[384..388].copy_from_slice(&num_k.to_be_bytes());
+        bytes[448..452].copy_from_slice(&num_k.to_be_bytes());
 
         // Serialize K points
-        let mut offset = 388;
+        let mut offset = 452;
         for k_point in &self.g1.k {
             bytes[offset..offset + 64].copy_from_slice(&k_point.to_uncompressed_bytes());
             offset += 64;
@@ -210,7 +210,7 @@ impl Groth16VerifyingKey {
 
     /// Deserialize from uncompressed bytes.
     pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Groth16Error> {
-        if bytes.len() < 388 {
+        if bytes.len() < 452 {
             return Err(Groth16Error::GeneralError(Error::InvalidData));
         }
 
@@ -219,8 +219,8 @@ impl Groth16VerifyingKey {
 
         // Parse G2 beta, gamma, delta (uncompressed).
         let g2_beta_point = SAffineG2::from_uncompressed_bytes(&bytes[64..192])?;
-        let g2_gamma = SAffineG2::from_uncompressed_bytes(&bytes[192..256])?;
-        let g2_delta = SAffineG2::from_uncompressed_bytes(&bytes[256..384])?;
+        let g2_gamma = SAffineG2::from_uncompressed_bytes(&bytes[192..320])?;
+        let g2_delta = SAffineG2::from_uncompressed_bytes(&bytes[320..448])?;
 
         // Negate beta for the verifier's purpose.
         let neg_g2_beta = SAffineG2(
@@ -228,16 +228,16 @@ impl Groth16VerifyingKey {
         );
 
         // Read the number of K points (u32, big‐endian).
-        let num_k = u32::from_be_bytes([bytes[384], bytes[385], bytes[386], bytes[387]]);
+        let num_k = u32::from_be_bytes([bytes[448], bytes[449], bytes[450], bytes[451]]);
 
         // Validate buffer size
-        let expected_size = 388 + (num_k as usize * 64);
+        let expected_size = 452 + (num_k as usize * 64);
         if bytes.len() != expected_size {
             return Err(Groth16Error::GeneralError(Error::InvalidData));
         }
 
         let mut k = Vec::with_capacity(num_k as usize);
-        let mut offset = 388;
+        let mut offset = 452;
         for _ in 0..num_k {
             let point = SAffineG1::from_uncompressed_bytes(&bytes[offset..offset + 64])?;
             k.push(point);
@@ -262,37 +262,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_vk_serde() {
+    fn test_vk_compressed_roundtrip() {
         let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
 
-        // Pretty print the JSON output
-        let json_string = serde_json::to_string_pretty(&vk).unwrap();
-        println!("Groth16VerifyingKey JSON output:");
-        println!("{}", json_string);
+        // Compress and decompress
+        let compressed = vk.to_compressed_bytes();
+        let decompressed = Groth16VerifyingKey::from_compressed_bytes(&compressed).unwrap();
 
-        let serialized = serde_json::to_vec(&vk).unwrap();
-        let deserialized: Groth16VerifyingKey = serde_json::from_slice(&serialized).unwrap();
-
-        assert_eq!(vk, deserialized);
+        assert_eq!(vk, decompressed);
     }
 
     #[test]
-    fn test_vk_bincode_serde() {
+    fn test_vk_uncompressed_roundtrip() {
         let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
 
-        let serialized = bincode::serialize(&vk).unwrap();
-        let deserialized: Groth16VerifyingKey = bincode::deserialize(&serialized).unwrap();
+        // Convert to uncompressed and back
+        let uncompressed = vk.to_uncompressed_bytes();
+        let recovered = Groth16VerifyingKey::from_uncompressed_bytes(&uncompressed).unwrap();
 
-        assert_eq!(vk, deserialized);
-    }
-
-    #[test]
-    fn test_vk_borsh() {
-        let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
-
-        let serialized = borsh::to_vec(&vk).unwrap();
-        let deserialized: Groth16VerifyingKey = borsh::from_slice(&serialized).unwrap();
-
-        assert_eq!(vk, deserialized);
+        assert_eq!(vk, recovered);
     }
 }

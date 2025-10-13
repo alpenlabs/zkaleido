@@ -270,3 +270,20 @@ impl BorshDeserialize for SP1Groth16Verifier {
         Ok(SP1Groth16Verifier { vk, vk_hash_tag })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use sp1_verifier::GROTH16_VK_BYTES;
+
+    use crate::types::vk::Groth16VerifyingKey;
+
+    #[test]
+    fn test_vk_borsh() {
+        let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
+
+        let serialized = borsh::to_vec(&vk).unwrap();
+        let deserialized: Groth16VerifyingKey = borsh::from_slice(&serialized).unwrap();
+
+        assert_eq!(vk, deserialized);
+    }
+}

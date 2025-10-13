@@ -103,3 +103,44 @@ impl Groth16Proof {
         Self::load_from_gnark_bytes(bytes)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn load_test_proof() -> Groth16Proof {
+        // Load a real proof from a test file
+        let program_id_hex = "00eb7fd5709e4b833db86054ba4acca001a3aa5f18b7e7d0d96d0f1d340b4e34";
+        let proof_file = format!("./proofs/fibonacci_sp1_0x{}.proof.bin", program_id_hex);
+        let receipt = zkaleido::ProofReceiptWithMetadata::load(proof_file)
+            .unwrap()
+            .receipt()
+            .clone();
+
+        // Skip the 4-byte VK hash prefix
+        let proof_bytes = &receipt.proof().as_bytes()[4..];
+        Groth16Proof::load_from_gnark_bytes(proof_bytes).unwrap()
+    }
+
+    #[test]
+    fn test_proof_compressed_roundtrip() {
+        let proof = load_test_proof();
+
+        // Compress and decompress
+        let compressed = proof.to_compressed_bytes();
+        let decompressed = Groth16Proof::from_compressed_bytes(&compressed).unwrap();
+
+        assert_eq!(proof, decompressed);
+    }
+
+    #[test]
+    fn test_proof_uncompressed_roundtrip() {
+        let proof = load_test_proof();
+
+        // Convert to uncompressed and back
+        let uncompressed = proof.to_uncompressed_bytes();
+        let recovered = Groth16Proof::from_uncompressed_bytes(&uncompressed).unwrap();
+
+        assert_eq!(proof, recovered);
+    }
+}
