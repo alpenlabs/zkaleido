@@ -12,12 +12,17 @@ rust.unused_crate_dependencies = "deny"
 rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
+[features]
+default = ["serde", "borsh"]
+serde = ["dep:serde"]
+borsh = ["dep:borsh"]
+
 [dependencies]
 blake3 = { version = "1.6.1", default-features = false }
 bn = { version = "0.6.0", package = "substrate-bn" }
-borsh.workspace = true
+borsh = { workspace = true, optional = true }
 hex.workspace = true
-serde.workspace = true
+serde = { workspace = true, optional = true }
 sha2.workspace = true
 thiserror.workspace = true
 zkaleido.workspace = true

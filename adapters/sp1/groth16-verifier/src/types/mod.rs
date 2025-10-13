@@ -1,6 +1,6 @@
 mod constant;
-mod g1;
-mod g2;
+pub(crate) mod g1;
+pub(crate) mod g2;
 pub(crate) mod proof;
-mod utils;
+pub(crate) mod utils;
 pub(crate) mod vk;

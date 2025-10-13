@@ -2,8 +2,12 @@
 //!
 //! This crate integrates SP1-based Groth16 proof verification.
 
+#[cfg(feature = "borsh")]
+mod borsh_impl;
 mod error;
 pub mod hashes;
+#[cfg(feature = "serde")]
+mod serde_impl;
 mod types;
 mod verification;
 mod verifier;

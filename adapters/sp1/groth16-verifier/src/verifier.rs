@@ -1,6 +1,4 @@
 use bn::{AffineG1, Fr, G1};
-use borsh::{BorshDeserialize, BorshSerialize};
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
@@ -21,17 +19,17 @@ pub const VK_HASH_PREFIX_LENGTH: usize = 4;
 /// This verifier is agnostic to the specific SP1 version, as long as the
 /// proving/verifying interface remains consistent. It checks that:
 /// 1. The proof was generated with the expected Groth16 verifying key (by comparing the first
-///    `VK_HASH_PREFIX_LENGTH` bytes of the key’s SHA-256 hash).
+///    `VK_HASH_PREFIX_LENGTH` bytes of the key's SHA-256 hash).
 /// 2. The Groth16 proof is valid with respect to two public inputs:
 ///    - `program_vk_hash`: a unique identifier for the SP1 program (as an Fr element).
 ///    - a hash of the supplied public values (either SHA-256 or Blake3).
-#[derive(Clone, Debug, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug)]
 pub struct SP1Groth16Verifier {
     /// The (uncompressed) Groth16 verifying key for the SP1 circuit.
-    pub vk: Groth16VerifyingKey,
+    pub(crate) vk: Groth16VerifyingKey,
     /// First `VK_HASH_PREFIX_LENGTH` bytes of `Sha256(groth16_vk)`, used to confirm
     /// the proof was generated with the correct key.
-    pub vk_hash_tag: [u8; 4],
+    pub(crate) vk_hash_tag: [u8; 4],
 }
 
 impl SP1Groth16Verifier {

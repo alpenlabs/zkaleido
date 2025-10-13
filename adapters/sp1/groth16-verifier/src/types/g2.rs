@@ -1,15 +1,10 @@
 use std::{cmp::Ordering, fmt};
 
 use bn::{AffineG2, Fq, Fq2, Group, G2};
-use borsh::{BorshDeserialize, BorshSerialize};
-use serde::{Deserialize, Serialize, Serializer};
 
 use crate::{
     error::Error,
-    types::{
-        constant::{COMPRESSED_INFINITY, COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
-        g1::{deserialize_fq_from_hex, serialize_fq_to_hex},
-    },
+    types::constant::{COMPRESSED_INFINITY, COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
 };
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -27,99 +22,88 @@ impl From<SAffineG2> for G2 {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct SAffineG2Helper {
-    x: Fq2Helper,
-    y: Fq2Helper,
-}
-
-#[derive(Serialize, Deserialize)]
-struct Fq2Helper {
-    real: String,
-    imaginary: String,
-}
-
-impl From<&SAffineG2> for SAffineG2Helper {
-    fn from(value: &SAffineG2) -> Self {
-        let mut projective: G2 = (value.0).into();
+impl SAffineG2 {
+    /// Serialize to compressed bytes (64 bytes: x-coordinate (Fq2) with flag bits).
+    ///
+    /// The first two bits of the first byte encode a flag indicating which y-coordinate to use or
+    /// infinity.
+    pub fn to_compressed_bytes(&self) -> [u8; 64] {
+        let mut projective: G2 = self.0.into();
         projective.normalize();
         let (x, y) = (projective.x(), projective.y());
 
-        SAffineG2Helper {
-            x: serialize_fq2_to_hex(&x),
-            y: serialize_fq2_to_hex(&y),
-        }
+        let mut bytes = [0u8; 64];
+
+        // Serialize x coordinate (Fq2: imaginary part in first 32 bytes, real part in second 32
+        // bytes)
+        let mut x1_bytes = [0u8; 32];
+        let mut x0_bytes = [0u8; 32];
+        x.imaginary().to_big_endian(&mut x1_bytes).unwrap();
+        x.real().to_big_endian(&mut x0_bytes).unwrap();
+
+        // Determine which y-coordinate we have (lexicographically smaller)
+        let neg_y = -y;
+        let is_y_less_than_neg_y = match y
+            .imaginary()
+            .into_u256()
+            .cmp(&neg_y.imaginary().into_u256())
+        {
+            Ordering::Less => true,
+            Ordering::Greater => false,
+            Ordering::Equal => y.real().into_u256() < neg_y.real().into_u256(),
+        };
+
+        let flag = if is_y_less_than_neg_y {
+            COMPRESSED_POSITIVE
+        } else {
+            COMPRESSED_NEGATIVE
+        };
+
+        // Set the flag bits in the first byte of x1 (imaginary part)
+        x1_bytes[0] |= flag;
+
+        bytes[0..32].copy_from_slice(&x1_bytes);
+        bytes[32..64].copy_from_slice(&x0_bytes);
+
+        bytes
     }
-}
 
-impl TryFrom<SAffineG2Helper> for SAffineG2 {
-    type Error = Error;
-    fn try_from(value: SAffineG2Helper) -> Result<Self, Self::Error> {
-        let x = deserialize_fq2_from_hex(&value.x)?;
-        let y = deserialize_fq2_from_hex(&value.y)?;
-        let z = Fq2::one();
-
-        let projective = G2::new(x, y, z);
-
-        let g2 = AffineG2::from_jacobian(projective).ok_or(Error::InvalidPoint)?;
-        Ok(SAffineG2(g2))
+    /// Deserialize from compressed bytes (64 bytes: x-coordinate (Fq2) with flag bits).
+    pub fn from_compressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        Ok(SAffineG2(compressed_bytes_to_affine_g2(bytes)?))
     }
-}
 
-impl Serialize for SAffineG2 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        SAffineG2Helper::from(self).serialize(serializer)
+    /// Serialize to uncompressed bytes (128 bytes: x-coordinate + y-coordinate, each Fq2 = 64
+    /// bytes).
+    pub fn to_uncompressed_bytes(&self) -> [u8; 128] {
+        let mut projective: G2 = self.0.into();
+        projective.normalize();
+        let (x, y) = (projective.x(), projective.y());
+
+        let mut bytes = [0u8; 128];
+
+        // Serialize x coordinate (Fq2: imaginary then real)
+        x.imaginary().to_big_endian(&mut bytes[0..32]).unwrap();
+        x.real().to_big_endian(&mut bytes[32..64]).unwrap();
+
+        // Serialize y coordinate (Fq2: imaginary then real)
+        y.imaginary().to_big_endian(&mut bytes[64..96]).unwrap();
+        y.real().to_big_endian(&mut bytes[96..128]).unwrap();
+
+        bytes
     }
-}
 
-impl<'de> Deserialize<'de> for SAffineG2 {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let helper = SAffineG2Helper::deserialize(deserializer)?;
-        SAffineG2::try_from(helper).map_err(serde::de::Error::custom)
-    }
-}
-
-impl fmt::Debug for Fq2Helper {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("Fq2")
-            .field("x", &self.real)
-            .field("y", &self.imaginary)
-            .finish()
+    /// Deserialize from uncompressed bytes (128 bytes: x-coordinate + y-coordinate).
+    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        Ok(SAffineG2(uncompressed_bytes_to_affine_g2(bytes)?))
     }
 }
 
 impl fmt::Debug for SAffineG2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let helper = SAffineG2Helper::from(self);
-        f.debug_struct("AffineG2")
-            .field("x", &helper.x)
-            .field("y", &helper.y)
-            .finish()
+        f.debug_struct("AffineG2").finish_non_exhaustive()
     }
 }
-
-fn serialize_fq2_to_hex(fq2: &Fq2) -> Fq2Helper {
-    let real = fq2.real();
-    let imaginary = fq2.imaginary();
-
-    let real = serialize_fq_to_hex(&real);
-    let imaginary = serialize_fq_to_hex(&imaginary);
-
-    Fq2Helper { real, imaginary }
-}
-
-fn deserialize_fq2_from_hex(hex: &Fq2Helper) -> Result<Fq2, Error> {
-    let real = deserialize_fq_from_hex(&hex.real)?;
-    let imaginary = deserialize_fq_from_hex(&hex.imaginary)?;
-    Ok(Fq2::new(real, imaginary))
-}
-
 /// Convert a 64-byte compressed G2 representation into an `AffineG2` point.
 ///
 /// The first two bits of the first byte encode a flag:
@@ -217,109 +201,5 @@ fn get_ys_from_x_g2(x: Fq2) -> Result<(Fq2, Fq2), Error> {
         Ok((y, neg_y))
     } else {
         Ok((neg_y, y))
-    }
-}
-
-impl BorshSerialize for SAffineG2 {
-    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        let mut projective: G2 = (self.0).into();
-        projective.normalize();
-        let (x, y) = (projective.x(), projective.y());
-
-        // Serialize x coordinate (Fq2: real + imaginary)
-        let mut x_real_bytes = [0u8; 32];
-        x.real().to_big_endian(&mut x_real_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to serialize x real part",
-            )
-        })?;
-        writer.write_all(&x_real_bytes)?;
-
-        let mut x_imag_bytes = [0u8; 32];
-        x.imaginary()
-            .to_big_endian(&mut x_imag_bytes)
-            .map_err(|_| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Failed to serialize x imaginary part",
-                )
-            })?;
-        writer.write_all(&x_imag_bytes)?;
-
-        // Serialize y coordinate (Fq2: real + imaginary)
-        let mut y_real_bytes = [0u8; 32];
-        y.real().to_big_endian(&mut y_real_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to serialize y real part",
-            )
-        })?;
-        writer.write_all(&y_real_bytes)?;
-
-        let mut y_imag_bytes = [0u8; 32];
-        y.imaginary()
-            .to_big_endian(&mut y_imag_bytes)
-            .map_err(|_| {
-                std::io::Error::new(
-                    std::io::ErrorKind::InvalidData,
-                    "Failed to serialize y imaginary part",
-                )
-            })?;
-        writer.write_all(&y_imag_bytes)?;
-
-        Ok(())
-    }
-}
-
-impl BorshDeserialize for SAffineG2 {
-    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
-        // Read x coordinate components
-        let mut x_real_bytes = [0u8; 32];
-        reader.read_exact(&mut x_real_bytes)?;
-        let x_real = Fq::from_slice(&x_real_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to deserialize x real part",
-            )
-        })?;
-
-        let mut x_imag_bytes = [0u8; 32];
-        reader.read_exact(&mut x_imag_bytes)?;
-        let x_imag = Fq::from_slice(&x_imag_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to deserialize x imaginary part",
-            )
-        })?;
-
-        // Read y coordinate components
-        let mut y_real_bytes = [0u8; 32];
-        reader.read_exact(&mut y_real_bytes)?;
-        let y_real = Fq::from_slice(&y_real_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to deserialize y real part",
-            )
-        })?;
-
-        let mut y_imag_bytes = [0u8; 32];
-        reader.read_exact(&mut y_imag_bytes)?;
-        let y_imag = Fq::from_slice(&y_imag_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to deserialize y imaginary part",
-            )
-        })?;
-
-        let x = Fq2::new(x_real, x_imag);
-        let y = Fq2::new(y_real, y_imag);
-        let z = Fq2::one();
-
-        let projective = G2::new(x, y, z);
-        let g2 = AffineG2::from_jacobian(projective)
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid point"))?;
-
-        Ok(SAffineG2(g2))
     }
 }

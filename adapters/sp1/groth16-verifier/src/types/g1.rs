@@ -1,15 +1,10 @@
 use std::fmt;
 
 use bn::{AffineG1, Fq, Group, G1};
-use borsh::{BorshDeserialize, BorshSerialize};
-use serde::{Deserialize, Serialize, Serializer};
 
 use crate::{
     error::Error,
-    types::{
-        constant::{COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
-        utils::{bytes_to_hex, hex_to_bytes},
-    },
+    types::constant::{COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
 };
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -27,80 +22,65 @@ impl From<SAffineG1> for G1 {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-struct SAffineG1Helper {
-    x: String,
-    y: String,
-}
-
-impl From<&SAffineG1> for SAffineG1Helper {
-    fn from(value: &SAffineG1) -> Self {
-        // Convert to projective to access coordinates
-        let mut projective: G1 = (value.0).into();
+impl SAffineG1 {
+    /// Serialize to compressed bytes (32 bytes: x-coordinate with flag bits).
+    ///
+    /// The first two bits of the first byte encode a flag indicating which y-coordinate to use.
+    pub fn to_compressed_bytes(&self) -> [u8; 32] {
+        let mut projective: G1 = self.0.into();
         projective.normalize();
         let (x, y) = (projective.x(), projective.y());
 
-        SAffineG1Helper {
-            x: serialize_fq_to_hex(&x),
-            y: serialize_fq_to_hex(&y),
-        }
+        // Serialize x coordinate to bytes
+        let mut x_bytes = [0u8; 32];
+        // NOTE: It is safe to unwrap because the only error is if size of slice is not of length
+        // 32.
+        x.to_big_endian(&mut x_bytes).unwrap();
+
+        // Determine which y-coordinate we have (positive or negative)
+        let neg_y = -y;
+        let flag = if y.into_u256() < neg_y.into_u256() {
+            COMPRESSED_POSITIVE
+        } else {
+            COMPRESSED_NEGATIVE
+        };
+
+        // Set the flag bits in the first byte
+        x_bytes[0] |= flag;
+
+        x_bytes
     }
-}
 
-impl TryFrom<SAffineG1Helper> for SAffineG1 {
-    type Error = Error;
-    fn try_from(value: SAffineG1Helper) -> Result<Self, Self::Error> {
-        let x = deserialize_fq_from_hex(&value.x)?;
-        let y = deserialize_fq_from_hex(&value.y)?;
-        let z = Fq::one();
-
-        let projective = G1::new(x, y, z);
-
-        let g1 = AffineG1::from_jacobian(projective).ok_or(Error::InvalidPoint)?;
-        Ok(SAffineG1(g1))
+    /// Deserialize from compressed bytes (32 bytes: x-coordinate with flag bits).
+    pub fn from_compressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        Ok(SAffineG1(compressed_bytes_to_affine_g1(bytes)?))
     }
-}
 
-impl Serialize for SAffineG1 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        SAffineG1Helper::from(self).serialize(serializer)
+    /// Serialize to uncompressed bytes (64 bytes: x-coordinate + y-coordinate).
+    pub fn to_uncompressed_bytes(&self) -> [u8; 64] {
+        let mut projective: G1 = self.0.into();
+        projective.normalize();
+        let (x, y) = (projective.x(), projective.y());
+
+        let mut bytes = [0u8; 64];
+        // NOTE: It is safe to unwrap because the only error is if size of slice is not of length
+        // 32.
+        x.to_big_endian(&mut bytes[0..32]).unwrap();
+        y.to_big_endian(&mut bytes[32..64]).unwrap();
+
+        bytes
     }
-}
 
-impl<'de> Deserialize<'de> for SAffineG1 {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let helper = SAffineG1Helper::deserialize(deserializer)?;
-        SAffineG1::try_from(helper).map_err(serde::de::Error::custom)
+    /// Deserialize from uncompressed bytes (64 bytes: x-coordinate + y-coordinate).
+    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
+        Ok(SAffineG1(uncompressed_bytes_to_affine_g1(bytes)?))
     }
 }
 
 impl fmt::Debug for SAffineG1 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let helper = SAffineG1Helper::from(self);
-        f.debug_struct("AffineG1")
-            .field("x", &helper.x)
-            .field("y", &helper.y)
-            .finish()
+        f.debug_struct("AffineG1").finish_non_exhaustive()
     }
-}
-
-// Helper functions for Fq serialization
-pub(super) fn serialize_fq_to_hex(fq: &Fq) -> String {
-    let mut slice = [0u8; 32];
-    // NOTE: It is safe to unwrap because the only error is if size of slice is not of length 32.
-    fq.to_big_endian(&mut slice).unwrap();
-    bytes_to_hex(&slice)
-}
-
-pub(super) fn deserialize_fq_from_hex(hex_str: &str) -> Result<Fq, Error> {
-    let bytes = hex_to_bytes(hex_str)?;
-    Fq::from_slice(&bytes).map_err(|_| Error::FailedToGetFrFromRandomBytes)
 }
 
 /// Convert a 32-byte compressed G1 representation into an `AffineG1` point.
@@ -169,67 +149,5 @@ fn get_ys_from_x_g1(x: Fq) -> Result<(Fq, Fq), Error> {
         Ok((y, neg_y))
     } else {
         Ok((neg_y, y))
-    }
-}
-
-impl BorshSerialize for SAffineG1 {
-    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        // Convert to projective to access coordinates
-        let mut projective: G1 = (self.0).into();
-        projective.normalize();
-        let (x, y) = (projective.x(), projective.y());
-
-        // Serialize x coordinate
-        let mut x_bytes = [0u8; 32];
-        x.to_big_endian(&mut x_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to serialize x coordinate",
-            )
-        })?;
-        writer.write_all(&x_bytes)?;
-
-        // Serialize y coordinate
-        let mut y_bytes = [0u8; 32];
-        y.to_big_endian(&mut y_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to serialize y coordinate",
-            )
-        })?;
-        writer.write_all(&y_bytes)?;
-
-        Ok(())
-    }
-}
-
-impl BorshDeserialize for SAffineG1 {
-    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
-        // Read x coordinate
-        let mut x_bytes = [0u8; 32];
-        reader.read_exact(&mut x_bytes)?;
-        let x = Fq::from_slice(&x_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to deserialize x coordinate",
-            )
-        })?;
-
-        // Read y coordinate
-        let mut y_bytes = [0u8; 32];
-        reader.read_exact(&mut y_bytes)?;
-        let y = Fq::from_slice(&y_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to deserialize y coordinate",
-            )
-        })?;
-
-        let z = Fq::one();
-        let projective = G1::new(x, y, z);
-        let g1 = AffineG1::from_jacobian(projective)
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid point"))?;
-
-        Ok(SAffineG1(g1))
     }
 }
