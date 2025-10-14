@@ -55,33 +55,39 @@ pub const GROTH16_PROOF_COMPRESSED_SIZE: usize =
 pub const GROTH16_PROOF_UNCOMPRESSED_SIZE: usize =
     G1_UNCOMPRESSED_SIZE + G2_UNCOMPRESSED_SIZE + G1_UNCOMPRESSED_SIZE;
 
-// Groth16 Verifying Key offsets and sizes (GNARK format with padding)
-/// Base size of VK compressed bytes (without K points): 228 bytes
-pub(crate) const GROTH16_VK_COMPRESSED_BASE_SIZE: usize =
+// Groth16 Verifying Key sizes - Compact format (without GNARK padding)
+/// Size of compressed VK header (without K points): 228 bytes
+/// Layout: G1 alpha (32) + G2 beta (64) + G2 gamma (64) + G2 delta (64) + num_k (4)
+pub(crate) const GROTH16_VK_COMPRESSED_HEADER_SIZE: usize =
     G1_COMPRESSED_SIZE + 3 * G2_COMPRESSED_SIZE + U32_SIZE;
 
-/// Base size of VK uncompressed bytes (without K points): 452 bytes
-pub(crate) const GROTH16_VK_UNCOMPRESSED_BASE_SIZE: usize =
+/// Size of uncompressed VK header (without K points): 452 bytes
+/// Layout: G1 alpha (64) + G2 beta (128) + G2 gamma (128) + G2 delta (128) + num_k (4)
+pub(crate) const GROTH16_VK_UNCOMPRESSED_HEADER_SIZE: usize =
     G1_UNCOMPRESSED_SIZE + 3 * G2_UNCOMPRESSED_SIZE + U32_SIZE;
 
+// GNARK Verifying Key offsets and sizes (GNARK format with padding)
 /// Offset for G2 beta in GNARK compressed VK format (with padding)
 /// After G1 alpha (32 bytes) + padding (32 bytes)
-pub(crate) const GNARK_VK_G2_BETA_OFFSET: usize = G1_COMPRESSED_SIZE + FQ_SIZE;
+pub(crate) const GNARK_VK_COMPRESSED_G2_BETA_OFFSET: usize = G1_COMPRESSED_SIZE + FQ_SIZE;
 
 /// Offset for G2 gamma in GNARK compressed VK format
 /// After G1 alpha + padding + G2 beta
-pub(crate) const GNARK_VK_G2_GAMMA_OFFSET: usize = GNARK_VK_G2_BETA_OFFSET + G2_COMPRESSED_SIZE;
+pub(crate) const GNARK_VK_COMPRESSED_G2_GAMMA_OFFSET: usize =
+    GNARK_VK_COMPRESSED_G2_BETA_OFFSET + G2_COMPRESSED_SIZE;
 
 /// Offset for G2 delta in GNARK compressed VK format (with padding)
 /// After gamma + padding (32 bytes)
-pub(crate) const GNARK_VK_G2_DELTA_OFFSET: usize =
-    GNARK_VK_G2_GAMMA_OFFSET + G2_COMPRESSED_SIZE + FQ_SIZE;
+pub(crate) const GNARK_VK_COMPRESSED_G2_DELTA_OFFSET: usize =
+    GNARK_VK_COMPRESSED_G2_GAMMA_OFFSET + G2_COMPRESSED_SIZE + FQ_SIZE;
 
 /// Offset for num_k in GNARK compressed VK format
 /// After G2 delta
-pub(crate) const GNARK_VK_NUM_K_OFFSET: usize = GNARK_VK_G2_DELTA_OFFSET + G2_COMPRESSED_SIZE;
+pub(crate) const GNARK_VK_COMPRESSED_NUM_K_OFFSET: usize =
+    GNARK_VK_COMPRESSED_G2_DELTA_OFFSET + G2_COMPRESSED_SIZE;
 
-/// Size of the GNARK VK header (all fixed-size fields before variable-length K points).
+/// Size of the GNARK compressed VK header (all fixed-size fields before variable-length K points).
 /// The header contains: G1 alpha, G2 beta, G2 gamma, G2 delta (with GNARK padding), and num_k
-/// field. This is also the offset where K points start in the buffer.
-pub(crate) const GNARK_VK_HEADER_SIZE: usize = GNARK_VK_NUM_K_OFFSET + U32_SIZE;
+/// field. This is also the offset where K points start in the buffer: 292 bytes
+pub(crate) const GNARK_VK_COMPRESSED_HEADER_SIZE: usize =
+    GNARK_VK_COMPRESSED_NUM_K_OFFSET + U32_SIZE;
