@@ -81,6 +81,7 @@ pub(crate) const GNARK_VK_G2_DELTA_OFFSET: usize =
 /// After G2 delta
 pub(crate) const GNARK_VK_NUM_K_OFFSET: usize = GNARK_VK_G2_DELTA_OFFSET + G2_COMPRESSED_SIZE;
 
-/// Offset for K points start in GNARK compressed VK format
-/// After num_k (u32)
-pub(crate) const GNARK_VK_K_POINTS_OFFSET: usize = GNARK_VK_NUM_K_OFFSET + U32_SIZE;
+/// Size of the GNARK VK header (all fixed-size fields before variable-length K points).
+/// The header contains: G1 alpha, G2 beta, G2 gamma, G2 delta (with GNARK padding), and num_k
+/// field. This is also the offset where K points start in the buffer.
+pub(crate) const GNARK_VK_HEADER_SIZE: usize = GNARK_VK_NUM_K_OFFSET + U32_SIZE;

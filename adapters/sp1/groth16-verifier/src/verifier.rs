@@ -59,6 +59,7 @@ impl SP1Groth16Verifier {
             .map_err(|_| {
                 Groth16Error::Serialization(
                     BufferLengthError {
+                        context: "SP1 Gnark Compressed Groth16Vk hash prefix",
                         expected: VK_HASH_PREFIX_LENGTH,
                         actual: Sha256::digest(vk_bytes).len(),
                     }
@@ -68,7 +69,7 @@ impl SP1Groth16Verifier {
 
         // Parse the Groth16 verifying key from its byte representation.
         // This returns a `Groth16VerifyingKey` that can be used for algebraic verification.
-        let mut groth16_vk = Groth16VerifyingKey::load_from_gnark_bytes(vk_bytes)?;
+        let mut groth16_vk = Groth16VerifyingKey::from_gnark_bytes(vk_bytes)?;
 
         // Parse the program ID (Fr element) from its 32-byte big-endian encoding.
         let program_vk_hash = Fr::from_slice(&program_vk_hash).map_err(SerializationError::from)?;
@@ -111,6 +112,7 @@ impl SP1Groth16Verifier {
         if proof.len() < VK_HASH_PREFIX_LENGTH {
             return Err(Groth16Error::Serialization(
                 BufferLengthError {
+                    context: "Groth16 proof with verifying key hash prefix",
                     expected: VK_HASH_PREFIX_LENGTH,
                     actual: proof.len(),
                 }

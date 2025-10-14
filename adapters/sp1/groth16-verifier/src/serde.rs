@@ -337,6 +337,7 @@ fn hex_string_to_fq_bytes(hex_str: &str) -> Result<[u8; FQ_SIZE], SerializationE
     let bytes = hex::decode(hex_str).map_err(|_| InvalidDataFormatError)?;
     if bytes.len() != FQ_SIZE {
         return Err(BufferLengthError {
+            context: "Fq",
             expected: FQ_SIZE,
             actual: bytes.len(),
         }
@@ -355,7 +356,7 @@ mod tests {
 
     #[test]
     fn test_vk_serde_json() {
-        let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
+        let vk = Groth16VerifyingKey::from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
 
         // Pretty print the JSON output
         let json_string = serde_json::to_string_pretty(&vk).unwrap();
@@ -370,7 +371,7 @@ mod tests {
 
     #[test]
     fn test_vk_serde_bincode() {
-        let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
+        let vk = Groth16VerifyingKey::from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
 
         let serialized = bincode::serialize(&vk).unwrap();
         let deserialized: Groth16VerifyingKey = bincode::deserialize(&serialized).unwrap();

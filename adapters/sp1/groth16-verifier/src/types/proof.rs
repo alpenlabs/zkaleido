@@ -31,6 +31,7 @@ impl Groth16Proof {
         if buffer.len() != GROTH16_PROOF_UNCOMPRESSED_SIZE {
             return Err(Groth16Error::Serialization(
                 BufferLengthError {
+                    context: "Uncompressed Groth16 proof",
                     expected: GROTH16_PROOF_UNCOMPRESSED_SIZE,
                     actual: buffer.len(),
                 }
@@ -55,6 +56,7 @@ impl Groth16Proof {
         if bytes.len() != GROTH16_PROOF_COMPRESSED_SIZE {
             return Err(Groth16Error::Serialization(
                 BufferLengthError {
+                    context: "Gnark-compressed Groth16 proof",
                     expected: GROTH16_PROOF_COMPRESSED_SIZE,
                     actual: bytes.len(),
                 }

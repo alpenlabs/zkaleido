@@ -6,7 +6,7 @@ use crate::{
         constant::{
             G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE, G2_COMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE,
             GNARK_VK_G2_BETA_OFFSET, GNARK_VK_G2_DELTA_OFFSET, GNARK_VK_G2_GAMMA_OFFSET,
-            GNARK_VK_K_POINTS_OFFSET, GNARK_VK_NUM_K_OFFSET, GROTH16_VK_COMPRESSED_BASE_SIZE,
+            GNARK_VK_HEADER_SIZE, GNARK_VK_NUM_K_OFFSET, GROTH16_VK_COMPRESSED_BASE_SIZE,
             GROTH16_VK_UNCOMPRESSED_BASE_SIZE, U32_SIZE,
         },
         g1::SAffineG1,
@@ -46,10 +46,42 @@ impl Groth16VerifyingKey {
     /// - [224..288)   : G2 δ (compressed)
     /// - [288..292)   : `num_k` (u32 BE)
     /// - [292..292+i) : `i = 32 * num_k` bytes of G1 K-points
-    ///
-    /// Note: slicing beyond `buffer.len()` will panic. Validate length before calling if you
-    /// need to gracefully handle malformed input.
-    pub fn load_from_gnark_bytes(buffer: &[u8]) -> Result<Self, Groth16Error> {
+    pub fn from_gnark_bytes(buffer: &[u8]) -> Result<Self, Groth16Error> {
+        // Validate minimum buffer length for the "header" (all fixed-size fields before K points).
+        // The header includes: alpha, beta, gamma, delta (with GNARK padding), and num_k field.
+        // The actual VK size depends on num_k, which we read from the header.
+        if buffer.len() < GNARK_VK_HEADER_SIZE {
+            return Err(Groth16Error::Serialization(
+                BufferLengthError {
+                    context: "GNARK Groth16 VK header",
+                    expected: GNARK_VK_HEADER_SIZE,
+                    actual: buffer.len(),
+                }
+                .into(),
+            ));
+        }
+
+        // Read the number of K points (u32, big‐endian).
+        let num_k = u32::from_be_bytes([
+            buffer[GNARK_VK_NUM_K_OFFSET],
+            buffer[GNARK_VK_NUM_K_OFFSET + 1],
+            buffer[GNARK_VK_NUM_K_OFFSET + 2],
+            buffer[GNARK_VK_NUM_K_OFFSET + 3],
+        ]);
+
+        // Validate that buffer has enough bytes for all K points
+        let expected_size = GNARK_VK_HEADER_SIZE + (num_k as usize * G1_COMPRESSED_SIZE);
+        if buffer.len() < expected_size {
+            return Err(Groth16Error::Serialization(
+                BufferLengthError {
+                    context: "GNARK Groth16 VK",
+                    expected: expected_size,
+                    actual: buffer.len(),
+                }
+                .into(),
+            ));
+        }
+
         // Parse G1 alpha (GNARK-compressed).
         let g1_alpha = SAffineG1::from_gnark_compressed_bytes(&buffer[..G1_COMPRESSED_SIZE])?;
 
@@ -71,15 +103,8 @@ impl Groth16VerifyingKey {
                 .map_err(|e| Groth16Error::Serialization(e.into()))?,
         );
 
-        // Read the number of K points (u32, big‐endian).
-        let num_k = u32::from_be_bytes([
-            buffer[GNARK_VK_NUM_K_OFFSET],
-            buffer[GNARK_VK_NUM_K_OFFSET + 1],
-            buffer[GNARK_VK_NUM_K_OFFSET + 2],
-            buffer[GNARK_VK_NUM_K_OFFSET + 3],
-        ]);
         let mut k = Vec::with_capacity(num_k as usize);
-        let mut offset = GNARK_VK_K_POINTS_OFFSET;
+        let mut offset = GNARK_VK_HEADER_SIZE;
         for _ in 0..num_k {
             let point = SAffineG1::from_gnark_compressed_bytes(
                 &buffer[offset..offset + G1_COMPRESSED_SIZE],
@@ -156,6 +181,7 @@ impl Groth16VerifyingKey {
         if bytes.len() < GROTH16_VK_COMPRESSED_BASE_SIZE {
             return Err(Groth16Error::Serialization(
                 BufferLengthError {
+                    context: "GNARK-compressed Groth16 VK",
                     expected: GROTH16_VK_COMPRESSED_BASE_SIZE,
                     actual: bytes.len(),
                 }
@@ -200,6 +226,7 @@ impl Groth16VerifyingKey {
         if bytes.len() != expected_size {
             return Err(Groth16Error::Serialization(
                 BufferLengthError {
+                    context: "GNARK-compressed Groth16 VK",
                     expected: expected_size,
                     actual: bytes.len(),
                 }
@@ -282,6 +309,7 @@ impl Groth16VerifyingKey {
         if bytes.len() < GROTH16_VK_UNCOMPRESSED_BASE_SIZE {
             return Err(Groth16Error::Serialization(
                 BufferLengthError {
+                    context: "Uncompressed Groth16 VK",
                     expected: GROTH16_VK_UNCOMPRESSED_BASE_SIZE,
                     actual: bytes.len(),
                 }
@@ -327,6 +355,7 @@ impl Groth16VerifyingKey {
         if bytes.len() != expected_size {
             return Err(Groth16Error::Serialization(
                 BufferLengthError {
+                    context: "Uncompressed Groth16 VK",
                     expected: expected_size,
                     actual: bytes.len(),
                 }
@@ -362,7 +391,7 @@ mod tests {
 
     #[test]
     fn test_vk_compressed_roundtrip() {
-        let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
+        let vk = Groth16VerifyingKey::from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
 
         // Compress and decompress
         let compressed = vk.to_gnark_compressed_bytes();
@@ -373,12 +402,36 @@ mod tests {
 
     #[test]
     fn test_vk_uncompressed_roundtrip() {
-        let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
+        let vk = Groth16VerifyingKey::from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
 
         // Convert to uncompressed and back
         let uncompressed = vk.to_uncompressed_bytes();
         let recovered = Groth16VerifyingKey::from_uncompressed_bytes(&uncompressed).unwrap();
 
         assert_eq!(vk, recovered);
+    }
+
+    #[test]
+    fn test_vk_from_gnark_bytes_invalid_size() {
+        // Test with buffer that's too small (less than minimum required)
+        let small_buffer = vec![0u8; 100];
+        let result = Groth16VerifyingKey::from_gnark_bytes(&small_buffer);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            Groth16Error::Serialization(_)
+        ));
+
+        // Test with buffer that has valid header but not enough K points
+        let mut partial_buffer = vec![0u8; GNARK_VK_HEADER_SIZE + 4];
+        // Set num_k to 2, but only provide 4 bytes (not enough for even 1 G1 point which needs 32)
+        partial_buffer[GNARK_VK_NUM_K_OFFSET..GNARK_VK_NUM_K_OFFSET + 4]
+            .copy_from_slice(&2u32.to_be_bytes());
+        let result = Groth16VerifyingKey::from_gnark_bytes(&partial_buffer);
+        assert!(result.is_err());
+        assert!(matches!(
+            result.unwrap_err(),
+            Groth16Error::Serialization(_)
+        ));
     }
 }

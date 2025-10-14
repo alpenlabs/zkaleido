@@ -3,8 +3,9 @@ use thiserror::Error;
 
 /// Error for buffer length mismatches during deserialization.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
-#[error("Invalid buffer length: expected {expected} bytes, got {actual} bytes")]
+#[error("Invalid buffer length for {context}: expected {expected} bytes, got {actual} bytes")]
 pub struct BufferLengthError {
+    pub context: &'static str,
     pub expected: usize,
     pub actual: usize,
 }

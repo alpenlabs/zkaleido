@@ -34,6 +34,7 @@ impl SAffineG2 {
     pub(crate) fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, SerializationError> {
         if bytes.len() != G2_COMPRESSED_SIZE {
             return Err(BufferLengthError {
+                context: "Gnark-compressed G2 point",
                 expected: G2_COMPRESSED_SIZE,
                 actual: bytes.len(),
             }
@@ -104,6 +105,7 @@ impl SAffineG2 {
     pub(crate) fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, SerializationError> {
         if bytes.len() != G2_UNCOMPRESSED_SIZE {
             return Err(BufferLengthError {
+                context: "Uncompressed G2 point",
                 expected: G2_UNCOMPRESSED_SIZE,
                 actual: bytes.len(),
             }

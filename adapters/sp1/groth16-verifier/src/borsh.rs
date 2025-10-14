@@ -149,7 +149,7 @@ mod tests {
 
     #[test]
     fn test_vk_borsh() {
-        let vk = Groth16VerifyingKey::load_from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
+        let vk = Groth16VerifyingKey::from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
 
         let serialized = borsh::to_vec(&vk).unwrap();
         let deserialized: Groth16VerifyingKey = borsh::from_slice(&serialized).unwrap();
