@@ -20,6 +20,18 @@ pub struct BufferLengthError {
 #[error("Invalid data format")]
 pub struct InvalidDataFormatError;
 
+/// Error for unsupported or invalid proof format.
+///
+/// This occurs when the proof length does not match any supported format
+/// (compressed or uncompressed).
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[error("Invalid proof format: expected {expected_compressed} bytes (compressed) or {expected_uncompressed} bytes (uncompressed), got {actual} bytes")]
+pub struct InvalidProofFormatError {
+    pub expected_compressed: usize,
+    pub expected_uncompressed: usize,
+    pub actual: usize,
+}
+
 /// Error for invalid elliptic curve points.
 ///
 /// This occurs when:
@@ -40,6 +52,10 @@ pub enum SerializationError {
     /// Data format is invalid or malformed.
     #[error(transparent)]
     InvalidFormat(#[from] InvalidDataFormatError),
+
+    /// Proof format is invalid or unsupported.
+    #[error(transparent)]
+    InvalidProofFormat(#[from] InvalidProofFormatError),
 
     /// Elliptic curve point is invalid.
     #[error(transparent)]

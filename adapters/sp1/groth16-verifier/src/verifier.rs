@@ -3,9 +3,13 @@ use sha2::{Digest, Sha256};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
-    error::{BufferLengthError, Groth16Error, SerializationError},
+    error::{BufferLengthError, Groth16Error, InvalidProofFormatError, SerializationError},
     hashes::{blake3_to_fr, sha256_to_fr},
-    types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
+    types::{
+        constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
+        proof::Groth16Proof,
+        vk::Groth16VerifyingKey,
+    },
     verification::verify_sp1_groth16_algebraic,
 };
 
@@ -90,6 +94,10 @@ impl SP1Groth16Verifier {
     /// The proof is expected to be encoded as:
     /// [ vk_hash_prefix (VK_HASH_PREFIX_LENGTH bytes) || raw_groth16_proof_bytes ]
     ///
+    /// The raw proof bytes can be in either compressed ([`GROTH16_PROOF_COMPRESSED_SIZE`] bytes) or
+    /// uncompressed ([`GROTH16_PROOF_UNCOMPRESSED_SIZE`] bytes) format. The verifier automatically
+    /// detects the format based on the byte length.
+    ///
     /// # Parameters
     /// - `proof`: Byte slice containing the prefixed Groth16 proof.
     /// - `public_values`: Byte slice representing the public values for the SP1 circuit.
@@ -117,8 +125,26 @@ impl SP1Groth16Verifier {
         }
 
         // Extract the raw Groth16 proof (bytes after the prefix) and parse it.
+        // Support both compressed and uncompressed formats based on byte length.
         let raw_proof_bytes = &proof[VK_HASH_PREFIX_LENGTH..];
-        let proof = Groth16Proof::from_uncompressed_bytes(raw_proof_bytes)?;
+        let proof = match raw_proof_bytes.len() {
+            GROTH16_PROOF_COMPRESSED_SIZE => {
+                Groth16Proof::from_gnark_compressed_bytes(raw_proof_bytes)?
+            }
+            GROTH16_PROOF_UNCOMPRESSED_SIZE => {
+                Groth16Proof::from_uncompressed_bytes(raw_proof_bytes)?
+            }
+            _ => {
+                return Err(Groth16Error::Serialization(
+                    InvalidProofFormatError {
+                        expected_compressed: GROTH16_PROOF_COMPRESSED_SIZE,
+                        expected_uncompressed: GROTH16_PROOF_UNCOMPRESSED_SIZE,
+                        actual: raw_proof_bytes.len(),
+                    }
+                    .into(),
+                ))
+            }
+        };
 
         // Compute Fr element for hash(public_values) using SHA-256. SP1's Groth16 circuit expects
         // two public inputs: a. `program_id`, b. `hash(public_values)`.  Since SP1 allows either
@@ -248,5 +274,59 @@ mod tests {
             receipt.public_values().as_bytes(),
         );
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_compressed_and_uncompressed_proof() {
+        use crate::{
+            types::{
+                constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
+                proof::Groth16Proof,
+            },
+            verifier::VK_HASH_PREFIX_LENGTH,
+        };
+
+        let (verifier, receipt) = load_vk_and_proof();
+        let proof_bytes = receipt.proof().as_bytes();
+        let public_values = receipt.public_values().as_bytes();
+
+        // Extract raw proof (without VK hash prefix)
+        let raw_proof_bytes = &proof_bytes[VK_HASH_PREFIX_LENGTH..];
+
+        // Parse the proof
+        let parsed_proof = Groth16Proof::from_uncompressed_bytes(raw_proof_bytes).unwrap();
+
+        // Convert to compressed format
+        let compressed = parsed_proof.to_gnark_compressed_bytes();
+        assert_eq!(compressed.len(), GROTH16_PROOF_COMPRESSED_SIZE);
+
+        // Convert to uncompressed format
+        let uncompressed = parsed_proof.to_uncompressed_bytes();
+        assert_eq!(uncompressed.len(), GROTH16_PROOF_UNCOMPRESSED_SIZE);
+
+        // Create proof with VK hash prefix for compressed
+        let mut compressed_proof_with_prefix = Vec::new();
+        compressed_proof_with_prefix.extend_from_slice(&verifier.vk_hash_tag);
+        compressed_proof_with_prefix.extend_from_slice(&compressed);
+
+        // Create proof with VK hash prefix for uncompressed
+        let mut uncompressed_proof_with_prefix = Vec::new();
+        uncompressed_proof_with_prefix.extend_from_slice(&verifier.vk_hash_tag);
+        uncompressed_proof_with_prefix.extend_from_slice(&uncompressed);
+
+        // Verify both compressed and uncompressed proofs work
+        let res_compressed = verifier.verify(&compressed_proof_with_prefix, public_values);
+        assert!(
+            res_compressed.is_ok(),
+            "Compressed proof verification failed: {:?}",
+            res_compressed
+        );
+
+        let res_uncompressed = verifier.verify(&uncompressed_proof_with_prefix, public_values);
+        assert!(
+            res_uncompressed.is_ok(),
+            "Uncompressed proof verification failed: {:?}",
+            res_uncompressed
+        );
     }
 }
