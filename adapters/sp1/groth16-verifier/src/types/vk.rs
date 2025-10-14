@@ -322,7 +322,9 @@ mod tests {
     use sp1_verifier::GROTH16_VK_BYTES;
 
     use super::*;
-    use crate::{SP1_GROTH16_VK_COMPRESSED_SIZE, SP1_GROTH16_VK_UNCOMPRESSED_SIZE};
+    use crate::types::constant::{
+        SP1_GROTH16_VK_COMPRESSED_SIZE, SP1_GROTH16_VK_UNCOMPRESSED_SIZE,
+    };
 
     #[test]
     fn test_vk_gnark_roundtrip() {

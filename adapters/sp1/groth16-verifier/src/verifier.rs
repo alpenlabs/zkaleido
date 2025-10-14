@@ -174,9 +174,17 @@ mod tests {
     use sp1_verifier::GROTH16_VK_BYTES;
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
-    use crate::verifier::SP1Groth16Verifier;
+    use crate::{
+        types::{
+            constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
+            proof::Groth16Proof,
+        },
+        verifier::{SP1Groth16Verifier, VK_HASH_PREFIX_LENGTH},
+        Groth16VerifyingKey, SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED,
+        SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED,
+    };
 
-    fn load_vk_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
+    fn load_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
         let program_id_hex = "00eb7fd5709e4b833db86054ba4acca001a3aa5f18b7e7d0d96d0f1d340b4e34";
         let program_id: [u8; 32] = hex::decode(program_id_hex).unwrap().try_into().unwrap();
 
@@ -192,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_valid_proof() {
-        let (verifier, receipt) = load_vk_and_proof();
+        let (verifier, receipt) = load_verifier_and_proof();
         let res = verifier.verify(
             receipt.proof().as_bytes(),
             receipt.public_values().as_bytes(),
@@ -202,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_invalid_g1() {
-        let (mut verifier, receipt) = load_vk_and_proof();
+        let (mut verifier, receipt) = load_verifier_and_proof();
         let vk_alpha = verifier.vk.g1.alpha.0;
         let alpha_x = vk_alpha.x();
         let alpha_y = vk_alpha.y();
@@ -237,7 +245,7 @@ mod tests {
 
     #[test]
     fn test_invalid_g2() {
-        let (mut verifier, receipt) = load_vk_and_proof();
+        let (mut verifier, receipt) = load_verifier_and_proof();
         let vk_gamma = verifier.vk.g2.gamma.0;
         let gamma_x = vk_gamma.x();
         let gamma_y = vk_gamma.y();
@@ -271,15 +279,7 @@ mod tests {
 
     #[test]
     fn test_compressed_and_uncompressed_proof() {
-        use crate::{
-            types::{
-                constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
-                proof::Groth16Proof,
-            },
-            verifier::VK_HASH_PREFIX_LENGTH,
-        };
-
-        let (verifier, receipt) = load_vk_and_proof();
+        let (verifier, receipt) = load_verifier_and_proof();
         let proof_bytes = receipt.proof().as_bytes();
         let public_values = receipt.public_values().as_bytes();
 
@@ -321,5 +321,23 @@ mod tests {
             "Uncompressed proof verification failed: {:?}",
             res_uncompressed
         );
+    }
+
+    #[test]
+    fn test_compressed_merged_vk_roundtrip() {
+        let (verifier, _) = load_verifier_and_proof();
+
+        let gnark_vk_bytes = verifier.vk.to_gnark_bytes();
+        assert_eq!(gnark_vk_bytes.len(), SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED);
+        let vk = Groth16VerifyingKey::from_gnark_bytes(&gnark_vk_bytes).unwrap();
+        assert_eq!(vk, verifier.vk);
+
+        let uncompressed_vk_bytes = verifier.vk.to_uncompressed_bytes();
+        assert_eq!(
+            uncompressed_vk_bytes.len(),
+            SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED
+        );
+        let vk = Groth16VerifyingKey::from_uncompressed_bytes(&uncompressed_vk_bytes).unwrap();
+        assert_eq!(vk, verifier.vk);
     }
 }
