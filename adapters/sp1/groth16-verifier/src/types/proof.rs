@@ -10,12 +10,6 @@ use crate::{
     },
 };
 
-/// Total byte length of a Groth16 proof when encoded as:
-/// - 64 bytes (uncompressed G1): A · R
-/// - 128 bytes (uncompressed G2): B · S
-/// - 64 bytes (uncompressed G1): K · R · S
-pub(crate) const GROTH16_PROOF_LENGTH: usize = GROTH16_PROOF_UNCOMPRESSED_SIZE;
-
 /// Proof for the Groth16 verification.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Groth16Proof {
@@ -33,11 +27,11 @@ impl Groth16Proof {
     /// - bytes 192..256: uncompressed G1 point `K·R·S`
     ///
     /// Returns a `Groth16Proof` containing affine points `(ar, bs, krs)`.
-    pub fn load_from_gnark_bytes(buffer: &[u8]) -> Result<Groth16Proof, Groth16Error> {
-        if buffer.len() != GROTH16_PROOF_LENGTH {
+    pub fn from_uncompressed_bytes(buffer: &[u8]) -> Result<Groth16Proof, Groth16Error> {
+        if buffer.len() != GROTH16_PROOF_UNCOMPRESSED_SIZE {
             return Err(Groth16Error::Serialization(
                 BufferLengthError {
-                    expected: GROTH16_PROOF_LENGTH,
+                    expected: GROTH16_PROOF_UNCOMPRESSED_SIZE,
                     actual: buffer.len(),
                 }
                 .into(),
@@ -124,13 +118,6 @@ impl Groth16Proof {
             .copy_from_slice(&self.krs.to_uncompressed_bytes());
 
         bytes
-    }
-
-    /// Deserialize from uncompressed bytes (256 bytes).
-    ///
-    /// This is an alias for [`load_from_gnark_bytes`](Self::load_from_gnark_bytes).
-    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Groth16Error> {
-        Self::load_from_gnark_bytes(bytes)
     }
 }
 

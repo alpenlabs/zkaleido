@@ -118,7 +118,7 @@ impl SP1Groth16Verifier {
 
         // Extract the raw Groth16 proof (bytes after the prefix) and parse it.
         let raw_proof_bytes = &proof[VK_HASH_PREFIX_LENGTH..];
-        let proof = Groth16Proof::load_from_gnark_bytes(raw_proof_bytes)?;
+        let proof = Groth16Proof::from_uncompressed_bytes(raw_proof_bytes)?;
 
         // Compute Fr element for hash(public_values) using SHA-256. SP1's Groth16 circuit expects
         // two public inputs: a. `program_id`, b. `hash(public_values)`.  Since SP1 allows either
