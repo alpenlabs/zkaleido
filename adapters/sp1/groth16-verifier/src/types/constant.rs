@@ -1,3 +1,5 @@
+use bn::Fq;
+
 /// Mask to clear out the two most significant bits when reconstructing an Fq element
 /// from a compressed representation.
 ///
@@ -13,5 +15,71 @@ pub(crate) const COMPRESSED_POSITIVE: u8 = 0b10 << 6;
 /// Flag indicating the “negative” y‐coordinate branch of a compressed G1 point.
 pub(crate) const COMPRESSED_NEGATIVE: u8 = 0b11 << 6;
 
-/// Flag indicating the “point at infinity” in a compressed G2 representation.
+/// Flag indicating the "point at infinity" in a compressed G2 representation.
 pub(crate) const COMPRESSED_INFINITY: u8 = 0b01 << 6;
+
+/// Size of a u32 in bytes (for num_k)
+pub(crate) const U32_SIZE: usize = std::mem::size_of::<u32>();
+
+/// Size of an Fq field element in bytes
+pub(crate) const FQ_SIZE: usize = std::mem::size_of::<Fq>();
+
+// Size constants for serialization
+/// Size of a GNARK-compressed G1 point in bytes
+///
+/// G1 is over Fq, so compressed format stores only x-coordinate (32 bytes) with flag bits
+pub(crate) const G1_COMPRESSED_SIZE: usize = FQ_SIZE;
+
+/// Size of an uncompressed G1 point in bytes
+///
+/// G1 is over Fq, so uncompressed format stores x + y coordinates (32 + 32 = 64 bytes)
+pub(crate) const G1_UNCOMPRESSED_SIZE: usize = FQ_SIZE * 2;
+
+/// Size of a GNARK-compressed G2 point in bytes
+///
+/// G2 is over Fq2, so compressed format stores only x-coordinate (64 bytes: 32 for real + 32 for imaginary) with flag bits
+pub(crate) const G2_COMPRESSED_SIZE: usize = FQ_SIZE * 2;
+
+/// Size of an uncompressed G2 point in bytes
+///
+/// G2 is over Fq2, so uncompressed format stores x + y coordinates (64 + 64 = 128 bytes)
+pub(crate) const G2_UNCOMPRESSED_SIZE: usize = G2_COMPRESSED_SIZE * 2;
+
+// Groth16 Proof size constants
+/// Size of a GNARK-compressed Groth16 proof in bytes (32 + 64 + 64)
+pub(crate) const GROTH16_PROOF_COMPRESSED_SIZE: usize =
+    G1_COMPRESSED_SIZE + G2_COMPRESSED_SIZE + G1_COMPRESSED_SIZE;
+
+/// Size of an uncompressed Groth16 proof in bytes (64 + 128 + 64)
+pub(crate) const GROTH16_PROOF_UNCOMPRESSED_SIZE: usize =
+    G1_UNCOMPRESSED_SIZE + G2_UNCOMPRESSED_SIZE + G1_UNCOMPRESSED_SIZE;
+
+// Groth16 Verifying Key offsets and sizes (GNARK format with padding)
+/// Base size of VK compressed bytes (without K points): 228 bytes
+pub(crate) const GROTH16_VK_COMPRESSED_BASE_SIZE: usize =
+    G1_COMPRESSED_SIZE + 3 * G2_COMPRESSED_SIZE + U32_SIZE;
+
+/// Base size of VK uncompressed bytes (without K points): 452 bytes
+pub(crate) const GROTH16_VK_UNCOMPRESSED_BASE_SIZE: usize =
+    G1_UNCOMPRESSED_SIZE + 3 * G2_UNCOMPRESSED_SIZE + U32_SIZE;
+
+/// Offset for G2 beta in GNARK compressed VK format (with padding)
+/// After G1 alpha (32 bytes) + padding (32 bytes)
+pub(crate) const GNARK_VK_G2_BETA_OFFSET: usize = G1_COMPRESSED_SIZE + FQ_SIZE;
+
+/// Offset for G2 gamma in GNARK compressed VK format
+/// After G1 alpha + padding + G2 beta
+pub(crate) const GNARK_VK_G2_GAMMA_OFFSET: usize = GNARK_VK_G2_BETA_OFFSET + G2_COMPRESSED_SIZE;
+
+/// Offset for G2 delta in GNARK compressed VK format (with padding)
+/// After gamma + padding (32 bytes)
+pub(crate) const GNARK_VK_G2_DELTA_OFFSET: usize =
+    GNARK_VK_G2_GAMMA_OFFSET + G2_COMPRESSED_SIZE + FQ_SIZE;
+
+/// Offset for num_k in GNARK compressed VK format
+/// After G2 delta
+pub(crate) const GNARK_VK_NUM_K_OFFSET: usize = GNARK_VK_G2_DELTA_OFFSET + G2_COMPRESSED_SIZE;
+
+/// Offset for K points start in GNARK compressed VK format
+/// After num_k (u32)
+pub(crate) const GNARK_VK_K_POINTS_OFFSET: usize = GNARK_VK_NUM_K_OFFSET + U32_SIZE;

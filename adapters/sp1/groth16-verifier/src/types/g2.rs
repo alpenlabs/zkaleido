@@ -4,7 +4,10 @@ use bn::{AffineG2, Fq, Fq2, Group, G2};
 
 use crate::{
     error::Error,
-    types::constant::{COMPRESSED_INFINITY, COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
+    types::constant::{
+        COMPRESSED_INFINITY, COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, FQ_SIZE, G2_COMPRESSED_SIZE,
+        G2_UNCOMPRESSED_SIZE, MASK,
+    },
 };
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -23,58 +26,13 @@ impl From<SAffineG2> for G2 {
 }
 
 impl SAffineG2 {
-    /// Serialize to GNARK-compressed bytes (64 bytes: x-coordinate (Fq2) with flag bits).
-    ///
-    /// Uses the GNARK compression scheme where the first two bits of the first byte
-    /// encode a flag indicating which y-coordinate to use or infinity.
-    pub(crate) fn to_gnark_compressed_bytes(self) -> [u8; 64] {
-        let mut projective: G2 = self.0.into();
-        projective.normalize();
-        let (x, y) = (projective.x(), projective.y());
-
-        let mut bytes = [0u8; 64];
-
-        // Serialize x coordinate (Fq2: imaginary part in first 32 bytes, real part in second 32
-        // bytes)
-        let mut x1_bytes = [0u8; 32];
-        let mut x0_bytes = [0u8; 32];
-        x.imaginary().to_big_endian(&mut x1_bytes).unwrap();
-        x.real().to_big_endian(&mut x0_bytes).unwrap();
-
-        // Determine which y-coordinate we have (lexicographically smaller)
-        let neg_y = -y;
-        let is_y_less_than_neg_y = match y
-            .imaginary()
-            .into_u256()
-            .cmp(&neg_y.imaginary().into_u256())
-        {
-            Ordering::Less => true,
-            Ordering::Greater => false,
-            Ordering::Equal => y.real().into_u256() < neg_y.real().into_u256(),
-        };
-
-        let flag = if is_y_less_than_neg_y {
-            COMPRESSED_POSITIVE
-        } else {
-            COMPRESSED_NEGATIVE
-        };
-
-        // Set the flag bits in the first byte of x1 (imaginary part)
-        x1_bytes[0] |= flag;
-
-        bytes[0..32].copy_from_slice(&x1_bytes);
-        bytes[32..64].copy_from_slice(&x0_bytes);
-
-        bytes
-    }
-
     /// Deserialize from GNARK-compressed bytes (64 bytes: x-coordinate (Fq2) with flag bits).
     ///
     /// Uses the GNARK compression scheme where the first two bits of the first byte encode a flag:
     /// - `COMPRESSED_INFINITY`: the point at infinity in G2.
     /// - `COMPRESSED_POSITIVE` / `COMPRESSED_NEGATIVE`: choose the appropriate y‐coordinate branch.
     pub(crate) fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        if bytes.len() != 64 {
+        if bytes.len() != G2_COMPRESSED_SIZE {
             return Err(Error::InvalidXLength);
         }
 
@@ -89,14 +47,14 @@ impl SAffineG2 {
         }
 
         // Reconstruct x1 (imaginary part of Fq2) with flags cleared.
-        let mut x1_bytes = [0u8; 32];
-        x1_bytes.copy_from_slice(&bytes[0..32]);
+        let mut x1_bytes = [0u8; FQ_SIZE];
+        x1_bytes.copy_from_slice(&bytes[0..FQ_SIZE]);
         x1_bytes[0] &= !MASK;
         let x1 = Fq::from_slice(&x1_bytes).map_err(Error::Field)?;
 
         // Reconstruct x0 (real part).
-        let mut x0_bytes = [0u8; 32];
-        x0_bytes.copy_from_slice(&bytes[32..64]);
+        let mut x0_bytes = [0u8; FQ_SIZE];
+        x0_bytes.copy_from_slice(&bytes[FQ_SIZE..G2_COMPRESSED_SIZE]);
         let x0 = Fq::from_slice(&x0_bytes).map_err(Error::Field)?;
 
         let x_fq2 = Fq2::new(x0, x1);
@@ -134,26 +92,6 @@ impl SAffineG2 {
         ))
     }
 
-    /// Serialize to uncompressed bytes (128 bytes: x-coordinate + y-coordinate, each Fq2 = 64
-    /// bytes).
-    pub(crate) fn to_uncompressed_bytes(self) -> [u8; 128] {
-        let mut projective: G2 = self.0.into();
-        projective.normalize();
-        let (x, y) = (projective.x(), projective.y());
-
-        let mut bytes = [0u8; 128];
-
-        // Serialize x coordinate (Fq2: imaginary then real)
-        x.imaginary().to_big_endian(&mut bytes[0..32]).unwrap();
-        x.real().to_big_endian(&mut bytes[32..64]).unwrap();
-
-        // Serialize y coordinate (Fq2: imaginary then real)
-        y.imaginary().to_big_endian(&mut bytes[64..96]).unwrap();
-        y.real().to_big_endian(&mut bytes[96..128]).unwrap();
-
-        bytes
-    }
-
     /// Deserialize from uncompressed bytes (128 bytes: x-coordinate + y-coordinate).
     ///
     /// Expects the buffer to contain:
@@ -162,13 +100,13 @@ impl SAffineG2 {
     /// - bytes 64..96: y1 (imaginary part of Fq2)
     /// - bytes 96..128: y0 (real part of Fq2)
     pub(crate) fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        if bytes.len() != 128 {
+        if bytes.len() != G2_UNCOMPRESSED_SIZE {
             return Err(Error::InvalidXLength);
         }
 
-        let (x_bytes, y_bytes) = bytes.split_at(64);
-        let (x1_bytes, x0_bytes) = x_bytes.split_at(32);
-        let (y1_bytes, y0_bytes) = y_bytes.split_at(32);
+        let (x_bytes, y_bytes) = bytes.split_at(G2_COMPRESSED_SIZE);
+        let (x1_bytes, x0_bytes) = x_bytes.split_at(FQ_SIZE);
+        let (y1_bytes, y0_bytes) = y_bytes.split_at(FQ_SIZE);
 
         let x1 = Fq::from_slice(x1_bytes).map_err(Error::Field)?;
         let x0 = Fq::from_slice(x0_bytes).map_err(Error::Field)?;
@@ -179,6 +117,77 @@ impl SAffineG2 {
         let y = Fq2::new(y0, y1);
 
         Ok(SAffineG2(AffineG2::new(x, y).map_err(Error::Group)?))
+    }
+
+    /// Serialize to GNARK-compressed bytes (64 bytes: x-coordinate (Fq2) with flag bits).
+    ///
+    /// Uses the GNARK compression scheme where the first two bits of the first byte
+    /// encode a flag indicating which y-coordinate to use or infinity.
+    pub(crate) fn to_gnark_compressed_bytes(self) -> [u8; G2_COMPRESSED_SIZE] {
+        let mut projective: G2 = self.0.into();
+        projective.normalize();
+        let (x, y) = (projective.x(), projective.y());
+
+        let mut bytes = [0u8; G2_COMPRESSED_SIZE];
+
+        // Serialize x coordinate (Fq2: imaginary part in first 32 bytes, real part in second 32
+        // bytes)
+        let mut x1_bytes = [0u8; FQ_SIZE];
+        let mut x0_bytes = [0u8; FQ_SIZE];
+        x.imaginary().to_big_endian(&mut x1_bytes).unwrap();
+        x.real().to_big_endian(&mut x0_bytes).unwrap();
+
+        // Determine which y-coordinate we have (lexicographically smaller)
+        let neg_y = -y;
+        let is_y_less_than_neg_y = match y
+            .imaginary()
+            .into_u256()
+            .cmp(&neg_y.imaginary().into_u256())
+        {
+            Ordering::Less => true,
+            Ordering::Greater => false,
+            Ordering::Equal => y.real().into_u256() < neg_y.real().into_u256(),
+        };
+
+        let flag = if is_y_less_than_neg_y {
+            COMPRESSED_POSITIVE
+        } else {
+            COMPRESSED_NEGATIVE
+        };
+
+        // Set the flag bits in the first byte of x1 (imaginary part)
+        x1_bytes[0] |= flag;
+
+        bytes[0..FQ_SIZE].copy_from_slice(&x1_bytes);
+        bytes[FQ_SIZE..G2_COMPRESSED_SIZE].copy_from_slice(&x0_bytes);
+
+        bytes
+    }
+
+    /// Serialize to uncompressed bytes (128 bytes: x-coordinate + y-coordinate, each Fq2 = 64
+    /// bytes).
+    pub(crate) fn to_uncompressed_bytes(self) -> [u8; G2_UNCOMPRESSED_SIZE] {
+        let mut projective: G2 = self.0.into();
+        projective.normalize();
+        let (x, y) = (projective.x(), projective.y());
+
+        let mut bytes = [0u8; G2_UNCOMPRESSED_SIZE];
+
+        // Serialize x coordinate (Fq2: imaginary then real)
+        x.imaginary().to_big_endian(&mut bytes[0..FQ_SIZE]).unwrap();
+        x.real()
+            .to_big_endian(&mut bytes[FQ_SIZE..G2_COMPRESSED_SIZE])
+            .unwrap();
+
+        // Serialize y coordinate (Fq2: imaginary then real)
+        y.imaginary()
+            .to_big_endian(&mut bytes[G2_COMPRESSED_SIZE..G2_COMPRESSED_SIZE + FQ_SIZE])
+            .unwrap();
+        y.real()
+            .to_big_endian(&mut bytes[G2_COMPRESSED_SIZE + FQ_SIZE..G2_UNCOMPRESSED_SIZE])
+            .unwrap();
+
+        bytes
     }
 }
 

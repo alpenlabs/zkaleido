@@ -4,7 +4,10 @@ use bn::{AffineG1, Fq, Group, G1};
 
 use crate::{
     error::Error,
-    types::constant::{COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
+    types::constant::{
+        COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, FQ_SIZE, G1_COMPRESSED_SIZE,
+        G1_UNCOMPRESSED_SIZE, MASK,
+    },
 };
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -23,35 +26,6 @@ impl From<SAffineG1> for G1 {
 }
 
 impl SAffineG1 {
-    /// Serialize to GNARK-compressed bytes (32 bytes: x-coordinate with flag bits).
-    ///
-    /// Uses the GNARK compression scheme where the first two bits of the first byte
-    /// encode a flag indicating which y-coordinate to use.
-    pub(crate) fn to_gnark_compressed_bytes(self) -> [u8; 32] {
-        let mut projective: G1 = self.0.into();
-        projective.normalize();
-        let (x, y) = (projective.x(), projective.y());
-
-        // Serialize x coordinate to bytes
-        let mut x_bytes = [0u8; 32];
-        // NOTE: It is safe to unwrap because the only error is if size of slice is not of length
-        // 32.
-        x.to_big_endian(&mut x_bytes).unwrap();
-
-        // Determine which y-coordinate we have (positive or negative)
-        let neg_y = -y;
-        let flag = if y.into_u256() < neg_y.into_u256() {
-            COMPRESSED_POSITIVE
-        } else {
-            COMPRESSED_NEGATIVE
-        };
-
-        // Set the flag bits in the first byte
-        x_bytes[0] |= flag;
-
-        x_bytes
-    }
-
     /// Deserialize from GNARK-compressed bytes (32 bytes: x-coordinate with flag bits).
     ///
     /// Uses the GNARK compression scheme where the first two bits (most significant) of
@@ -59,7 +33,7 @@ impl SAffineG1 {
     /// - `COMPRESSED_POSITIVE`: use the lexicographically smaller of (y, -y) as y.
     /// - `COMPRESSED_NEGATIVE`: use the lexicographically larger of (y, -y) as y.
     pub(crate) fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        if bytes.len() != 32 {
+        if bytes.len() != G1_COMPRESSED_SIZE {
             return Err(Error::InvalidXLength);
         }
 
@@ -67,7 +41,7 @@ impl SAffineG1 {
         let flag = bytes[0] & MASK;
 
         // Clear the flag bits to reconstruct the x-coordinate bytes.
-        let mut x_bytes = [0u8; 32];
+        let mut x_bytes = [0u8; FQ_SIZE];
         x_bytes.copy_from_slice(bytes);
         x_bytes[0] &= !MASK;
 
@@ -97,35 +71,65 @@ impl SAffineG1 {
         ))
     }
 
-    /// Serialize to uncompressed bytes (64 bytes: x-coordinate + y-coordinate).
-    pub(crate) fn to_uncompressed_bytes(self) -> [u8; 64] {
-        let mut projective: G1 = self.0.into();
-        projective.normalize();
-        let (x, y) = (projective.x(), projective.y());
-
-        let mut bytes = [0u8; 64];
-        // NOTE: It is safe to unwrap because the only error is if size of slice is not of length
-        // 32.
-        x.to_big_endian(&mut bytes[0..32]).unwrap();
-        y.to_big_endian(&mut bytes[32..64]).unwrap();
-
-        bytes
-    }
-
     /// Deserialize from uncompressed bytes (64 bytes: x-coordinate + y-coordinate).
     ///
     /// Expects the buffer to contain the big‐endian x-coordinate in bytes 0..32,
     /// followed by the big‐endian y-coordinate in bytes 32..64.
     pub(crate) fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
-        if bytes.len() != 64 {
+        if bytes.len() != G1_UNCOMPRESSED_SIZE {
             return Err(Error::InvalidXLength);
         }
 
-        let (x_bytes, y_bytes) = bytes.split_at(32);
+        let (x_bytes, y_bytes) = bytes.split_at(FQ_SIZE);
         let x = Fq::from_slice(x_bytes).map_err(Error::Field)?;
         let y = Fq::from_slice(y_bytes).map_err(Error::Field)?;
 
         Ok(SAffineG1(AffineG1::new(x, y).map_err(Error::Group)?))
+    }
+
+    /// Serialize to GNARK-compressed bytes (32 bytes: x-coordinate with flag bits).
+    ///
+    /// Uses the GNARK compression scheme where the first two bits of the first byte
+    /// encode a flag indicating which y-coordinate to use.
+    pub(crate) fn to_gnark_compressed_bytes(self) -> [u8; G1_COMPRESSED_SIZE] {
+        let mut projective: G1 = self.0.into();
+        projective.normalize();
+        let (x, y) = (projective.x(), projective.y());
+
+        // Serialize x coordinate to bytes
+        let mut x_bytes = [0u8; G1_COMPRESSED_SIZE];
+        // NOTE: It is safe to unwrap because the only error is if size of slice is not of length
+        // FQ_SIZE.
+        x.to_big_endian(&mut x_bytes).unwrap();
+
+        // Determine which y-coordinate we have (positive or negative)
+        let neg_y = -y;
+        let flag = if y.into_u256() < neg_y.into_u256() {
+            COMPRESSED_POSITIVE
+        } else {
+            COMPRESSED_NEGATIVE
+        };
+
+        // Set the flag bits in the first byte
+        x_bytes[0] |= flag;
+
+        x_bytes
+    }
+
+    /// Serialize to uncompressed bytes (64 bytes: x-coordinate + y-coordinate).
+    pub(crate) fn to_uncompressed_bytes(self) -> [u8; G1_UNCOMPRESSED_SIZE] {
+        let mut projective: G1 = self.0.into();
+        projective.normalize();
+        let (x, y) = (projective.x(), projective.y());
+
+        let mut bytes = [0u8; G1_UNCOMPRESSED_SIZE];
+        // NOTE: It is safe to unwrap because the only error is if size of slice is not of length
+        // FQ_SIZE.
+        x.to_big_endian(&mut bytes[0..FQ_SIZE]).unwrap();
+        y.to_big_endian(&mut bytes[FQ_SIZE..G1_UNCOMPRESSED_SIZE])
+            .unwrap();
+
+        bytes
     }
 }
 
