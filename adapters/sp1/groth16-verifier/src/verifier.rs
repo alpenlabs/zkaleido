@@ -30,10 +30,10 @@ pub const VK_HASH_PREFIX_LENGTH: usize = 4;
 #[derive(Clone, Debug)]
 pub struct SP1Groth16Verifier {
     /// The (uncompressed) Groth16 verifying key for the SP1 circuit.
-    pub(crate) vk: Groth16VerifyingKey,
+    pub vk: Groth16VerifyingKey,
     /// First `VK_HASH_PREFIX_LENGTH` bytes of `Sha256(groth16_vk)`, used to confirm
     /// the proof was generated with the correct key.
-    pub(crate) vk_hash_tag: [u8; 4],
+    pub vk_hash_tag: [u8; 4],
 }
 
 impl SP1Groth16Verifier {

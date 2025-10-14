@@ -12,6 +12,10 @@ mod types;
 mod verification;
 mod verifier;
 
-pub use types::{proof::Groth16Proof, vk::Groth16VerifyingKey};
+pub use types::{
+    constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
+    proof::Groth16Proof,
+    vk::Groth16VerifyingKey,
+};
 pub use verification::verify_sp1_groth16_algebraic;
 pub use verifier::{SP1Groth16Verifier, VK_HASH_PREFIX_LENGTH};

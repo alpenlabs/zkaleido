@@ -48,11 +48,11 @@ pub(crate) const G2_UNCOMPRESSED_SIZE: usize = G2_COMPRESSED_SIZE * 2;
 
 // Groth16 Proof size constants
 /// Size of a GNARK-compressed Groth16 proof in bytes (32 + 64 + 64)
-pub(crate) const GROTH16_PROOF_COMPRESSED_SIZE: usize =
+pub const GROTH16_PROOF_COMPRESSED_SIZE: usize =
     G1_COMPRESSED_SIZE + G2_COMPRESSED_SIZE + G1_COMPRESSED_SIZE;
 
 /// Size of an uncompressed Groth16 proof in bytes (64 + 128 + 64)
-pub(crate) const GROTH16_PROOF_UNCOMPRESSED_SIZE: usize =
+pub const GROTH16_PROOF_UNCOMPRESSED_SIZE: usize =
     G1_UNCOMPRESSED_SIZE + G2_UNCOMPRESSED_SIZE + G1_UNCOMPRESSED_SIZE;
 
 // Groth16 Verifying Key offsets and sizes (GNARK format with padding)
