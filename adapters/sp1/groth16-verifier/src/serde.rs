@@ -2,14 +2,25 @@
 //!
 //! This module provides custom serde serialization and deserialization
 //! for elliptic curve points and Groth16 proof structures.
+//!
+//! ## Serialization Formats
+//!
+//! The implementation supports two serialization strategies:
+//!
+//! - **Human-readable formats** (JSON, TOML, etc.): Uses hex-encoded strings for field elements and
+//!   structured representations for complex types
+//! - **Binary formats** (bincode, MessagePack, etc.): Uses raw uncompressed byte representations
+//!   for efficient storage and transmission
 
 use bn::{Fq, Fq2, Group, G1, G2};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{
+    de::Error as DeError, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer,
+};
 
 use crate::{
     error::{BufferLengthError, InvalidDataFormatError, InvalidPointError, SerializationError},
     types::{
-        constant::FQ_SIZE,
+        constant::{FQ_SIZE, G1_UNCOMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE},
         g1::SAffineG1,
         g2::SAffineG2,
         proof::Groth16Proof,
@@ -53,6 +64,7 @@ impl From<&SAffineG1> for SAffineG1Helper {
 
 impl TryFrom<SAffineG1Helper> for SAffineG1 {
     type Error = SerializationError;
+
     fn try_from(value: SAffineG1Helper) -> Result<Self, Self::Error> {
         let x = deserialize_fq_from_hex(&value.x)?;
         let y = deserialize_fq_from_hex(&value.y)?;
@@ -70,7 +82,13 @@ impl Serialize for SAffineG1 {
     where
         S: Serializer,
     {
-        SAffineG1Helper::from(self).serialize(serializer)
+        if serializer.is_human_readable() {
+            // For human-readable formats (JSON, TOML, etc.), use hex strings
+            SAffineG1Helper::from(self).serialize(serializer)
+        } else {
+            // For binary formats (bincode, etc.), use raw bytes
+            self.to_uncompressed_bytes().serialize(serializer)
+        }
     }
 }
 
@@ -79,8 +97,24 @@ impl<'de> Deserialize<'de> for SAffineG1 {
     where
         D: Deserializer<'de>,
     {
-        let helper = SAffineG1Helper::deserialize(deserializer)?;
-        SAffineG1::try_from(helper).map_err(serde::de::Error::custom)
+        if deserializer.is_human_readable() {
+            // For human-readable formats (JSON, TOML, etc.), parse from hex strings
+            let helper = SAffineG1Helper::deserialize(deserializer)?;
+            SAffineG1::try_from(helper).map_err(DeError::custom)
+        } else {
+            // For binary formats (bincode, etc.), parse from raw bytes
+            let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
+            if bytes.len() != G1_UNCOMPRESSED_SIZE {
+                return Err(DeError::custom(format!(
+                    "Expected {} bytes for SAffineG1, got {}",
+                    G1_UNCOMPRESSED_SIZE,
+                    bytes.len()
+                )));
+            }
+            let mut array = [0u8; G1_UNCOMPRESSED_SIZE];
+            array.copy_from_slice(&bytes);
+            SAffineG1::from_uncompressed_bytes(&array).map_err(DeError::custom)
+        }
     }
 }
 
@@ -99,6 +133,7 @@ impl From<&SAffineG2> for SAffineG2Helper {
 
 impl TryFrom<SAffineG2Helper> for SAffineG2 {
     type Error = SerializationError;
+
     fn try_from(value: SAffineG2Helper) -> Result<Self, Self::Error> {
         let x = deserialize_fq2_from_hex(&value.x)?;
         let y = deserialize_fq2_from_hex(&value.y)?;
@@ -116,7 +151,13 @@ impl Serialize for SAffineG2 {
     where
         S: Serializer,
     {
-        SAffineG2Helper::from(self).serialize(serializer)
+        if serializer.is_human_readable() {
+            // For human-readable formats (JSON, TOML, etc.), use hex strings
+            SAffineG2Helper::from(self).serialize(serializer)
+        } else {
+            // For binary formats (bincode, etc.), use raw bytes
+            self.to_uncompressed_bytes().serialize(serializer)
+        }
     }
 }
 
@@ -125,8 +166,24 @@ impl<'de> Deserialize<'de> for SAffineG2 {
     where
         D: Deserializer<'de>,
     {
-        let helper = SAffineG2Helper::deserialize(deserializer)?;
-        SAffineG2::try_from(helper).map_err(serde::de::Error::custom)
+        if deserializer.is_human_readable() {
+            // For human-readable formats (JSON, TOML, etc.), parse from hex strings
+            let helper = SAffineG2Helper::deserialize(deserializer)?;
+            SAffineG2::try_from(helper).map_err(DeError::custom)
+        } else {
+            // For binary formats (bincode, etc.), parse from raw bytes
+            let bytes: Vec<u8> = Deserialize::deserialize(deserializer)?;
+            if bytes.len() != G2_UNCOMPRESSED_SIZE {
+                return Err(DeError::custom(format!(
+                    "Expected {} bytes for SAffineG2, got {}",
+                    G2_UNCOMPRESSED_SIZE,
+                    bytes.len()
+                )));
+            }
+            let mut array = [0u8; G2_UNCOMPRESSED_SIZE];
+            array.copy_from_slice(&bytes);
+            SAffineG2::from_uncompressed_bytes(&array).map_err(DeError::custom)
+        }
     }
 }
 
@@ -166,7 +223,6 @@ impl Serialize for Groth16Proof {
     where
         S: Serializer,
     {
-        use serde::ser::SerializeStruct;
         let mut state = serializer.serialize_struct("Groth16Proof", 3)?;
         state.serialize_field("ar", &self.ar)?;
         state.serialize_field("krs", &self.krs)?;
@@ -201,7 +257,6 @@ impl Serialize for Groth16G1 {
     where
         S: Serializer,
     {
-        use serde::ser::SerializeStruct;
         let mut state = serializer.serialize_struct("Groth16G1", 2)?;
         state.serialize_field("alpha", &self.alpha)?;
         state.serialize_field("k", &self.k)?;
@@ -233,7 +288,6 @@ impl Serialize for Groth16G2 {
     where
         S: Serializer,
     {
-        use serde::ser::SerializeStruct;
         let mut state = serializer.serialize_struct("Groth16G2", 3)?;
         state.serialize_field("beta", &self.beta)?;
         state.serialize_field("delta", &self.delta)?;
@@ -268,7 +322,6 @@ impl Serialize for Groth16VerifyingKey {
     where
         S: Serializer,
     {
-        use serde::ser::SerializeStruct;
         let mut state = serializer.serialize_struct("Groth16VerifyingKey", 2)?;
         state.serialize_field("g1", &self.g1)?;
         state.serialize_field("g2", &self.g2)?;
@@ -300,7 +353,6 @@ impl Serialize for SP1Groth16Verifier {
     where
         S: Serializer,
     {
-        use serde::ser::SerializeStruct;
         let mut state = serializer.serialize_struct("SP1Groth16Verifier", 2)?;
         state.serialize_field("vk", &self.vk)?;
         state.serialize_field("vk_hash_tag", &self.vk_hash_tag)?;
@@ -377,5 +429,34 @@ mod tests {
         let deserialized: Groth16VerifyingKey = bincode::deserialize(&serialized).unwrap();
 
         assert_eq!(vk, deserialized);
+    }
+
+    #[test]
+    fn test_serialization_format_differences() {
+        let vk = Groth16VerifyingKey::from_gnark_bytes(&GROTH16_VK_BYTES).unwrap();
+
+        // Test JSON (human-readable) format
+        let json_serialized = serde_json::to_string(&vk).unwrap();
+        // JSON should contain hex strings
+        assert!(json_serialized.contains("0x"));
+        assert!(json_serialized.contains("\"x\""));
+        assert!(json_serialized.contains("\"y\""));
+
+        // Test bincode (binary) format
+        let bincode_serialized = bincode::serialize(&vk).unwrap();
+        // Bincode should be more compact and contain raw bytes
+        // It should NOT contain hex strings when inspected as UTF-8
+        let bincode_as_string = String::from_utf8_lossy(&bincode_serialized);
+        assert!(!bincode_as_string.contains("0x"));
+
+        // Verify both formats can deserialize correctly
+        let json_deserialized: Groth16VerifyingKey =
+            serde_json::from_str(&json_serialized).unwrap();
+        let bincode_deserialized: Groth16VerifyingKey =
+            bincode::deserialize(&bincode_serialized).unwrap();
+
+        assert_eq!(vk, json_deserialized);
+        assert_eq!(vk, bincode_deserialized);
+        assert_eq!(json_deserialized, bincode_deserialized);
     }
 }

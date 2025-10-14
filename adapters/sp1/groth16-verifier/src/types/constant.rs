@@ -97,11 +97,11 @@ pub(crate) const GNARK_VK_COMPRESSED_HEADER_SIZE: usize =
 pub(crate) const SP1_NUM_K: usize = 3;
 
 /// Size of a GNARK-compressed SP1 Groth16 verifying key in bytes
-/// Layout: header (292 bytes) + K points (2 * 32 = 64 bytes) = 356 bytes
+/// Layout: header (292 bytes) + K points (3 * 32 = 64 bytes) = 356 bytes
 pub const SP1_GROTH16_VK_COMPRESSED_SIZE: usize =
     GNARK_VK_COMPRESSED_HEADER_SIZE + (SP1_NUM_K * G1_COMPRESSED_SIZE);
 
 /// Size of an uncompressed SP1 Groth16 verifying key in bytes
-/// Layout: header (452 bytes) + K points (2 * 64 = 128 bytes) = 580 bytes
+/// Layout: header (452 bytes) + K points (3 * 64 = 128 bytes) = 580 bytes
 pub const SP1_GROTH16_VK_UNCOMPRESSED_SIZE: usize =
     GROTH16_VK_UNCOMPRESSED_HEADER_SIZE + (SP1_NUM_K * G1_UNCOMPRESSED_SIZE);
