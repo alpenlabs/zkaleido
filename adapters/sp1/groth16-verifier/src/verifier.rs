@@ -54,18 +54,9 @@ impl SP1Groth16Verifier {
         // Compute the SHA-256 hash of `vk_bytes` and take the first `VK_HASH_PREFIX_LENGTH` bytes.
         // This prefix is prepended to every raw Groth16 proof by SP1 to signal which verifying key
         // was used during proving.
-        let groth16_vk_hash: [u8; 4] = Sha256::digest(vk_bytes)[..VK_HASH_PREFIX_LENGTH]
-            .try_into()
-            .map_err(|_| {
-                Groth16Error::Serialization(
-                    BufferLengthError {
-                        context: "SP1 Gnark Compressed Groth16Vk hash prefix",
-                        expected: VK_HASH_PREFIX_LENGTH,
-                        actual: Sha256::digest(vk_bytes).len(),
-                    }
-                    .into(),
-                )
-            })?;
+        let digest = Sha256::digest(vk_bytes);
+        let mut vk_hash_tag = [0u8; VK_HASH_PREFIX_LENGTH];
+        vk_hash_tag.copy_from_slice(&digest[..VK_HASH_PREFIX_LENGTH]);
 
         // Parse the Groth16 verifying key from its byte representation.
         // This returns a `Groth16VerifyingKey` that can be used for algebraic verification.
@@ -86,7 +77,7 @@ impl SP1Groth16Verifier {
 
         Ok(SP1Groth16Verifier {
             vk: groth16_vk,
-            vk_hash_tag: groth16_vk_hash,
+            vk_hash_tag,
         })
     }
 

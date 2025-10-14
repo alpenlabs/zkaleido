@@ -55,29 +55,30 @@ pub const GROTH16_PROOF_COMPRESSED_SIZE: usize =
 pub const GROTH16_PROOF_UNCOMPRESSED_SIZE: usize =
     G1_UNCOMPRESSED_SIZE + G2_UNCOMPRESSED_SIZE + G1_UNCOMPRESSED_SIZE;
 
-// Groth16 Verifying Key sizes - Compact format (without GNARK padding)
-/// Size of compressed VK header (without K points): 228 bytes
-/// Layout: G1 alpha (32) + G2 beta (64) + G2 gamma (64) + G2 delta (64) + num_k (4)
-pub(crate) const GROTH16_VK_COMPRESSED_HEADER_SIZE: usize =
-    G1_COMPRESSED_SIZE + 3 * G2_COMPRESSED_SIZE + U32_SIZE;
-
 /// Size of uncompressed VK header (without K points): 452 bytes
 /// Layout: G1 alpha (64) + G2 beta (128) + G2 gamma (128) + G2 delta (128) + num_k (4)
 pub(crate) const GROTH16_VK_UNCOMPRESSED_HEADER_SIZE: usize =
     G1_UNCOMPRESSED_SIZE + 3 * G2_UNCOMPRESSED_SIZE + U32_SIZE;
 
-// GNARK Verifying Key offsets and sizes (GNARK format with padding)
-/// Offset for G2 beta in GNARK compressed VK format (with padding)
-/// After G1 alpha (32 bytes) + padding (32 bytes)
+// GNARK Verifying Key offsets and sizes (GNARK format with Bellman-compatibility padding)
+/// Offset for G2 beta in GNARK compressed VK format
+/// After G1 alpha (32 bytes) + G1 beta (32 bytes, unused/Bellman-compatibility padding)
+///
+/// The padding exists because GNARK includes G1.Beta and G1.Delta for Bellman compatibility,
+/// but these fields are not used in verification (only G2.Beta and G2.Delta are used).
+/// [Reference](https://pkg.go.dev/github.com/consensys/gnark/backend/groth16/bn254#VerifyingKey>)
 pub(crate) const GNARK_VK_COMPRESSED_G2_BETA_OFFSET: usize = G1_COMPRESSED_SIZE + FQ_SIZE;
 
 /// Offset for G2 gamma in GNARK compressed VK format
-/// After G1 alpha + padding + G2 beta
+/// After G1 alpha + G1 beta padding + G2 beta
 pub(crate) const GNARK_VK_COMPRESSED_G2_GAMMA_OFFSET: usize =
     GNARK_VK_COMPRESSED_G2_BETA_OFFSET + G2_COMPRESSED_SIZE;
 
-/// Offset for G2 delta in GNARK compressed VK format (with padding)
-/// After gamma + padding (32 bytes)
+/// Offset for G2 delta in GNARK compressed VK format
+/// After G2 gamma + G1 delta (32 bytes, unused/Bellman-compatibility padding)
+///
+/// The padding exists because GNARK includes G1.Delta for Bellman compatibility,
+/// but this field is not used in verification (only G2.Delta is used).
 pub(crate) const GNARK_VK_COMPRESSED_G2_DELTA_OFFSET: usize =
     GNARK_VK_COMPRESSED_G2_GAMMA_OFFSET + G2_COMPRESSED_SIZE + FQ_SIZE;
 
@@ -91,3 +92,16 @@ pub(crate) const GNARK_VK_COMPRESSED_NUM_K_OFFSET: usize =
 /// field. This is also the offset where K points start in the buffer: 292 bytes
 pub(crate) const GNARK_VK_COMPRESSED_HEADER_SIZE: usize =
     GNARK_VK_COMPRESSED_NUM_K_OFFSET + U32_SIZE;
+
+/// Number of K points in SP1's Groth16 verifying key
+pub(crate) const SP1_NUM_K: usize = 3;
+
+/// Size of a GNARK-compressed SP1 Groth16 verifying key in bytes
+/// Layout: header (292 bytes) + K points (2 * 32 = 64 bytes) = 356 bytes
+pub const SP1_GROTH16_VK_COMPRESSED_SIZE: usize =
+    GNARK_VK_COMPRESSED_HEADER_SIZE + (SP1_NUM_K * G1_COMPRESSED_SIZE);
+
+/// Size of an uncompressed SP1 Groth16 verifying key in bytes
+/// Layout: header (452 bytes) + K points (2 * 64 = 128 bytes) = 580 bytes
+pub const SP1_GROTH16_VK_UNCOMPRESSED_SIZE: usize =
+    GROTH16_VK_UNCOMPRESSED_HEADER_SIZE + (SP1_NUM_K * G1_UNCOMPRESSED_SIZE);
