@@ -27,6 +27,6 @@ pub fn verify_sp1_groth16_algebraic(
     {
         Ok(())
     } else {
-        Err(Groth16Error::ProofVerificationFailed)
+        Err(Groth16Error::VerificationFailed)
     }
 }

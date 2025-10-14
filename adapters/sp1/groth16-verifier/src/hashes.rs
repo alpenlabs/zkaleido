@@ -7,7 +7,7 @@
 use bn::Fr;
 use sha2::{Digest, Sha256};
 
-use crate::error::Error;
+use crate::error::SerializationError;
 
 /// Hashes the input using SHA-256.
 fn sha256(inputs: &[u8]) -> [u8; 32] {
@@ -34,7 +34,7 @@ fn blake3(inputs: &[u8]) -> [u8; 32] {
 /// # Note
 /// The top 3 bits are zeroed (masked with 0x1F) to ensure the 256-bit hash fits within
 /// the 254-bit BN254 scalar field, matching the behavior in SP1's Ethereum verifier contract.
-fn hash_public_inputs<F>(public_inputs: &[u8], hasher: F) -> Result<Fr, Error>
+fn hash_public_inputs<F>(public_inputs: &[u8], hasher: F) -> Result<Fr, SerializationError>
 where
     F: Fn(&[u8]) -> [u8; 32],
 {
@@ -44,14 +44,14 @@ where
     // out the first 3 bits. The same logic happens in the SP1 Ethereum verifier contract.
     result[0] &= 0x1F;
 
-    Fr::from_slice(&result).map_err(|_| Error::FailedToGetFrFromRandomBytes)
+    Fr::from_slice(&result).map_err(Into::into)
 }
 
 /// Hashes public inputs using SHA-256 and converts the result to an Fr element.
 ///
 /// This is a convenience function that uses SHA-256 for hashing public inputs
 /// with proper field masking for circuit verification.
-pub fn sha256_to_fr(public_inputs: &[u8]) -> Result<Fr, Error> {
+pub fn sha256_to_fr(public_inputs: &[u8]) -> Result<Fr, SerializationError> {
     hash_public_inputs(public_inputs, sha256)
 }
 
@@ -59,6 +59,6 @@ pub fn sha256_to_fr(public_inputs: &[u8]) -> Result<Fr, Error> {
 ///
 /// This is a convenience function that uses Blake3 for hashing public inputs
 /// with proper field masking for circuit verification.
-pub fn blake3_to_fr(public_inputs: &[u8]) -> Result<Fr, Error> {
+pub fn blake3_to_fr(public_inputs: &[u8]) -> Result<Fr, SerializationError> {
     hash_public_inputs(public_inputs, blake3)
 }

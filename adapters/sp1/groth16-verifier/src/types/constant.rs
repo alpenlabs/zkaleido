@@ -37,7 +37,8 @@ pub(crate) const G1_UNCOMPRESSED_SIZE: usize = FQ_SIZE * 2;
 
 /// Size of a GNARK-compressed G2 point in bytes
 ///
-/// G2 is over Fq2, so compressed format stores only x-coordinate (64 bytes: 32 for real + 32 for imaginary) with flag bits
+/// G2 is over Fq2, so compressed format stores only x-coordinate (64 bytes: 32 for real + 32 for
+/// imaginary) with flag bits
 pub(crate) const G2_COMPRESSED_SIZE: usize = FQ_SIZE * 2;
 
 /// Size of an uncompressed G2 point in bytes

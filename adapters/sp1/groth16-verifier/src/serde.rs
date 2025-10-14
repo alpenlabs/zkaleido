@@ -7,12 +7,12 @@ use bn::{Fq, Fq2, Group, G1, G2};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::{
-    error::Error,
+    error::{BufferLengthError, InvalidDataFormatError, InvalidPointError, SerializationError},
     types::{
+        constant::FQ_SIZE,
         g1::SAffineG1,
         g2::SAffineG2,
         proof::Groth16Proof,
-        utils::{bytes_to_hex, hex_to_bytes},
         vk::{Groth16G1, Groth16G2, Groth16VerifyingKey},
     },
     verifier::SP1Groth16Verifier,
@@ -39,7 +39,7 @@ impl From<&SAffineG1> for SAffineG1Helper {
 }
 
 impl TryFrom<SAffineG1Helper> for SAffineG1 {
-    type Error = Error;
+    type Error = SerializationError;
     fn try_from(value: SAffineG1Helper) -> Result<Self, Self::Error> {
         let x = deserialize_fq_from_hex(&value.x)?;
         let y = deserialize_fq_from_hex(&value.y)?;
@@ -47,7 +47,7 @@ impl TryFrom<SAffineG1Helper> for SAffineG1 {
 
         let projective = G1::new(x, y, z);
 
-        let g1 = bn::AffineG1::from_jacobian(projective).ok_or(Error::InvalidPoint)?;
+        let g1 = bn::AffineG1::from_jacobian(projective).ok_or(InvalidPointError)?;
         Ok(SAffineG1(g1))
     }
 }
@@ -98,7 +98,7 @@ impl From<&SAffineG2> for SAffineG2Helper {
 }
 
 impl TryFrom<SAffineG2Helper> for SAffineG2 {
-    type Error = Error;
+    type Error = SerializationError;
     fn try_from(value: SAffineG2Helper) -> Result<Self, Self::Error> {
         let x = deserialize_fq2_from_hex(&value.x)?;
         let y = deserialize_fq2_from_hex(&value.y)?;
@@ -106,7 +106,7 @@ impl TryFrom<SAffineG2Helper> for SAffineG2 {
 
         let projective = G2::new(x, y, z);
 
-        let g2 = bn::AffineG2::from_jacobian(projective).ok_or(Error::InvalidPoint)?;
+        let g2 = bn::AffineG2::from_jacobian(projective).ok_or(InvalidPointError)?;
         Ok(SAffineG2(g2))
     }
 }
@@ -130,17 +130,38 @@ impl<'de> Deserialize<'de> for SAffineG2 {
     }
 }
 
+// Helper functions for hex conversion
+fn bytes_to_hex(bytes: &[u8; FQ_SIZE]) -> String {
+    format!("0x{}", hex::encode(bytes))
+}
+
+fn hex_to_bytes(hex_str: &str) -> Result<[u8; FQ_SIZE], SerializationError> {
+    let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
+    let bytes = hex::decode(hex_str).map_err(|_| InvalidDataFormatError)?;
+    if bytes.len() != FQ_SIZE {
+        return Err(BufferLengthError {
+            expected: FQ_SIZE,
+            actual: bytes.len(),
+        }
+        .into());
+    }
+    let mut array = [0u8; FQ_SIZE];
+    array.copy_from_slice(&bytes);
+    Ok(array)
+}
+
 // Helper functions for Fq serialization
 pub(crate) fn serialize_fq_to_hex(fq: &Fq) -> String {
-    let mut slice = [0u8; 32];
-    // NOTE: It is safe to unwrap because the only error is if size of slice is not of length 32.
+    let mut slice = [0u8; FQ_SIZE];
+    // NOTE: It is safe to unwrap because the only error is if size of slice is not of length
+    // FQ_SIZE.
     fq.to_big_endian(&mut slice).unwrap();
     bytes_to_hex(&slice)
 }
 
-pub(crate) fn deserialize_fq_from_hex(hex_str: &str) -> Result<Fq, Error> {
+pub(crate) fn deserialize_fq_from_hex(hex_str: &str) -> Result<Fq, SerializationError> {
     let bytes = hex_to_bytes(hex_str)?;
-    Fq::from_slice(&bytes).map_err(|_| Error::FailedToGetFrFromRandomBytes)
+    Fq::from_slice(&bytes).map_err(Into::into)
 }
 
 fn serialize_fq2_to_hex(fq2: &Fq2) -> Fq2Helper {
@@ -153,7 +174,7 @@ fn serialize_fq2_to_hex(fq2: &Fq2) -> Fq2Helper {
     Fq2Helper { real, imaginary }
 }
 
-fn deserialize_fq2_from_hex(hex: &Fq2Helper) -> Result<Fq2, Error> {
+fn deserialize_fq2_from_hex(hex: &Fq2Helper) -> Result<Fq2, SerializationError> {
     let real = deserialize_fq_from_hex(&hex.real)?;
     let imaginary = deserialize_fq_from_hex(&hex.imaginary)?;
     Ok(Fq2::new(real, imaginary))

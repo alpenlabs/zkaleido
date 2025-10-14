@@ -3,7 +3,7 @@ use std::{cmp::Ordering, fmt};
 use bn::{AffineG2, Fq, Fq2, Group, G2};
 
 use crate::{
-    error::Error,
+    error::{BufferLengthError, InvalidDataFormatError, InvalidPointError, SerializationError},
     types::constant::{
         COMPRESSED_INFINITY, COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, FQ_SIZE, G2_COMPRESSED_SIZE,
         G2_UNCOMPRESSED_SIZE, MASK,
@@ -31,9 +31,13 @@ impl SAffineG2 {
     /// Uses the GNARK compression scheme where the first two bits of the first byte encode a flag:
     /// - `COMPRESSED_INFINITY`: the point at infinity in G2.
     /// - `COMPRESSED_POSITIVE` / `COMPRESSED_NEGATIVE`: choose the appropriate y‐coordinate branch.
-    pub(crate) fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
+    pub(crate) fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, SerializationError> {
         if bytes.len() != G2_COMPRESSED_SIZE {
-            return Err(Error::InvalidXLength);
+            return Err(BufferLengthError {
+                expected: G2_COMPRESSED_SIZE,
+                actual: bytes.len(),
+            }
+            .into());
         }
 
         // Extract the two-bit flag from the first byte.
@@ -42,7 +46,7 @@ impl SAffineG2 {
         // If the flag indicates infinity, return the point at infinity in G2.
         if flag == COMPRESSED_INFINITY {
             return Ok(SAffineG2(
-                AffineG2::from_jacobian(G2::one()).ok_or(Error::InvalidData)?,
+                AffineG2::from_jacobian(G2::one()).ok_or(InvalidPointError)?,
             ));
         }
 
@@ -50,18 +54,18 @@ impl SAffineG2 {
         let mut x1_bytes = [0u8; FQ_SIZE];
         x1_bytes.copy_from_slice(&bytes[0..FQ_SIZE]);
         x1_bytes[0] &= !MASK;
-        let x1 = Fq::from_slice(&x1_bytes).map_err(Error::Field)?;
+        let x1 = Fq::from_slice(&x1_bytes)?;
 
         // Reconstruct x0 (real part).
         let mut x0_bytes = [0u8; FQ_SIZE];
         x0_bytes.copy_from_slice(&bytes[FQ_SIZE..G2_COMPRESSED_SIZE]);
-        let x0 = Fq::from_slice(&x0_bytes).map_err(Error::Field)?;
+        let x0 = Fq::from_slice(&x0_bytes)?;
 
         let x_fq2 = Fq2::new(x0, x1);
 
         // Recover both possible y-coordinates from x: y^2 = x^3 + b for G2.
         let y_squared = (x_fq2 * x_fq2 * x_fq2) + G2::b();
-        let y = y_squared.sqrt().ok_or(Error::InvalidPoint)?;
+        let y = y_squared.sqrt().ok_or(InvalidPointError)?;
         let neg_y = -y;
 
         // Determine lexicographic ordering: compare imaginary parts, then real parts.
@@ -84,12 +88,10 @@ impl SAffineG2 {
         let selected_y = match flag {
             COMPRESSED_NEGATIVE => larger_y,
             COMPRESSED_POSITIVE => smaller_y,
-            _ => return Err(Error::InvalidData),
+            _ => return Err(InvalidDataFormatError.into()),
         };
 
-        Ok(SAffineG2(
-            AffineG2::new(x_fq2, selected_y).map_err(Error::Group)?,
-        ))
+        Ok(SAffineG2(AffineG2::new(x_fq2, selected_y)?))
     }
 
     /// Deserialize from uncompressed bytes (128 bytes: x-coordinate + y-coordinate).
@@ -99,24 +101,28 @@ impl SAffineG2 {
     /// - bytes 32..64: x0 (real part of Fq2)
     /// - bytes 64..96: y1 (imaginary part of Fq2)
     /// - bytes 96..128: y0 (real part of Fq2)
-    pub(crate) fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Error> {
+    pub(crate) fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, SerializationError> {
         if bytes.len() != G2_UNCOMPRESSED_SIZE {
-            return Err(Error::InvalidXLength);
+            return Err(BufferLengthError {
+                expected: G2_UNCOMPRESSED_SIZE,
+                actual: bytes.len(),
+            }
+            .into());
         }
 
         let (x_bytes, y_bytes) = bytes.split_at(G2_COMPRESSED_SIZE);
         let (x1_bytes, x0_bytes) = x_bytes.split_at(FQ_SIZE);
         let (y1_bytes, y0_bytes) = y_bytes.split_at(FQ_SIZE);
 
-        let x1 = Fq::from_slice(x1_bytes).map_err(Error::Field)?;
-        let x0 = Fq::from_slice(x0_bytes).map_err(Error::Field)?;
-        let y1 = Fq::from_slice(y1_bytes).map_err(Error::Field)?;
-        let y0 = Fq::from_slice(y0_bytes).map_err(Error::Field)?;
+        let x1 = Fq::from_slice(x1_bytes)?;
+        let x0 = Fq::from_slice(x0_bytes)?;
+        let y1 = Fq::from_slice(y1_bytes)?;
+        let y0 = Fq::from_slice(y0_bytes)?;
 
         let x = Fq2::new(x0, x1);
         let y = Fq2::new(y0, y1);
 
-        Ok(SAffineG2(AffineG2::new(x, y).map_err(Error::Group)?))
+        Ok(SAffineG2(AffineG2::new(x, y)?))
     }
 
     /// Serialize to GNARK-compressed bytes (64 bytes: x-coordinate (Fq2) with flag bits).

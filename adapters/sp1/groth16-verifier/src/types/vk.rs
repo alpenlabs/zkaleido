@@ -1,7 +1,7 @@
 use bn::{AffineG2, G2};
 
 use crate::{
-    error::{Error, Groth16Error},
+    error::{BufferLengthError, Groth16Error, InvalidPointError},
     types::{
         constant::{
             G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE, G2_COMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE,
@@ -66,7 +66,9 @@ impl Groth16VerifyingKey {
 
         // Negate beta for the verifier's purpose.
         let neg_g2_beta = SAffineG2(
-            AffineG2::from_jacobian(-G2::from(g2_beta.0)).ok_or(Error::InvalidPoint)?,
+            AffineG2::from_jacobian(-G2::from(g2_beta.0))
+                .ok_or(InvalidPointError)
+                .map_err(|e| Groth16Error::Serialization(e.into()))?,
         );
 
         // Read the number of K points (u32, big‐endian).
@@ -79,8 +81,9 @@ impl Groth16VerifyingKey {
         let mut k = Vec::with_capacity(num_k as usize);
         let mut offset = GNARK_VK_K_POINTS_OFFSET;
         for _ in 0..num_k {
-            let point =
-                SAffineG1::from_gnark_compressed_bytes(&buffer[offset..offset + G1_COMPRESSED_SIZE])?;
+            let point = SAffineG1::from_gnark_compressed_bytes(
+                &buffer[offset..offset + G1_COMPRESSED_SIZE],
+            )?;
             k.push(point);
             offset += G1_COMPRESSED_SIZE;
         }
@@ -122,8 +125,7 @@ impl Groth16VerifyingKey {
             .copy_from_slice(&beta_point.to_gnark_compressed_bytes());
 
         // Serialize G2 gamma (GNARK-compressed)
-        bytes[G1_COMPRESSED_SIZE + G2_COMPRESSED_SIZE
-            ..G1_COMPRESSED_SIZE + 2 * G2_COMPRESSED_SIZE]
+        bytes[G1_COMPRESSED_SIZE + G2_COMPRESSED_SIZE..G1_COMPRESSED_SIZE + 2 * G2_COMPRESSED_SIZE]
             .copy_from_slice(&self.g2.gamma.to_gnark_compressed_bytes());
 
         // Serialize G2 delta (GNARK-compressed)
@@ -152,7 +154,13 @@ impl Groth16VerifyingKey {
     /// Uses the GNARK compression scheme. Accepts the compact format (without padding).
     pub fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Groth16Error> {
         if bytes.len() < GROTH16_VK_COMPRESSED_BASE_SIZE {
-            return Err(Groth16Error::GeneralError(Error::InvalidData));
+            return Err(Groth16Error::Serialization(
+                BufferLengthError {
+                    expected: GROTH16_VK_COMPRESSED_BASE_SIZE,
+                    actual: bytes.len(),
+                }
+                .into(),
+            ));
         }
 
         // Parse G1 alpha (GNARK-compressed).
@@ -173,7 +181,9 @@ impl Groth16VerifyingKey {
 
         // Negate beta for the verifier's purpose.
         let neg_g2_beta = SAffineG2(
-            AffineG2::from_jacobian(-G2::from(g2_beta_point.0)).ok_or(Error::InvalidPoint)?,
+            AffineG2::from_jacobian(-G2::from(g2_beta_point.0))
+                .ok_or(InvalidPointError)
+                .map_err(|e| Groth16Error::Serialization(e.into()))?,
         );
 
         // Read the number of K points (u32, big‐endian).
@@ -188,14 +198,21 @@ impl Groth16VerifyingKey {
         // Validate buffer size
         let expected_size = GROTH16_VK_COMPRESSED_BASE_SIZE + (num_k as usize * G1_COMPRESSED_SIZE);
         if bytes.len() != expected_size {
-            return Err(Groth16Error::GeneralError(Error::InvalidData));
+            return Err(Groth16Error::Serialization(
+                BufferLengthError {
+                    expected: expected_size,
+                    actual: bytes.len(),
+                }
+                .into(),
+            ));
         }
 
         let mut k = Vec::with_capacity(num_k as usize);
         let mut offset = GROTH16_VK_COMPRESSED_BASE_SIZE;
         for _ in 0..num_k {
-            let point =
-                SAffineG1::from_gnark_compressed_bytes(&bytes[offset..offset + G1_COMPRESSED_SIZE])?;
+            let point = SAffineG1::from_gnark_compressed_bytes(
+                &bytes[offset..offset + G1_COMPRESSED_SIZE],
+            )?;
             k.push(point);
             offset += G1_COMPRESSED_SIZE;
         }
@@ -263,7 +280,13 @@ impl Groth16VerifyingKey {
     /// Deserialize from uncompressed bytes.
     pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Groth16Error> {
         if bytes.len() < GROTH16_VK_UNCOMPRESSED_BASE_SIZE {
-            return Err(Groth16Error::GeneralError(Error::InvalidData));
+            return Err(Groth16Error::Serialization(
+                BufferLengthError {
+                    expected: GROTH16_VK_UNCOMPRESSED_BASE_SIZE,
+                    actual: bytes.len(),
+                }
+                .into(),
+            ));
         }
 
         // Parse G1 alpha (uncompressed).
@@ -284,7 +307,9 @@ impl Groth16VerifyingKey {
 
         // Negate beta for the verifier's purpose.
         let neg_g2_beta = SAffineG2(
-            AffineG2::from_jacobian(-G2::from(g2_beta_point.0)).ok_or(Error::InvalidPoint)?,
+            AffineG2::from_jacobian(-G2::from(g2_beta_point.0))
+                .ok_or(InvalidPointError)
+                .map_err(|e| Groth16Error::Serialization(e.into()))?,
         );
 
         // Read the number of K points (u32, big‐endian).
@@ -300,7 +325,13 @@ impl Groth16VerifyingKey {
         let expected_size =
             GROTH16_VK_UNCOMPRESSED_BASE_SIZE + (num_k as usize * G1_UNCOMPRESSED_SIZE);
         if bytes.len() != expected_size {
-            return Err(Groth16Error::GeneralError(Error::InvalidData));
+            return Err(Groth16Error::Serialization(
+                BufferLengthError {
+                    expected: expected_size,
+                    actual: bytes.len(),
+                }
+                .into(),
+            ));
         }
 
         let mut k = Vec::with_capacity(num_k as usize);

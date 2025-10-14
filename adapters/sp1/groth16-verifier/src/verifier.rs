@@ -3,7 +3,7 @@ use sha2::{Digest, Sha256};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
-    error::{Error, Groth16Error},
+    error::{BufferLengthError, Groth16Error, SerializationError},
     hashes::{blake3_to_fr, sha256_to_fr},
     types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
     verification::verify_sp1_groth16_algebraic,
@@ -52,15 +52,22 @@ impl SP1Groth16Verifier {
         // was used during proving.
         let groth16_vk_hash: [u8; 4] = Sha256::digest(vk_bytes)[..VK_HASH_PREFIX_LENGTH]
             .try_into()
-            .map_err(|_| Groth16Error::GeneralError(Error::InvalidData))?;
+            .map_err(|_| {
+                Groth16Error::Serialization(
+                    BufferLengthError {
+                        expected: VK_HASH_PREFIX_LENGTH,
+                        actual: Sha256::digest(vk_bytes).len(),
+                    }
+                    .into(),
+                )
+            })?;
 
         // Parse the Groth16 verifying key from its byte representation.
         // This returns a `Groth16VerifyingKey` that can be used for algebraic verification.
         let mut groth16_vk = Groth16VerifyingKey::load_from_gnark_bytes(vk_bytes)?;
 
         // Parse the program ID (Fr element) from its 32-byte big-endian encoding.
-        let program_vk_hash =
-            Fr::from_slice(&program_vk_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
+        let program_vk_hash = Fr::from_slice(&program_vk_hash).map_err(SerializationError::from)?;
 
         // compute K₀' = K₀ + program_vk_hash * K₁
         let k0: G1 = groth16_vk.g1.k[0].into();
@@ -94,13 +101,19 @@ impl SP1Groth16Verifier {
     pub fn verify(&self, proof: &[u8], public_values: &[u8]) -> Result<(), Groth16Error> {
         // Ensure the proof is at least as long as the hash prefix.
         if proof.len() < VK_HASH_PREFIX_LENGTH {
-            return Err(Groth16Error::GeneralError(Error::InvalidData));
+            return Err(Groth16Error::Serialization(
+                BufferLengthError {
+                    expected: VK_HASH_PREFIX_LENGTH,
+                    actual: proof.len(),
+                }
+                .into(),
+            ));
         }
 
         // Compare the leading bytes of `proof` with our cached verifying-key hash. If they differ,
         // the proof was not generated with this verifying key.
         if self.vk_hash_tag != proof[..VK_HASH_PREFIX_LENGTH] {
-            return Err(Groth16Error::Groth16VkeyHashMismatch);
+            return Err(Groth16Error::VkeyHashMismatch);
         }
 
         // Extract the raw Groth16 proof (bytes after the prefix) and parse it.

@@ -1,5 +1,5 @@
 use crate::{
-    error::{Error, Groth16Error},
+    error::{BufferLengthError, Groth16Error},
     types::{
         constant::{
             G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE, G2_COMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE,
@@ -35,7 +35,13 @@ impl Groth16Proof {
     /// Returns a `Groth16Proof` containing affine points `(ar, bs, krs)`.
     pub fn load_from_gnark_bytes(buffer: &[u8]) -> Result<Groth16Proof, Groth16Error> {
         if buffer.len() != GROTH16_PROOF_LENGTH {
-            return Err(Groth16Error::GeneralError(Error::InvalidData));
+            return Err(Groth16Error::Serialization(
+                BufferLengthError {
+                    expected: GROTH16_PROOF_LENGTH,
+                    actual: buffer.len(),
+                }
+                .into(),
+            ));
         }
 
         // Deserialize each component.
@@ -53,7 +59,13 @@ impl Groth16Proof {
     /// Deserialize from GNARK-compressed bytes (160 bytes).
     pub fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Groth16Error> {
         if bytes.len() != GROTH16_PROOF_COMPRESSED_SIZE {
-            return Err(Groth16Error::GeneralError(Error::InvalidData));
+            return Err(Groth16Error::Serialization(
+                BufferLengthError {
+                    expected: GROTH16_PROOF_COMPRESSED_SIZE,
+                    actual: bytes.len(),
+                }
+                .into(),
+            ));
         }
 
         let ar = SAffineG1::from_gnark_compressed_bytes(&bytes[0..G1_COMPRESSED_SIZE])?;
