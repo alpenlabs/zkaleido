@@ -25,6 +25,19 @@ struct SAffineG1Helper {
     y: String,
 }
 
+// Helper structures for SAffineG2
+#[derive(Debug, Serialize, Deserialize)]
+struct SAffineG2Helper {
+    x: Fq2Helper,
+    y: Fq2Helper,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Fq2Helper {
+    real: String,
+    imaginary: String,
+}
+
 impl From<&SAffineG1> for SAffineG1Helper {
     fn from(value: &SAffineG1) -> Self {
         let mut projective: G1 = (value.0).into();
@@ -69,19 +82,6 @@ impl<'de> Deserialize<'de> for SAffineG1 {
         let helper = SAffineG1Helper::deserialize(deserializer)?;
         SAffineG1::try_from(helper).map_err(serde::de::Error::custom)
     }
-}
-
-// Helper structures for SAffineG2
-#[derive(Debug, Serialize, Deserialize)]
-struct SAffineG2Helper {
-    x: Fq2Helper,
-    y: Fq2Helper,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct Fq2Helper {
-    real: String,
-    imaginary: String,
 }
 
 impl From<&SAffineG2> for SAffineG2Helper {
@@ -130,37 +130,17 @@ impl<'de> Deserialize<'de> for SAffineG2 {
     }
 }
 
-// Helper functions for hex conversion
-fn bytes_to_hex(bytes: &[u8; FQ_SIZE]) -> String {
-    format!("0x{}", hex::encode(bytes))
-}
-
-fn hex_to_bytes(hex_str: &str) -> Result<[u8; FQ_SIZE], SerializationError> {
-    let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
-    let bytes = hex::decode(hex_str).map_err(|_| InvalidDataFormatError)?;
-    if bytes.len() != FQ_SIZE {
-        return Err(BufferLengthError {
-            expected: FQ_SIZE,
-            actual: bytes.len(),
-        }
-        .into());
-    }
-    let mut array = [0u8; FQ_SIZE];
-    array.copy_from_slice(&bytes);
-    Ok(array)
-}
-
 // Helper functions for Fq serialization
 pub(crate) fn serialize_fq_to_hex(fq: &Fq) -> String {
     let mut slice = [0u8; FQ_SIZE];
     // NOTE: It is safe to unwrap because the only error is if size of slice is not of length
     // FQ_SIZE.
     fq.to_big_endian(&mut slice).unwrap();
-    bytes_to_hex(&slice)
+    fq_bytes_to_hex_string(&slice)
 }
 
 pub(crate) fn deserialize_fq_from_hex(hex_str: &str) -> Result<Fq, SerializationError> {
-    let bytes = hex_to_bytes(hex_str)?;
+    let bytes = hex_string_to_fq_bytes(hex_str)?;
     Fq::from_slice(&bytes).map_err(Into::into)
 }
 
@@ -345,6 +325,26 @@ impl<'de> Deserialize<'de> for SP1Groth16Verifier {
             vk_hash_tag: helper.vk_hash_tag,
         })
     }
+}
+
+// Helper functions for hex conversion
+fn fq_bytes_to_hex_string(bytes: &[u8; FQ_SIZE]) -> String {
+    format!("0x{}", hex::encode(bytes))
+}
+
+fn hex_string_to_fq_bytes(hex_str: &str) -> Result<[u8; FQ_SIZE], SerializationError> {
+    let hex_str = hex_str.strip_prefix("0x").unwrap_or(hex_str);
+    let bytes = hex::decode(hex_str).map_err(|_| InvalidDataFormatError)?;
+    if bytes.len() != FQ_SIZE {
+        return Err(BufferLengthError {
+            expected: FQ_SIZE,
+            actual: bytes.len(),
+        }
+        .into());
+    }
+    let mut array = [0u8; FQ_SIZE];
+    array.copy_from_slice(&bytes);
+    Ok(array)
 }
 
 #[cfg(test)]
