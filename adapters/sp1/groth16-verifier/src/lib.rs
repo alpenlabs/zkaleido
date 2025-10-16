@@ -2,6 +2,8 @@
 //!
 //! This crate integrates SP1-based Groth16 proof verification.
 
+#[cfg(feature = "arbitrary")]
+mod arbitrary;
 #[cfg(feature = "borsh")]
 mod borsh;
 mod error;
