@@ -9546,6 +9546,7 @@ dependencies = [
 name = "zkaleido-sp1-groth16-verifier"
 version = "0.1.0"
 dependencies = [
+ "arbitrary",
  "bincode",
  "blake3",
  "borsh",
