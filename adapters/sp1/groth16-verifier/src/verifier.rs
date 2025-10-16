@@ -1,13 +1,15 @@
 use bn::{AffineG1, Fr, G1};
-use borsh::{BorshDeserialize, BorshSerialize};
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
-    error::{Error, Groth16Error},
+    error::{BufferLengthError, Groth16Error, InvalidProofFormatError, SerializationError},
     hashes::{blake3_to_fr, sha256_to_fr},
-    types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
+    types::{
+        constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
+        proof::Groth16Proof,
+        vk::Groth16VerifyingKey,
+    },
     verification::verify_sp1_groth16_algebraic,
 };
 
@@ -21,11 +23,11 @@ pub const VK_HASH_PREFIX_LENGTH: usize = 4;
 /// This verifier is agnostic to the specific SP1 version, as long as the
 /// proving/verifying interface remains consistent. It checks that:
 /// 1. The proof was generated with the expected Groth16 verifying key (by comparing the first
-///    `VK_HASH_PREFIX_LENGTH` bytes of the key’s SHA-256 hash).
+///    `VK_HASH_PREFIX_LENGTH` bytes of the key's SHA-256 hash).
 /// 2. The Groth16 proof is valid with respect to two public inputs:
 ///    - `program_vk_hash`: a unique identifier for the SP1 program (as an Fr element).
 ///    - a hash of the supplied public values (either SHA-256 or Blake3).
-#[derive(Clone, Debug, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
+#[derive(Clone, Debug)]
 pub struct SP1Groth16Verifier {
     /// The (uncompressed) Groth16 verifying key for the SP1 circuit.
     pub vk: Groth16VerifyingKey,
@@ -52,17 +54,16 @@ impl SP1Groth16Verifier {
         // Compute the SHA-256 hash of `vk_bytes` and take the first `VK_HASH_PREFIX_LENGTH` bytes.
         // This prefix is prepended to every raw Groth16 proof by SP1 to signal which verifying key
         // was used during proving.
-        let groth16_vk_hash: [u8; 4] = Sha256::digest(vk_bytes)[..VK_HASH_PREFIX_LENGTH]
-            .try_into()
-            .map_err(|_| Groth16Error::GeneralError(Error::InvalidData))?;
+        let digest = Sha256::digest(vk_bytes);
+        let mut vk_hash_tag = [0u8; VK_HASH_PREFIX_LENGTH];
+        vk_hash_tag.copy_from_slice(&digest[..VK_HASH_PREFIX_LENGTH]);
 
         // Parse the Groth16 verifying key from its byte representation.
         // This returns a `Groth16VerifyingKey` that can be used for algebraic verification.
-        let mut groth16_vk = Groth16VerifyingKey::load_from_gnark_bytes(vk_bytes)?;
+        let mut groth16_vk = Groth16VerifyingKey::from_gnark_bytes(vk_bytes)?;
 
         // Parse the program ID (Fr element) from its 32-byte big-endian encoding.
-        let program_vk_hash =
-            Fr::from_slice(&program_vk_hash).map_err(|_| Error::FailedToGetFrFromRandomBytes)?;
+        let program_vk_hash = Fr::from_slice(&program_vk_hash).map_err(SerializationError::from)?;
 
         // compute K₀' = K₀ + program_vk_hash * K₁
         let k0: G1 = groth16_vk.g1.k[0].into();
@@ -76,7 +77,7 @@ impl SP1Groth16Verifier {
 
         Ok(SP1Groth16Verifier {
             vk: groth16_vk,
-            vk_hash_tag: groth16_vk_hash,
+            vk_hash_tag,
         })
     }
 
@@ -84,6 +85,10 @@ impl SP1Groth16Verifier {
     ///
     /// The proof is expected to be encoded as:
     /// [ vk_hash_prefix (VK_HASH_PREFIX_LENGTH bytes) || raw_groth16_proof_bytes ]
+    ///
+    /// The raw proof bytes can be in either compressed ([`GROTH16_PROOF_COMPRESSED_SIZE`] bytes) or
+    /// uncompressed ([`GROTH16_PROOF_UNCOMPRESSED_SIZE`] bytes) format. The verifier automatically
+    /// detects the format based on the byte length.
     ///
     /// # Parameters
     /// - `proof`: Byte slice containing the prefixed Groth16 proof.
@@ -96,18 +101,43 @@ impl SP1Groth16Verifier {
     pub fn verify(&self, proof: &[u8], public_values: &[u8]) -> Result<(), Groth16Error> {
         // Ensure the proof is at least as long as the hash prefix.
         if proof.len() < VK_HASH_PREFIX_LENGTH {
-            return Err(Groth16Error::GeneralError(Error::InvalidData));
+            return Err(Groth16Error::Serialization(
+                BufferLengthError {
+                    context: "Groth16 proof with verifying key hash prefix",
+                    expected: VK_HASH_PREFIX_LENGTH,
+                    actual: proof.len(),
+                }
+                .into(),
+            ));
         }
 
         // Compare the leading bytes of `proof` with our cached verifying-key hash. If they differ,
         // the proof was not generated with this verifying key.
         if self.vk_hash_tag != proof[..VK_HASH_PREFIX_LENGTH] {
-            return Err(Groth16Error::Groth16VkeyHashMismatch);
+            return Err(Groth16Error::VkeyHashMismatch);
         }
 
         // Extract the raw Groth16 proof (bytes after the prefix) and parse it.
+        // Support both compressed and uncompressed formats based on byte length.
         let raw_proof_bytes = &proof[VK_HASH_PREFIX_LENGTH..];
-        let proof = Groth16Proof::load_from_gnark_bytes(raw_proof_bytes)?;
+        let proof = match raw_proof_bytes.len() {
+            GROTH16_PROOF_COMPRESSED_SIZE => {
+                Groth16Proof::from_gnark_compressed_bytes(raw_proof_bytes)?
+            }
+            GROTH16_PROOF_UNCOMPRESSED_SIZE => {
+                Groth16Proof::from_uncompressed_bytes(raw_proof_bytes)?
+            }
+            _ => {
+                return Err(Groth16Error::Serialization(
+                    InvalidProofFormatError {
+                        expected_compressed: GROTH16_PROOF_COMPRESSED_SIZE,
+                        expected_uncompressed: GROTH16_PROOF_UNCOMPRESSED_SIZE,
+                        actual: raw_proof_bytes.len(),
+                    }
+                    .into(),
+                ))
+            }
+        };
 
         // Compute Fr element for hash(public_values) using SHA-256. SP1's Groth16 circuit expects
         // two public inputs: a. `program_id`, b. `hash(public_values)`.  Since SP1 allows either
@@ -144,9 +174,17 @@ mod tests {
     use sp1_verifier::GROTH16_VK_BYTES;
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
-    use crate::verifier::SP1Groth16Verifier;
+    use crate::{
+        types::{
+            constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
+            proof::Groth16Proof,
+        },
+        verifier::{SP1Groth16Verifier, VK_HASH_PREFIX_LENGTH},
+        Groth16VerifyingKey, SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED,
+        SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED,
+    };
 
-    fn load_vk_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
+    fn load_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
         let program_id_hex = "00eb7fd5709e4b833db86054ba4acca001a3aa5f18b7e7d0d96d0f1d340b4e34";
         let program_id: [u8; 32] = hex::decode(program_id_hex).unwrap().try_into().unwrap();
 
@@ -162,7 +200,7 @@ mod tests {
 
     #[test]
     fn test_valid_proof() {
-        let (verifier, receipt) = load_vk_and_proof();
+        let (verifier, receipt) = load_verifier_and_proof();
         let res = verifier.verify(
             receipt.proof().as_bytes(),
             receipt.public_values().as_bytes(),
@@ -172,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_invalid_g1() {
-        let (mut verifier, receipt) = load_vk_and_proof();
+        let (mut verifier, receipt) = load_verifier_and_proof();
         let vk_alpha = verifier.vk.g1.alpha.0;
         let alpha_x = vk_alpha.x();
         let alpha_y = vk_alpha.y();
@@ -207,7 +245,7 @@ mod tests {
 
     #[test]
     fn test_invalid_g2() {
-        let (mut verifier, receipt) = load_vk_and_proof();
+        let (mut verifier, receipt) = load_verifier_and_proof();
         let vk_gamma = verifier.vk.g2.gamma.0;
         let gamma_x = vk_gamma.x();
         let gamma_y = vk_gamma.y();
@@ -237,5 +275,69 @@ mod tests {
             receipt.public_values().as_bytes(),
         );
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_compressed_and_uncompressed_proof() {
+        let (verifier, receipt) = load_verifier_and_proof();
+        let proof_bytes = receipt.proof().as_bytes();
+        let public_values = receipt.public_values().as_bytes();
+
+        // Extract raw proof (without VK hash prefix)
+        let raw_proof_bytes = &proof_bytes[VK_HASH_PREFIX_LENGTH..];
+
+        // Parse the proof
+        let parsed_proof = Groth16Proof::from_uncompressed_bytes(raw_proof_bytes).unwrap();
+
+        // Convert to compressed format
+        let compressed = parsed_proof.to_gnark_compressed_bytes();
+        assert_eq!(compressed.len(), GROTH16_PROOF_COMPRESSED_SIZE);
+
+        // Convert to uncompressed format
+        let uncompressed = parsed_proof.to_uncompressed_bytes();
+        assert_eq!(uncompressed.len(), GROTH16_PROOF_UNCOMPRESSED_SIZE);
+
+        // Create proof with VK hash prefix for compressed
+        let mut compressed_proof_with_prefix = Vec::new();
+        compressed_proof_with_prefix.extend_from_slice(&verifier.vk_hash_tag);
+        compressed_proof_with_prefix.extend_from_slice(&compressed);
+
+        // Create proof with VK hash prefix for uncompressed
+        let mut uncompressed_proof_with_prefix = Vec::new();
+        uncompressed_proof_with_prefix.extend_from_slice(&verifier.vk_hash_tag);
+        uncompressed_proof_with_prefix.extend_from_slice(&uncompressed);
+
+        // Verify both compressed and uncompressed proofs work
+        let res_compressed = verifier.verify(&compressed_proof_with_prefix, public_values);
+        assert!(
+            res_compressed.is_ok(),
+            "Compressed proof verification failed: {:?}",
+            res_compressed
+        );
+
+        let res_uncompressed = verifier.verify(&uncompressed_proof_with_prefix, public_values);
+        assert!(
+            res_uncompressed.is_ok(),
+            "Uncompressed proof verification failed: {:?}",
+            res_uncompressed
+        );
+    }
+
+    #[test]
+    fn test_compressed_merged_vk_roundtrip() {
+        let (verifier, _) = load_verifier_and_proof();
+
+        let gnark_vk_bytes = verifier.vk.to_gnark_bytes();
+        assert_eq!(gnark_vk_bytes.len(), SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED);
+        let vk = Groth16VerifyingKey::from_gnark_bytes(&gnark_vk_bytes).unwrap();
+        assert_eq!(vk, verifier.vk);
+
+        let uncompressed_vk_bytes = verifier.vk.to_uncompressed_bytes();
+        assert_eq!(
+            uncompressed_vk_bytes.len(),
+            SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED
+        );
+        let vk = Groth16VerifyingKey::from_uncompressed_bytes(&uncompressed_vk_bytes).unwrap();
+        assert_eq!(vk, verifier.vk);
     }
 }

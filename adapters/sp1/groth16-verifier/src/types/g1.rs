@@ -1,14 +1,12 @@
 use std::fmt;
 
 use bn::{AffineG1, Fq, Group, G1};
-use borsh::{BorshDeserialize, BorshSerialize};
-use serde::{Deserialize, Serialize, Serializer};
 
 use crate::{
-    error::Error,
-    types::{
-        constant::{COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, MASK},
-        utils::{bytes_to_hex, hex_to_bytes},
+    error::{BufferLengthError, InvalidDataFormatError, InvalidPointError, SerializationError},
+    types::constant::{
+        COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, FQ_SIZE, G1_COMPRESSED_SIZE,
+        G1_UNCOMPRESSED_SIZE, MASK,
     },
 };
 
@@ -27,209 +25,149 @@ impl From<SAffineG1> for G1 {
     }
 }
 
-#[derive(Serialize, Deserialize)]
-struct SAffineG1Helper {
-    x: String,
-    y: String,
-}
+impl SAffineG1 {
+    /// Deserialize from GNARK-compressed bytes (32 bytes: x-coordinate with flag bits).
+    ///
+    /// Uses the GNARK compression scheme where the first two bits (most significant) of
+    /// the first byte encode a flag:
+    /// - `COMPRESSED_POSITIVE`: use the lexicographically smaller of (y, -y) as y.
+    /// - `COMPRESSED_NEGATIVE`: use the lexicographically larger of (y, -y) as y.
+    pub(crate) fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, SerializationError> {
+        if bytes.len() != G1_COMPRESSED_SIZE {
+            return Err(BufferLengthError {
+                context: "Gnark-compressed G1 point",
+                expected: G1_COMPRESSED_SIZE,
+                actual: bytes.len(),
+            }
+            .into());
+        }
 
-impl From<&SAffineG1> for SAffineG1Helper {
-    fn from(value: &SAffineG1) -> Self {
-        // Convert to projective to access coordinates
-        let mut projective: G1 = (value.0).into();
+        // Extract the two-bit flag from the first byte.
+        let flag = bytes[0] & MASK;
+
+        // Clear the flag bits to reconstruct the x-coordinate bytes.
+        let mut x_bytes = [0u8; FQ_SIZE];
+        x_bytes.copy_from_slice(bytes);
+        x_bytes[0] &= !MASK;
+
+        // Parse the x-coordinate as an Fq element.
+        let x_fq = Fq::from_slice(&x_bytes)?;
+
+        // Recover both possible y-coordinates from x: y^2 = x^3 + b for G1.
+        let y_squared = (x_fq * x_fq * x_fq) + G1::b();
+        let y = y_squared.sqrt().ok_or(InvalidPointError)?;
+        let neg_y = -y;
+
+        // Compare as 256‐bit integers to find smaller one.
+        let (smaller_y, larger_y) = if y.into_u256() < neg_y.into_u256() {
+            (y, neg_y)
+        } else {
+            (neg_y, y)
+        };
+
+        let selected_y = match flag {
+            COMPRESSED_NEGATIVE => larger_y,
+            COMPRESSED_POSITIVE => smaller_y,
+            _ => return Err(InvalidDataFormatError.into()),
+        };
+
+        Ok(SAffineG1(AffineG1::new(x_fq, selected_y)?))
+    }
+
+    /// Deserialize from uncompressed bytes (64 bytes: x-coordinate + y-coordinate).
+    ///
+    /// Expects the buffer to contain the big‐endian x-coordinate in bytes 0..32,
+    /// followed by the big‐endian y-coordinate in bytes 32..64.
+    pub(crate) fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, SerializationError> {
+        if bytes.len() != G1_UNCOMPRESSED_SIZE {
+            return Err(BufferLengthError {
+                context: "Uncompressed G1 point",
+                expected: G1_UNCOMPRESSED_SIZE,
+                actual: bytes.len(),
+            }
+            .into());
+        }
+
+        let (x_bytes, y_bytes) = bytes.split_at(FQ_SIZE);
+        let x = Fq::from_slice(x_bytes)?;
+        let y = Fq::from_slice(y_bytes)?;
+
+        Ok(SAffineG1(AffineG1::new(x, y)?))
+    }
+
+    /// Serialize to GNARK-compressed bytes (32 bytes: x-coordinate with flag bits).
+    ///
+    /// Uses the GNARK compression scheme where the first two bits of the first byte
+    /// encode a flag indicating which y-coordinate to use.
+    pub(crate) fn to_gnark_compressed_bytes(self) -> [u8; G1_COMPRESSED_SIZE] {
+        let mut projective: G1 = self.0.into();
         projective.normalize();
         let (x, y) = (projective.x(), projective.y());
 
-        SAffineG1Helper {
-            x: serialize_fq_to_hex(&x),
-            y: serialize_fq_to_hex(&y),
-        }
+        // Serialize x coordinate to bytes
+        let mut x_bytes = [0u8; G1_COMPRESSED_SIZE];
+        // NOTE: It is safe to unwrap because the only error is if size of slice is not of length
+        // FQ_SIZE.
+        x.to_big_endian(&mut x_bytes).unwrap();
+
+        // Determine which y-coordinate we have (positive or negative)
+        let neg_y = -y;
+        let flag = if y.into_u256() < neg_y.into_u256() {
+            COMPRESSED_POSITIVE
+        } else {
+            COMPRESSED_NEGATIVE
+        };
+
+        // Set the flag bits in the first byte
+        x_bytes[0] |= flag;
+
+        x_bytes
     }
-}
 
-impl TryFrom<SAffineG1Helper> for SAffineG1 {
-    type Error = Error;
-    fn try_from(value: SAffineG1Helper) -> Result<Self, Self::Error> {
-        let x = deserialize_fq_from_hex(&value.x)?;
-        let y = deserialize_fq_from_hex(&value.y)?;
-        let z = Fq::one();
+    /// Serialize to uncompressed bytes (64 bytes: x-coordinate + y-coordinate).
+    pub(crate) fn to_uncompressed_bytes(self) -> [u8; G1_UNCOMPRESSED_SIZE] {
+        let mut projective: G1 = self.0.into();
+        projective.normalize();
+        let (x, y) = (projective.x(), projective.y());
 
-        let projective = G1::new(x, y, z);
+        let mut bytes = [0u8; G1_UNCOMPRESSED_SIZE];
+        // NOTE: It is safe to unwrap because the only error is if size of slice is not of length
+        // FQ_SIZE.
+        x.to_big_endian(&mut bytes[0..FQ_SIZE]).unwrap();
+        y.to_big_endian(&mut bytes[FQ_SIZE..G1_UNCOMPRESSED_SIZE])
+            .unwrap();
 
-        let g1 = AffineG1::from_jacobian(projective).ok_or(Error::InvalidPoint)?;
-        Ok(SAffineG1(g1))
-    }
-}
-
-impl Serialize for SAffineG1 {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        SAffineG1Helper::from(self).serialize(serializer)
-    }
-}
-
-impl<'de> Deserialize<'de> for SAffineG1 {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: serde::Deserializer<'de>,
-    {
-        let helper = SAffineG1Helper::deserialize(deserializer)?;
-        SAffineG1::try_from(helper).map_err(serde::de::Error::custom)
+        bytes
     }
 }
 
 impl fmt::Debug for SAffineG1 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let helper = SAffineG1Helper::from(self);
-        f.debug_struct("AffineG1")
-            .field("x", &helper.x)
-            .field("y", &helper.y)
-            .finish()
+        f.debug_struct("AffineG1").finish_non_exhaustive()
     }
 }
 
-// Helper functions for Fq serialization
-pub(super) fn serialize_fq_to_hex(fq: &Fq) -> String {
-    let mut slice = [0u8; 32];
-    // NOTE: It is safe to unwrap because the only error is if size of slice is not of length 32.
-    fq.to_big_endian(&mut slice).unwrap();
-    bytes_to_hex(&slice)
-}
+#[cfg(test)]
+mod tests {
+    use bn::{AffineG1, Group, G1};
 
-pub(super) fn deserialize_fq_from_hex(hex_str: &str) -> Result<Fq, Error> {
-    let bytes = hex_to_bytes(hex_str)?;
-    Fq::from_slice(&bytes).map_err(|_| Error::FailedToGetFrFromRandomBytes)
-}
+    use crate::types::g1::SAffineG1;
 
-/// Convert a 32-byte compressed G1 representation into an `AffineG1` point.
-///
-/// Interprets the first two bits (most significant) of the first byte as a flag:
-/// - `COMPRESSED_POSITIVE`: use the lexicographically smaller of (y, -y) as y.
-/// - `COMPRESSED_NEGATIVE`: use the lexicographically larger of (y, -y) as y.
-///
-/// Ref: https://github.com/succinctlabs/sp1/blob/dev/crates/verifier/src/converter.rs#L42
-pub(crate) fn compressed_bytes_to_affine_g1(buf: &[u8]) -> Result<AffineG1, Error> {
-    if buf.len() != 32 {
-        return Err(Error::InvalidXLength);
-    }
+    #[test]
+    fn test_uncompressed_g1_roundtrip() {
+        let mut rng = rand::thread_rng();
+        let mut g1 = G1::random(&mut rng);
+        g1.normalize();
+        let g1: SAffineG1 = AffineG1::new(g1.x(), g1.y()).unwrap().into();
 
-    // Extract the two-bit flag from the first byte.
-    let flag = buf[0] & MASK;
+        let compressed_serialized_bytes = g1.to_gnark_compressed_bytes();
+        let compressed_deserialized =
+            SAffineG1::from_gnark_compressed_bytes(&compressed_serialized_bytes).unwrap();
+        assert_eq!(g1, compressed_deserialized);
 
-    // Clear the flag bits to reconstruct the x-coordinate bytes.
-    let mut x_bytes = [0u8; 32];
-    x_bytes.copy_from_slice(buf);
-    x_bytes[0] &= !MASK;
-
-    // Parse the x-coordinate as an Fq element.
-    let x_fq = Fq::from_slice(&x_bytes).map_err(|_| Error::InvalidPoint)?;
-
-    // Recover both possible y-coordinates from x.
-    let (y, neg_y) = get_ys_from_x_g1(x_fq)?;
-    match flag {
-        COMPRESSED_NEGATIVE => AffineG1::new(x_fq, neg_y).map_err(Error::Group),
-        COMPRESSED_POSITIVE => AffineG1::new(x_fq, y).map_err(Error::Group),
-        _ => Err(Error::InvalidData),
-    }
-}
-
-/// Convert a 64-byte uncompressed G1 representation into an `AffineG1` point.
-///
-/// Expects the buffer to contain the big‐endian x-coordinate in bytes 0..32,
-/// followed by the big‐endian y-coordinate in bytes 32..64.
-///
-/// Ref: https://github.com/succinctlabs/sp1/blob/dev/crates/verifier/src/converter.rs#L61
-pub(crate) fn uncompressed_bytes_to_affine_g1(buf: &[u8]) -> Result<AffineG1, Error> {
-    if buf.len() != 64 {
-        return Err(Error::InvalidXLength);
-    }
-
-    let (x_bytes, y_bytes) = buf.split_at(32);
-    let x = Fq::from_slice(x_bytes).map_err(Error::Field)?;
-    let y = Fq::from_slice(y_bytes).map_err(Error::Field)?;
-
-    AffineG1::new(x, y).map_err(Error::Group)
-}
-
-/// Given an Fq element `x`, compute both possible y‐coordinates on the BN254 curve:
-/// `y^2 = x^3 + b` for G1. Returns `(y, -y)`, ordered such that the first element is
-/// numerically smaller.
-///
-/// Ref: https://github.com/sp1-patches/bn/blob/n/v5.0.0/src/groups/mod.rs#L187
-fn get_ys_from_x_g1(x: Fq) -> Result<(Fq, Fq), Error> {
-    // Compute y^2 = x^3 + b.
-    let y_squared = (x * x * x) + G1::b();
-    let y = y_squared.sqrt().ok_or(Error::InvalidPoint)?;
-    let neg_y = -y;
-
-    // Compare as 256‐bit integers.
-    if y.into_u256() < neg_y.into_u256() {
-        Ok((y, neg_y))
-    } else {
-        Ok((neg_y, y))
-    }
-}
-
-impl BorshSerialize for SAffineG1 {
-    fn serialize<W: std::io::Write>(&self, writer: &mut W) -> std::io::Result<()> {
-        // Convert to projective to access coordinates
-        let mut projective: G1 = (self.0).into();
-        projective.normalize();
-        let (x, y) = (projective.x(), projective.y());
-
-        // Serialize x coordinate
-        let mut x_bytes = [0u8; 32];
-        x.to_big_endian(&mut x_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to serialize x coordinate",
-            )
-        })?;
-        writer.write_all(&x_bytes)?;
-
-        // Serialize y coordinate
-        let mut y_bytes = [0u8; 32];
-        y.to_big_endian(&mut y_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to serialize y coordinate",
-            )
-        })?;
-        writer.write_all(&y_bytes)?;
-
-        Ok(())
-    }
-}
-
-impl BorshDeserialize for SAffineG1 {
-    fn deserialize_reader<R: std::io::Read>(reader: &mut R) -> std::io::Result<Self> {
-        // Read x coordinate
-        let mut x_bytes = [0u8; 32];
-        reader.read_exact(&mut x_bytes)?;
-        let x = Fq::from_slice(&x_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to deserialize x coordinate",
-            )
-        })?;
-
-        // Read y coordinate
-        let mut y_bytes = [0u8; 32];
-        reader.read_exact(&mut y_bytes)?;
-        let y = Fq::from_slice(&y_bytes).map_err(|_| {
-            std::io::Error::new(
-                std::io::ErrorKind::InvalidData,
-                "Failed to deserialize y coordinate",
-            )
-        })?;
-
-        let z = Fq::one();
-        let projective = G1::new(x, y, z);
-        let g1 = AffineG1::from_jacobian(projective)
-            .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid point"))?;
-
-        Ok(SAffineG1(g1))
+        let uncompressed_serialized_bytes = g1.to_uncompressed_bytes();
+        let uncompressed_deserialized =
+            SAffineG1::from_uncompressed_bytes(&uncompressed_serialized_bytes).unwrap();
+        assert_eq!(g1, uncompressed_deserialized);
     }
 }
