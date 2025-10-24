@@ -51,7 +51,7 @@ impl Groth16Proof {
         Ok(Groth16Proof { ar, bs, krs })
     }
 
-    /// Deserialize from GNARK-compressed bytes (160 bytes).
+    /// Deserialize from GNARK-compressed bytes (128 bytes).
     pub fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Groth16Error> {
         if bytes.len() != GROTH16_PROOF_COMPRESSED_SIZE {
             return Err(Groth16Error::Serialization(
@@ -75,14 +75,14 @@ impl Groth16Proof {
         Ok(Groth16Proof { ar, bs, krs })
     }
 
-    /// Serialize to GNARK-compressed bytes (160 bytes: 32 + 64 + 64).
+    /// Serialize to GNARK-compressed bytes (128 bytes: 32 + 64 + 32).
     ///
     /// Uses the GNARK compression scheme.
     ///
     /// Layout:
     /// - bytes 0..32:    GNARK-compressed G1 point `A·R`
     /// - bytes 32..96:   GNARK-compressed G2 point `B·S`
-    /// - bytes 96..160:  GNARK-compressed G1 point `K·R·S`
+    /// - bytes 96..128:  GNARK-compressed G1 point `K·R·S`
     ///
     /// Note: This is more compact than GNARK's uncompressed format (256 bytes).
     pub fn to_gnark_compressed_bytes(&self) -> [u8; GROTH16_PROOF_COMPRESSED_SIZE] {
