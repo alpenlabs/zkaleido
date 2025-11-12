@@ -44,7 +44,7 @@ jobs:
         uses: taiki-e/install-action@9903ab6feadaec33945de535fe9d181b91802a55 # v2
         with:
           tool: cargo-llvm-cov
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2
         with:
           cache-on-failure: true
 
@@ -58,7 +58,7 @@ jobs:
         with:
           paths: "target/nextest/ci/junit.xml"
       - name: Publish Test Coverage
-        uses: codecov/codecov-action@1e68e06f1dbfde0e4cefc87efeba9e4643565303 # v5.1.2
+        uses: codecov/codecov-action@5a1091511ad55cbe89839c7260b706298ca349f7 # v5.5.1
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
           files: lcov.info
@@ -82,7 +82,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@a02741459ec5e501b9843ed30b535ca0a0376ae4 # nightly
         with:
           toolchain: nightly-2024-07-27
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2
         with:
           cache-on-failure: true
 

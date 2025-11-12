@@ -33,7 +33,7 @@ jobs:
         run: |
           git branch -av
           git diff "origin/$DEFAULT_BRANCH" | tee git.diff
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
+      - uses: Swatinem/rust-cache@f13886b937689c021905a6b90929199931d60db1 # v2
       - uses: taiki-e/install-action@9903ab6feadaec33945de535fe9d181b91802a55 # v2
         name: Install `cargo-mutants`
         with:
