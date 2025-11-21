@@ -31,8 +31,6 @@ impl ZkVmProgram for FibProgram {
     }
 }
 
-impl ZkVmProgramPerf for FibProgram {}
-
 #[cfg(test)]
 pub mod tests {
     use std::sync::Arc;

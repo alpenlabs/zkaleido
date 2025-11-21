@@ -138,6 +138,13 @@ pub trait ZkVmProgramPerf: ZkVmProgram {
     }
 }
 
+/// Blanket implementation of `ZkVmProgramPerf` for any type that implements `ZkVmProgram`.
+///
+/// This allows any program that provides the necessary `ZkVmProgram` implementation to
+/// automatically satisfy the `ZkVmProgramPerf` trait without requiring explicit implementations.
+/// The default `perf_report` method provided by the trait is sufficient for most use cases.
+impl<T: ZkVmProgram> ZkVmProgramPerf for T {}
+
 /// A trait representing a zkVM program that supports remote proving operations.
 ///
 /// This trait extends [`ZkVmProgram`] to allow proof generation to be performed using remote
@@ -159,3 +166,11 @@ pub trait ZkVmRemoteProgram: ZkVmProgram {
         host.start_proving(zkvm_input, Self::proof_type()).await
     }
 }
+
+/// Blanket implementation of `ZkVmRemoteProgram` for any type that implements `ZkVmProgram`.
+///
+/// This allows any program that provides the necessary `ZkVmProgram` implementation to
+/// automatically satisfy the `ZkVmRemoteProgram` trait without requiring explicit implementations.
+/// The default `start_proving` method provided by the trait is sufficient for most use cases.
+#[async_trait(?Send)]
+impl<T: ZkVmProgram> ZkVmRemoteProgram for T {}
