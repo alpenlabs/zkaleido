@@ -37,8 +37,6 @@ impl ZkVmProgram for SchnorrSigProgram {
     }
 }
 
-impl ZkVmProgramPerf for SchnorrSigProgram {}
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

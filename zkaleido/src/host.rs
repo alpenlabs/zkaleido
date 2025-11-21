@@ -35,3 +35,10 @@ pub trait ZkVmHostPerf: ZkVmHost {
 
 /// A trait implemented by the host of a zkVM program with support for remote proving operations.
 pub trait ZkVmRemoteHost: ZkVmHost + ZkVmRemoteProver {}
+
+/// Blanket implementation of `ZkVmRemoteHost` for any type that implements both
+/// `ZkVmHost` and `ZkVmRemoteProver`.
+///
+/// This allows any host that provides the necessary trait implementations to automatically
+/// satisfy the `ZkVmRemoteHost` trait without requiring explicit implementations.
+impl<T> ZkVmRemoteHost for T where T: ZkVmHost + ZkVmRemoteProver {}

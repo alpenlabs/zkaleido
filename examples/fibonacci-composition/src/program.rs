@@ -41,5 +41,3 @@ impl ZkVmProgram for FibCompositionProgram {
         H::extract_serde_public_output(public_values)
     }
 }
-
-impl ZkVmProgramPerf for FibCompositionProgram {}

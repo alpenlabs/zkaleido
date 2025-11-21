@@ -9453,8 +9453,10 @@ dependencies = [
 name = "zkaleido-native-adapter"
 version = "0.1.0"
 dependencies = [
+ "async-trait",
  "bincode",
  "borsh",
+ "hex",
  "serde",
  "zkaleido",
 ]

@@ -33,8 +33,6 @@ impl ZkVmProgram for Risc0Groth16VerifyProgram {
     }
 }
 
-impl ZkVmProgramPerf for Risc0Groth16VerifyProgram {}
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

@@ -1,9 +1,11 @@
 use std::{env, fmt, sync::Arc};
 
+use async_trait::async_trait;
 use zkaleido::{
     Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, ProofType, PublicValues,
     VerifyingKey, VerifyingKeyCommitment, ZkVm, ZkVmError, ZkVmExecutor, ZkVmHost,
-    ZkVmOutputExtractor, ZkVmProver, ZkVmResult, ZkVmTypedVerifier, ZkVmVkProvider,
+    ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver, ZkVmResult, ZkVmTypedVerifier,
+    ZkVmVkProvider,
 };
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
@@ -95,5 +97,55 @@ impl ZkVmOutputExtractor for NativeHost {
 impl fmt::Debug for NativeHost {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "native")
+    }
+}
+
+/// Implementation of `ZkVmRemoteProver` for `NativeHost`.
+///
+/// Since `NativeHost` executes proofs synchronously, this implementation:
+/// - Runs the proof immediately in `start_proving`
+/// - Serializes the result and hex-encodes it as the "proof ID"
+/// - Deserializes and returns the proof in `get_proof_if_ready_inner`
+///
+/// Combined with the blanket impl `impl<T: ZkVmHost + ZkVmRemoteProver> ZkVmRemoteHost for T`,
+/// this automatically gives `NativeHost` the `ZkVmRemoteHost` trait, allowing it to work
+/// seamlessly with async/remote proving interfaces.
+#[async_trait(?Send)]
+impl ZkVmRemoteProver for NativeHost {
+    async fn start_proving<'a>(
+        &self,
+        input: <Self::Input<'a> as zkaleido::ZkVmInputBuilder<'a>>::Input,
+        proof_type: ProofType,
+    ) -> ZkVmResult<String> {
+        // Execute proof synchronously
+        let proof_receipt = self.prove(input, proof_type)?;
+
+        // Serialize using bincode
+        let serialized = bincode::serialize(&proof_receipt)
+            .map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))?;
+
+        // Encode as hex to use as "proof ID"
+        Ok(hex::encode(serialized))
+    }
+
+    async fn get_proof_if_ready_inner(
+        &self,
+        id: String,
+    ) -> ZkVmResult<Option<Self::ZkVmProofReceipt>> {
+        // Decode the hex-encoded proof
+        let decoded = hex::decode(&id).map_err(|_| {
+            ZkVmError::InvalidProofReceipt(
+                std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid hex encoding").into(),
+            )
+        })?;
+
+        // Deserialize the ProofReceiptWithMetadata
+        let proof: ProofReceiptWithMetadata =
+            bincode::deserialize(&decoded).map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))?;
+
+        // Convert to NativeProofReceipt
+        let native_receipt = proof.try_into().map_err(ZkVmError::InvalidProofReceipt)?;
+
+        Ok(Some(native_receipt))
     }
 }

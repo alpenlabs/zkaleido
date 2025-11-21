@@ -31,8 +31,6 @@ impl ZkVmProgram for ShaChainProgram {
     }
 }
 
-impl ZkVmProgramPerf for ShaChainProgram {}
-
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;
