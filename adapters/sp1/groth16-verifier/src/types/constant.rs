@@ -47,7 +47,7 @@ pub(crate) const G2_COMPRESSED_SIZE: usize = FQ_SIZE * 2;
 pub(crate) const G2_UNCOMPRESSED_SIZE: usize = G2_COMPRESSED_SIZE * 2;
 
 // Groth16 Proof size constants
-/// Size of a GNARK-compressed Groth16 proof in bytes (32 + 64 + 64)
+/// Size of a GNARK-compressed Groth16 proof in bytes (32 + 64 + 32)
 pub const GROTH16_PROOF_COMPRESSED_SIZE: usize =
     G1_COMPRESSED_SIZE + G2_COMPRESSED_SIZE + G1_COMPRESSED_SIZE;
 
