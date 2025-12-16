@@ -18,6 +18,12 @@ pub trait ZkVmExecutor: Send + Sync + Clone + Debug + 'static {
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
     ) -> ZkVmResult<PublicValues>;
 
+    /// Executes the guest code to get the cycle count
+    fn get_cycles<'a>(
+        &self,
+        input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
+    ) -> ZkVmResult<u64>;
+
     /// Returns the ELF for the loaded program
     fn get_elf(&self) -> &[u8];
 

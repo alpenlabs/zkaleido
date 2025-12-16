@@ -22,6 +22,21 @@ impl ZkVmExecutor for Risc0Host {
         Ok(public_values)
     }
 
+    fn get_cycles<'a>(
+        &self,
+        input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
+    ) -> ZkVmResult<u64> {
+        let executor = default_executor();
+
+        let session_info = executor
+            .execute(input, self.get_elf())
+            .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
+
+        let cycles = session_info.cycles();
+
+        Ok(cycles)
+    }
+
     fn get_elf(&self) -> &[u8] {
         self.elf()
     }

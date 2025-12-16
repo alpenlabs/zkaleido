@@ -43,6 +43,13 @@ impl ZkVmExecutor for NativeHost {
         &[]
     }
 
+    fn get_cycles<'a>(
+        &self,
+        _input: <Self::Input<'a> as zkaleido::ZkVmInputBuilder<'a>>::Input,
+    ) -> ZkVmResult<u64> {
+        Ok(0)
+    }
+
     fn save_trace(&self, _trace_name: &str) {}
 }
 

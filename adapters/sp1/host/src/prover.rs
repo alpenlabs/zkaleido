@@ -1,3 +1,4 @@
+use sp1_prover::utils::get_cycles;
 #[cfg(feature = "remote-prover")]
 use sp1_sdk::{network::B256, SP1ProofMode};
 use sp1_sdk::{
@@ -28,6 +29,14 @@ impl ZkVmExecutor for SP1Host {
         let public_values = PublicValues::new(output.to_vec());
 
         Ok(public_values)
+    }
+
+    fn get_cycles<'a>(
+        &self,
+        input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
+    ) -> ZkVmResult<u64> {
+        let cycles = get_cycles(self.get_elf(), &input);
+        Ok(cycles)
     }
 
     fn get_elf(&self) -> &[u8] {
