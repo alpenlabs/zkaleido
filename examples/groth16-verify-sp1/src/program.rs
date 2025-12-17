@@ -1,4 +1,4 @@
-use zkaleido::{ProofType, ZkVmInputResult, ZkVmProgram, ZkVmProgramPerf};
+use zkaleido::{ProofType, ZkVmInputResult, ZkVmProgram};
 
 use crate::input::SP1Groth16VerifyInput;
 

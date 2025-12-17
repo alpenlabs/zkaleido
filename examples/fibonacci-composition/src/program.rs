@@ -1,7 +1,4 @@
-use zkaleido::{
-    AggregationInput, ProofType, VerifyingKeyCommitment, ZkVmInputResult, ZkVmProgram,
-    ZkVmProgramPerf,
-};
+use zkaleido::{AggregationInput, ProofType, VerifyingKeyCommitment, ZkVmInputResult, ZkVmProgram};
 
 pub struct FibCompositionInput {
     pub fib_proof_with_vk: AggregationInput,
