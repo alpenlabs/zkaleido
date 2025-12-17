@@ -39,10 +39,15 @@ impl ZkVmExecutor for NativeHost {
         Ok(public_values)
     }
 
+    /// Returns an empty slice as there is no ELF in native mode.
     fn get_elf(&self) -> &[u8] {
         &[]
     }
 
+    /// Returns 0 as cycle counting is not applicable in native mode.
+    ///
+    /// For RISC-V ZkVms, cycles are obtained by emulating execution and counting
+    /// instructions. There is no straightforward equivalent for native execution.
     fn get_cycles<'a>(
         &self,
         _input: <Self::Input<'a> as zkaleido::ZkVmInputBuilder<'a>>::Input,
