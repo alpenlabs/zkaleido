@@ -7,7 +7,8 @@ use sp1_sdk::{
 #[cfg(feature = "remote-prover")]
 use zkaleido::ZkVmRemoteProver;
 use zkaleido::{
-    ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder, ZkVmProver, ZkVmResult,
+    ExecutionSummary, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
+    ZkVmProver, ZkVmResult,
 };
 
 use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt, SP1Host};
@@ -17,17 +18,21 @@ impl ZkVmExecutor for SP1Host {
     fn execute<'a>(
         &self,
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<PublicValues> {
+    ) -> ZkVmResult<ExecutionSummary> {
         let client = ProverClient::from_env();
 
-        let (output, _) = client
+        let (output, report) = client
             .execute(self.get_elf(), &prover_input)
             .run()
             .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
 
         let public_values = PublicValues::new(output.to_vec());
 
-        Ok(public_values)
+        Ok(ExecutionSummary::new(
+            public_values,
+            report.total_instruction_count(),
+            report.gas,
+        ))
     }
 
     fn get_elf(&self) -> &[u8] {

@@ -72,6 +72,62 @@ define_byte_wrapper!(Proof);
 define_byte_wrapper!(PublicValues);
 define_byte_wrapper!(VerifyingKey);
 
+/// Summary of executing a zkVM program.
+///
+/// Contains the public output values from the execution along with execution performance metrics
+/// such as cycle count and optional gas usage.
+#[derive(
+    Debug,
+    Clone,
+    Serialize,
+    Deserialize,
+    BorshSerialize,
+    BorshDeserialize,
+    PartialEq,
+    Eq,
+    Arbitrary,
+    Default,
+)]
+pub struct ExecutionSummary {
+    /// The public values produced by the execution.
+    public_values: PublicValues,
+    /// The number of cycles consumed during execution.
+    cycles: u64,
+    /// Gas consumed during execution, if applicable.
+    gas: Option<u64>,
+}
+
+impl ExecutionSummary {
+    /// Creates a new `ExecutionResult` with the given public values, cycles, and optional gas.
+    pub fn new(public_values: PublicValues, cycles: u64, gas: Option<u64>) -> Self {
+        Self {
+            public_values,
+            cycles,
+            gas,
+        }
+    }
+
+    /// Returns the public values produced by the execution.
+    pub fn public_values(&self) -> &PublicValues {
+        &self.public_values
+    }
+
+    /// Returns the number of cycles consumed during execution.
+    pub fn cycles(&self) -> u64 {
+        self.cycles
+    }
+
+    /// Returns the gas consumed during execution, if applicable.
+    pub fn gas(&self) -> Option<u64> {
+        self.gas
+    }
+
+    /// Consumes the `ExecutionResult` and returns the public values.
+    pub fn into_public_values(self) -> PublicValues {
+        self.public_values
+    }
+}
+
 /// A receipt containing a `Proof` and associated `PublicValues`.
 #[derive(
     Debug,

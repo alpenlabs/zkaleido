@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use async_trait::async_trait;
 
 use crate::{
-    input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, PublicValues, ZkVmError,
+    input::ZkVmInputBuilder, ExecutionSummary, ProofReceiptWithMetadata, ProofType, ZkVmError,
     ZkVmProofError, ZkVmResult,
 };
 
@@ -12,11 +12,13 @@ pub trait ZkVmExecutor: Send + Sync + Clone + Debug + 'static {
     /// The input type used by this host to build all data necessary for running the VM.
     type Input<'a>: ZkVmInputBuilder<'a>;
 
-    /// Executes the guest code within the VM returning the `PublicValues`.
+    /// Executes the guest code within the VM returning the `ExecutionResult`.
+    ///
+    /// The `ExecutionResult` contains the public values, cycle count, and optional gas usage.
     fn execute<'a>(
         &self,
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<PublicValues>;
+    ) -> ZkVmResult<ExecutionSummary>;
 
     /// Returns the ELF for the loaded program
     fn get_elf(&self) -> &[u8];
