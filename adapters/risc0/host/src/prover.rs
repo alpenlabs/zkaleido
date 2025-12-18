@@ -1,6 +1,7 @@
 use risc0_zkvm::{default_executor, default_prover, ProverOpts};
 use zkaleido::{
-    ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder, ZkVmProver, ZkVmResult,
+    ExecutionResult, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
+    ZkVmProver, ZkVmResult,
 };
 
 use crate::{input::Risc0ProofInputBuilder, proof::Risc0ProofReceipt, Risc0Host};
@@ -11,30 +12,17 @@ impl ZkVmExecutor for Risc0Host {
     fn execute<'a>(
         &self,
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<PublicValues> {
+    ) -> ZkVmResult<ExecutionResult> {
         let executor = default_executor();
 
         let session_info = executor
             .execute(prover_input, self.get_elf())
             .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
 
-        let public_values = PublicValues::new(session_info.journal.bytes);
-        Ok(public_values)
-    }
-
-    fn get_cycles<'a>(
-        &self,
-        input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<u64> {
-        let executor = default_executor();
-
-        let session_info = executor
-            .execute(input, self.get_elf())
-            .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
-
         let cycles = session_info.cycles();
+        let public_values = PublicValues::new(session_info.journal.bytes);
 
-        Ok(cycles)
+        Ok(ExecutionResult::new(public_values, cycles, None))
     }
 
     fn get_elf(&self) -> &[u8] {

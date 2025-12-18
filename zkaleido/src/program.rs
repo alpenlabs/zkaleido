@@ -82,10 +82,10 @@ pub trait ZkVmProgram {
         let zkvm_input = Self::prepare_input_with_profiling(input, host)?;
 
         // Use the host to execute.
-        let public_values = host.execute(zkvm_input)?;
+        let execution_result = host.execute(zkvm_input)?;
 
         // Process output to see if we are getting the expected type.
-        Self::process_output::<H>(&public_values)
+        Self::process_output::<H>(execution_result.public_values())
     }
 
     /// Proves the computation using any zkVM host.

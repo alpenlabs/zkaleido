@@ -2,8 +2,8 @@ use std::{env, fmt, sync::Arc};
 
 use async_trait::async_trait;
 use zkaleido::{
-    Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, ProofType, PublicValues,
-    VerifyingKey, VerifyingKeyCommitment, ZkVm, ZkVmError, ZkVmExecutor, ZkVmHost,
+    ExecutionResult, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, ProofType,
+    PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm, ZkVmError, ZkVmExecutor, ZkVmHost,
     ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver, ZkVmResult, ZkVmTypedVerifier,
     ZkVmVkProvider,
 };
@@ -32,27 +32,17 @@ impl ZkVmHost for NativeHost {}
 
 impl ZkVmExecutor for NativeHost {
     type Input<'a> = NativeMachineInputBuilder;
-    fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<PublicValues> {
+    fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<ExecutionResult> {
         (self.process_proof)(&native_machine)?;
         let output = native_machine.state.borrow().output.clone();
         let public_values = PublicValues::new(output);
-        Ok(public_values)
+        // There is no straightforward equivalent of cycles and gas for native execution
+        Ok(ExecutionResult::new(public_values, 0, None))
     }
 
     /// Returns an empty slice as there is no ELF in native mode.
     fn get_elf(&self) -> &[u8] {
         &[]
-    }
-
-    /// Returns 0 as cycle counting is not applicable in native mode.
-    ///
-    /// For RISC-V ZkVms, cycles are obtained by emulating execution and counting
-    /// instructions. There is no straightforward equivalent for native execution.
-    fn get_cycles<'a>(
-        &self,
-        _input: <Self::Input<'a> as zkaleido::ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<u64> {
-        Ok(0)
     }
 
     fn save_trace(&self, _trace_name: &str) {}
@@ -66,7 +56,8 @@ impl ZkVmProver for NativeHost {
         native_machine: NativeMachine,
         _proof_type: ProofType,
     ) -> ZkVmResult<NativeProofReceipt> {
-        let public_values = self.execute(native_machine)?;
+        let execution_result = self.execute(native_machine)?;
+        let public_values = execution_result.into_public_values();
         let proof = Proof::default();
         let receipt = ProofReceipt::new(proof, public_values);
 

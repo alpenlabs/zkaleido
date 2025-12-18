@@ -1,4 +1,3 @@
-use sp1_prover::utils::get_cycles;
 #[cfg(feature = "remote-prover")]
 use sp1_sdk::{network::B256, SP1ProofMode};
 use sp1_sdk::{
@@ -8,7 +7,8 @@ use sp1_sdk::{
 #[cfg(feature = "remote-prover")]
 use zkaleido::ZkVmRemoteProver;
 use zkaleido::{
-    ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder, ZkVmProver, ZkVmResult,
+    ExecutionResult, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
+    ZkVmProver, ZkVmResult,
 };
 
 use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt, SP1Host};
@@ -18,25 +18,21 @@ impl ZkVmExecutor for SP1Host {
     fn execute<'a>(
         &self,
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<PublicValues> {
+    ) -> ZkVmResult<ExecutionResult> {
         let client = ProverClient::from_env();
 
-        let (output, _) = client
+        let (output, report) = client
             .execute(self.get_elf(), &prover_input)
             .run()
             .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
 
         let public_values = PublicValues::new(output.to_vec());
 
-        Ok(public_values)
-    }
-
-    fn get_cycles<'a>(
-        &self,
-        input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<u64> {
-        let cycles = get_cycles(self.get_elf(), &input);
-        Ok(cycles)
+        Ok(ExecutionResult::new(
+            public_values,
+            report.total_instruction_count(),
+            report.gas,
+        ))
     }
 
     fn get_elf(&self) -> &[u8] {
