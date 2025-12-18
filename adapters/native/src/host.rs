@@ -2,7 +2,7 @@ use std::{env, fmt, sync::Arc};
 
 use async_trait::async_trait;
 use zkaleido::{
-    ExecutionResult, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, ProofType,
+    ExecutionSummary, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, ProofType,
     PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm, ZkVmError, ZkVmExecutor, ZkVmHost,
     ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver, ZkVmResult, ZkVmTypedVerifier,
     ZkVmVkProvider,
@@ -32,12 +32,12 @@ impl ZkVmHost for NativeHost {}
 
 impl ZkVmExecutor for NativeHost {
     type Input<'a> = NativeMachineInputBuilder;
-    fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<ExecutionResult> {
+    fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<ExecutionSummary> {
         (self.process_proof)(&native_machine)?;
         let output = native_machine.state.borrow().output.clone();
         let public_values = PublicValues::new(output);
         // There is no straightforward equivalent of cycles and gas for native execution
-        Ok(ExecutionResult::new(public_values, 0, None))
+        Ok(ExecutionSummary::new(public_values, 0, None))
     }
 
     /// Returns an empty slice as there is no ELF in native mode.

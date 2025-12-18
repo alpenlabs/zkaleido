@@ -3,7 +3,7 @@ use std::fmt::Debug;
 use async_trait::async_trait;
 
 use crate::{
-    input::ZkVmInputBuilder, ExecutionResult, ProofReceiptWithMetadata, ProofType, ZkVmError,
+    input::ZkVmInputBuilder, ExecutionSummary, ProofReceiptWithMetadata, ProofType, ZkVmError,
     ZkVmProofError, ZkVmResult,
 };
 
@@ -18,7 +18,7 @@ pub trait ZkVmExecutor: Send + Sync + Clone + Debug + 'static {
     fn execute<'a>(
         &self,
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<ExecutionResult>;
+    ) -> ZkVmResult<ExecutionSummary>;
 
     /// Returns the ELF for the loaded program
     fn get_elf(&self) -> &[u8];

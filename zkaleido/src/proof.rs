@@ -72,7 +72,7 @@ define_byte_wrapper!(Proof);
 define_byte_wrapper!(PublicValues);
 define_byte_wrapper!(VerifyingKey);
 
-/// Result of executing a zkVM program.
+/// Summary of executing a zkVM program.
 ///
 /// Contains the public output values from the execution along with execution performance metrics
 /// such as cycle count and optional gas usage.
@@ -88,7 +88,7 @@ define_byte_wrapper!(VerifyingKey);
     Arbitrary,
     Default,
 )]
-pub struct ExecutionResult {
+pub struct ExecutionSummary {
     /// The public values produced by the execution.
     public_values: PublicValues,
     /// The number of cycles consumed during execution.
@@ -97,7 +97,7 @@ pub struct ExecutionResult {
     gas: Option<u64>,
 }
 
-impl ExecutionResult {
+impl ExecutionSummary {
     /// Creates a new `ExecutionResult` with the given public values, cycles, and optional gas.
     pub fn new(public_values: PublicValues, cycles: u64, gas: Option<u64>) -> Self {
         Self {

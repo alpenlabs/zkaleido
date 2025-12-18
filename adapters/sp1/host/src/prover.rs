@@ -7,7 +7,7 @@ use sp1_sdk::{
 #[cfg(feature = "remote-prover")]
 use zkaleido::ZkVmRemoteProver;
 use zkaleido::{
-    ExecutionResult, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
+    ExecutionSummary, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
     ZkVmProver, ZkVmResult,
 };
 
@@ -18,7 +18,7 @@ impl ZkVmExecutor for SP1Host {
     fn execute<'a>(
         &self,
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<ExecutionResult> {
+    ) -> ZkVmResult<ExecutionSummary> {
         let client = ProverClient::from_env();
 
         let (output, report) = client
@@ -28,7 +28,7 @@ impl ZkVmExecutor for SP1Host {
 
         let public_values = PublicValues::new(output.to_vec());
 
-        Ok(ExecutionResult::new(
+        Ok(ExecutionSummary::new(
             public_values,
             report.total_instruction_count(),
             report.gas,

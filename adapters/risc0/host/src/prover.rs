@@ -1,6 +1,6 @@
 use risc0_zkvm::{default_executor, default_prover, ProverOpts};
 use zkaleido::{
-    ExecutionResult, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
+    ExecutionSummary, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
     ZkVmProver, ZkVmResult,
 };
 
@@ -12,7 +12,7 @@ impl ZkVmExecutor for Risc0Host {
     fn execute<'a>(
         &self,
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
-    ) -> ZkVmResult<ExecutionResult> {
+    ) -> ZkVmResult<ExecutionSummary> {
         let executor = default_executor();
 
         let session_info = executor
@@ -22,7 +22,7 @@ impl ZkVmExecutor for Risc0Host {
         let cycles = session_info.cycles();
         let public_values = PublicValues::new(session_info.journal.bytes);
 
-        Ok(ExecutionResult::new(public_values, cycles, None))
+        Ok(ExecutionSummary::new(public_values, cycles, None))
     }
 
     fn get_elf(&self) -> &[u8] {
