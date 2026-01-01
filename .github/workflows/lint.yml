@@ -23,7 +23,7 @@ jobs:
       - name: Install toolchains
         uses: ./.github/actions/toolchains # zizmor: ignore[unpinned-uses]
       - uses: dtolnay/rust-toolchain@22a6a5b0f9f487c5f5587025ae9d4a1caf2a8a78 # clippy
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
         with:
           cache-on-failure: true
       # Currently, sp1 and risc0 guest builds are skipped when it is invoked under clippy.
@@ -63,7 +63,7 @@ jobs:
         with:
           toolchain: nightly-2024-07-27
       - uses: taiki-e/install-action@1b0e852a3465a29cd0b17876f2de42a88d145e91 # cargo-hack
-      - uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6 # v2
+      - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
         with:
           cache-on-failure: true
       - name: Configure sccache
