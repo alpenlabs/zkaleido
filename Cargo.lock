@@ -9451,6 +9451,7 @@ dependencies = [
  "bincode",
  "borsh",
  "hex",
+ "k256",
  "serde",
  "zkaleido",
 ]

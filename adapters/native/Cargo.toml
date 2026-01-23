@@ -19,4 +19,5 @@ async-trait.workspace = true
 bincode.workspace = true
 borsh.workspace = true
 hex.workspace = true
+k256.workspace = true
 serde.workspace = true
