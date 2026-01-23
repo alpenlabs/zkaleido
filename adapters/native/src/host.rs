@@ -1,6 +1,11 @@
 use std::{env, fmt, sync::Arc};
 
 use async_trait::async_trait;
+use k256::schnorr::{
+    signature::{Signer, Verifier},
+    Signature, SigningKey,
+};
+use rand_core::OsRng;
 use zkaleido::{
     ExecutionSummary, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, ProofType,
     PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm, ZkVmError, ZkVmExecutor, ZkVmHost,
@@ -12,11 +17,12 @@ use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeP
 
 type ProcessProofFn = dyn Fn(&NativeMachine) -> ZkVmResult<()> + Send + Sync;
 
-/// A native host that holds a reference to a proof-processing function (`process_proof`).
+/// A native host that holds a reference to a proof-processing function and a Schnorr signing key.
 ///
 /// This struct can be cloned cheaply (due to the internal [`Arc`]), and used by various
-/// parts of the application to execute native proofs or validations without
-/// requiring a real cryptographic backend.
+/// parts of the application to execute native proofs with Schnorr signature-based verification.
+/// The signing key is used to sign public values during proof generation and verify them during
+/// verification.
 #[derive(Clone)]
 pub struct NativeHost {
     /// A function wrapped in [`Arc`] and [`Box`] that processes proofs for a
@@ -25,7 +31,49 @@ pub struct NativeHost {
     /// By storing the function in a dynamic pointer (`Box<dyn ...>`) inside an
     /// [`Arc`], multiple host instances or threads can share the same proof
     /// logic without needing to replicate code or data.
-    pub process_proof: Arc<Box<ProcessProofFn>>,
+    process_fn: Arc<Box<ProcessProofFn>>,
+
+    /// The Schnorr signing key used for signing public values during proof generation
+    /// and verifying signatures during proof verification.
+    schnorr_key: SigningKey,
+}
+
+impl NativeHost {
+    /// Creates a new [`NativeHost`] with the given proof processing function.
+    ///
+    /// Generates a fresh Schnorr signing key pair to sign and verify proof outputs,
+    /// providing authenticity guarantees for native execution.
+    ///
+    /// This method accepts infallible functions that return `()`. For functions that
+    /// may fail and return `ZkVmResult<()>`, use [`new_fallible`](Self::new_fallible) instead.
+    pub fn new<F>(process_fn: F) -> Self
+    where
+        F: Fn(&NativeMachine) + Send + Sync + 'static,
+    {
+        let schnorr_key = SigningKey::random(&mut OsRng);
+        Self {
+            process_fn: Arc::new(Box::new(move |zkvm: &NativeMachine| -> ZkVmResult<()> {
+                process_fn(zkvm);
+                Ok(())
+            })),
+            schnorr_key,
+        }
+    }
+
+    /// Creates a new [`NativeHost`] with a fallible proof processing function.
+    ///
+    /// Use this method when your processing function may fail and returns `ZkVmResult<()>`.
+    /// For infallible functions that return `()`, use [`new`](Self::new) instead.
+    pub fn new_fallible<F>(process_fn: F) -> Self
+    where
+        F: Fn(&NativeMachine) -> ZkVmResult<()> + Send + Sync + 'static,
+    {
+        let schnorr_key = SigningKey::random(&mut OsRng);
+        Self {
+            process_fn: Arc::new(Box::new(process_fn)),
+            schnorr_key,
+        }
+    }
 }
 
 impl ZkVmHost for NativeHost {}
@@ -33,7 +81,7 @@ impl ZkVmHost for NativeHost {}
 impl ZkVmExecutor for NativeHost {
     type Input<'a> = NativeMachineInputBuilder;
     fn execute<'a>(&self, native_machine: NativeMachine) -> ZkVmResult<ExecutionSummary> {
-        (self.process_proof)(&native_machine)?;
+        (self.process_fn)(&native_machine)?;
         let output = native_machine.state.borrow().output.clone();
         let public_values = PublicValues::new(output);
         // There is no straightforward equivalent of cycles and gas for native execution
@@ -58,7 +106,9 @@ impl ZkVmProver for NativeHost {
     ) -> ZkVmResult<NativeProofReceipt> {
         let execution_result = self.execute(native_machine)?;
         let public_values = execution_result.into_public_values();
-        let proof = Proof::default();
+        // Sign the public values using the Schnorr signing key
+        let signature = self.schnorr_key.sign(public_values.as_bytes());
+        let proof = Proof::new(signature.to_bytes().to_vec());
         let receipt = ProofReceipt::new(proof, public_values);
 
         let version: &str = env!("CARGO_PKG_VERSION");
@@ -72,14 +122,27 @@ impl ZkVmProver for NativeHost {
 impl ZkVmTypedVerifier for NativeHost {
     type ZkVmProofReceipt = NativeProofReceipt;
 
-    fn verify_inner(&self, _proof: &NativeProofReceipt) -> ZkVmResult<()> {
+    fn verify_inner(&self, proof: &NativeProofReceipt) -> ZkVmResult<()> {
+        let receipt: ProofReceiptWithMetadata = proof
+            .clone()
+            .try_into()
+            .expect("NativeProofReceipt should always convert back to ProofReceiptWithMetadata");
+        let signature = Signature::try_from(receipt.receipt().proof().as_bytes()).unwrap();
+        // Verify the Schnorr signature over the public values
+        self.schnorr_key
+            .verifying_key()
+            .verify(receipt.receipt().public_values().as_bytes(), &signature)
+            .unwrap();
+
         Ok(())
     }
 }
 
 impl ZkVmVkProvider for NativeHost {
     fn vk(&self) -> VerifyingKey {
-        VerifyingKey::default()
+        // Return the Schnorr public key (verifying key) as the verifying key
+        let schnorr_public_key = self.schnorr_key.verifying_key().to_bytes().to_vec();
+        VerifyingKey::new(schnorr_public_key)
     }
 
     fn vk_commitment(&self) -> VerifyingKeyCommitment {

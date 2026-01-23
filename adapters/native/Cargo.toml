@@ -20,4 +20,5 @@ bincode.workspace = true
 borsh.workspace = true
 hex.workspace = true
 k256.workspace = true
+rand_core.workspace = true
 serde.workspace = true
