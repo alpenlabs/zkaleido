@@ -126,13 +126,16 @@ impl ZkVmTypedVerifier for NativeHost {
         let receipt: ProofReceiptWithMetadata = proof
             .clone()
             .try_into()
-            .expect("NativeProofReceipt should always convert back to ProofReceiptWithMetadata");
-        let signature = Signature::try_from(receipt.receipt().proof().as_bytes()).unwrap();
+            .map_err(ZkVmError::InvalidProofReceipt)?;
+        let signature = Signature::try_from(receipt.receipt().proof().as_bytes())
+            .map_err(|e| ZkVmError::ProofVerificationError(format!("invalid signature: {e}")))?;
         // Verify the Schnorr signature over the public values
         self.schnorr_key
             .verifying_key()
             .verify(receipt.receipt().public_values().as_bytes(), &signature)
-            .unwrap();
+            .map_err(|e| {
+                ZkVmError::ProofVerificationError(format!("signature verification failed: {e}"))
+            })?;
 
         Ok(())
     }
