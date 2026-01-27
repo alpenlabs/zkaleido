@@ -25,6 +25,7 @@ mod env;
 mod errors;
 mod host;
 mod input;
+mod logging;
 #[cfg(feature = "perf")]
 mod perf;
 mod program;
@@ -36,6 +37,7 @@ pub use env::*;
 pub use errors::*;
 pub use host::*;
 pub use input::*;
+pub use logging::*;
 #[cfg(feature = "perf")]
 pub use perf::*;
 pub use program::*;
