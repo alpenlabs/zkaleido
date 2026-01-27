@@ -33,33 +33,25 @@ impl ZkVmProgram for ShaChainProgram {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
-    use zkaleido::ZkVmProgram;
-    use zkaleido_native_adapter::{NativeHost, NativeMachine};
+    use zkaleido::{ZkVmProgram, ZkVmTypedVerifier};
+    use zkaleido_native_adapter::NativeHost;
 
     use crate::{process_sha2_chain, program::ShaChainProgram};
 
     fn get_native_host() -> NativeHost {
-        NativeHost {
-            process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
-                process_sha2_chain(zkvm);
-                Ok(())
-            })),
-        }
+        NativeHost::new(process_sha2_chain)
     }
 
     #[test]
     fn test_native() {
         let input = 5;
         let host = get_native_host();
-        let receipt = ShaChainProgram::prove(&input, &host)
-            .unwrap()
-            .receipt()
-            .clone();
+        let receipt = ShaChainProgram::prove(&input, &host).unwrap();
         let public_params =
-            ShaChainProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
+            ShaChainProgram::process_output::<NativeHost>(receipt.receipt().public_values())
+                .unwrap();
 
         assert!(public_params != [0; 32]);
+        assert!(host.verify(&receipt).is_ok());
     }
 }

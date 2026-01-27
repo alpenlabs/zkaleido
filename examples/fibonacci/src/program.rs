@@ -33,28 +33,22 @@ impl ZkVmProgram for FibProgram {
 
 #[cfg(test)]
 pub mod tests {
-    use std::sync::Arc;
-
     use zkaleido::ZkVmProgram;
-    use zkaleido_native_adapter::{NativeHost, NativeMachine};
+    use zkaleido_native_adapter::NativeHost;
 
     use crate::{process_fibonacci, program::FibProgram};
 
     pub fn get_native_host() -> NativeHost {
-        NativeHost {
-            process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
-                process_fibonacci(zkvm);
-                Ok(())
-            })),
-        }
+        NativeHost::new(process_fibonacci)
     }
 
     #[test]
     fn test_native() {
         let input = 5;
         let host = get_native_host();
-        let receipt = FibProgram::prove(&input, &host).unwrap().receipt().clone();
-        let output = FibProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
+        let receipt = FibProgram::prove(&input, &host).unwrap();
+        let output =
+            FibProgram::process_output::<NativeHost>(receipt.receipt().public_values()).unwrap();
         assert_eq!(output, 5);
     }
 }

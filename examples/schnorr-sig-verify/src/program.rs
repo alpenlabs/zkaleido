@@ -39,33 +39,24 @@ impl ZkVmProgram for SchnorrSigProgram {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use zkaleido::ZkVmProgram;
-    use zkaleido_native_adapter::{NativeHost, NativeMachine};
+    use zkaleido_native_adapter::NativeHost;
 
     use super::*;
     use crate::process_schnorr_sig_verify;
 
     fn get_native_host() -> NativeHost {
-        NativeHost {
-            process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
-                process_schnorr_sig_verify(zkvm);
-                Ok(())
-            })),
-        }
+        NativeHost::new(process_schnorr_sig_verify)
     }
 
     #[test]
     fn test_native() {
         let input = SchnorrSigInput::new_random();
         let host = get_native_host();
-        let receipt = SchnorrSigProgram::prove(&input, &host)
-            .unwrap()
-            .receipt()
-            .clone();
+        let receipt = SchnorrSigProgram::prove(&input, &host).unwrap();
         let output =
-            SchnorrSigProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
+            SchnorrSigProgram::process_output::<NativeHost>(receipt.receipt().public_values())
+                .unwrap();
         assert!(output);
     }
 }

@@ -35,10 +35,8 @@ impl ZkVmProgram for Risc0Groth16VerifyProgram {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use zkaleido::ZkVmProgram;
-    use zkaleido_native_adapter::{NativeHost, NativeMachine};
+    use zkaleido_native_adapter::NativeHost;
 
     use crate::{
         input::Risc0Groth16VerifyInput, process_groth16_verify_risc0,
@@ -46,12 +44,7 @@ mod tests {
     };
 
     fn get_native_host() -> NativeHost {
-        NativeHost {
-            process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
-                process_groth16_verify_risc0(zkvm);
-                Ok(())
-            })),
-        }
+        NativeHost::new(process_groth16_verify_risc0)
     }
 
     #[test]

@@ -4,9 +4,11 @@
 //! [`ZkVmHost`](zkaleido::ZkVmHost), and [`ZkVmInputBuilder`](zkaleido::ZkVmInputBuilder) traits,
 //! allowing you to run a ZkVM-like environment without generating actual zero-knowledge proofs.
 //!
-//! In native mode, the proof statements are executed directly in Rust, resulting in
-//! an **empty proof** but still producing the **expected public parameters**. This approach
-//! bypasses the usual process of ELF generation used by the ZkVM, making it useful for:
+//! In native mode, the proof statements are executed directly in Rust, producing the
+//! **expected public values**. When proving, the adapter generates a **Schnorr signature**
+//! over the public values instead of a zero-knowledge proof. This approach
+//! bypasses the usual process of ELF generation and ZKP generation used by the ZkVM, making it
+//! useful for:
 //!
 //! - **Local testing**: Quickly verify logic and expected outputs without the overhead of full
 //!   proof generation.

@@ -35,34 +35,26 @@ impl ZkVmProgram for SP1Groth16VerifyProgram {
 
 #[cfg(test)]
 mod tests {
-    use std::sync::Arc;
-
     use zkaleido::ZkVmProgram;
-    use zkaleido_native_adapter::{NativeHost, NativeMachine};
+    use zkaleido_native_adapter::NativeHost;
 
     use crate::{
         input::SP1Groth16VerifyInput, process_groth16_verify_sp1, program::SP1Groth16VerifyProgram,
     };
 
     fn get_native_host() -> NativeHost {
-        NativeHost {
-            process_proof: Arc::new(Box::new(move |zkvm: &NativeMachine| {
-                process_groth16_verify_sp1(zkvm);
-                Ok(())
-            })),
-        }
+        NativeHost::new(process_groth16_verify_sp1)
     }
 
     #[test]
     fn test_native() {
         let input = SP1Groth16VerifyInput::load();
         let host = get_native_host();
-        let receipt = SP1Groth16VerifyProgram::prove(&input, &host)
-            .unwrap()
-            .receipt()
-            .clone();
-        let is_verified =
-            SP1Groth16VerifyProgram::process_output::<NativeHost>(receipt.public_values()).unwrap();
+        let receipt = SP1Groth16VerifyProgram::prove(&input, &host).unwrap();
+        let is_verified = SP1Groth16VerifyProgram::process_output::<NativeHost>(
+            receipt.receipt().public_values(),
+        )
+        .unwrap();
 
         assert!(is_verified);
     }
