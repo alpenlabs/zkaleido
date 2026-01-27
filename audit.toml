@@ -1,0 +1,14 @@
+[advisories]
+ignore = [
+    # RUSTSEC-2023-0071 (rsa 0.9.8)
+    # Pulled in via risc0 / rzup.
+    # No fixed upgrade available as of now.
+    # Revisit when risc0 updates its crypto dependencies.
+    "RUSTSEC-2023-0071",
+
+    # RUSTSEC-2025-0055 (tracing-subscriber 0.2.25)
+    # Pulled in via ark-relations.
+    # Upgrade blocked until upstream bumps tracing-subscriber >= 0.3.20.
+    # Low risk: affects ANSI escape sequences in logs only.
+    "RUSTSEC-2025-0055",
+]
