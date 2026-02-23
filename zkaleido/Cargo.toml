@@ -20,6 +20,9 @@ serde.workspace = true
 thiserror.workspace = true
 async-trait.workspace = true
 
+[target.'cfg(not(target_os = "zkvm"))'.dependencies]
+tracing.workspace = true
+
 [features]
 default = ["perf"]
 perf = []
