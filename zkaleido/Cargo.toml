@@ -13,7 +13,7 @@ rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
 [dependencies]
-arbitrary.workspace = true
+arbitrary = { workspace = true, optional = true }
 bincode.workspace = true
 borsh.workspace = true
 serde.workspace = true
@@ -22,4 +22,5 @@ async-trait.workspace = true
 
 [features]
 default = ["perf"]
+arbitrary = ["dep:arbitrary"]
 perf = []

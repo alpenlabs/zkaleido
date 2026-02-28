@@ -1,5 +1,6 @@
 use std::{fs::File, path::Path};
 
+#[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
@@ -20,9 +21,9 @@ macro_rules! define_byte_wrapper {
             BorshDeserialize,
             PartialEq,
             Eq,
-            Arbitrary,
             Default,
         )]
+        #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
         pub struct $name(Vec<u8>);
 
         impl $name {
@@ -77,17 +78,9 @@ define_byte_wrapper!(VerifyingKey);
 /// Contains the public output values from the execution along with execution performance metrics
 /// such as cycle count and optional gas usage.
 #[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    BorshSerialize,
-    BorshDeserialize,
-    PartialEq,
-    Eq,
-    Arbitrary,
-    Default,
+    Debug, Clone, Serialize, Deserialize, BorshSerialize, BorshDeserialize, PartialEq, Eq, Default,
 )]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct ExecutionSummary {
     /// The public values produced by the execution.
     public_values: PublicValues,
@@ -130,17 +123,9 @@ impl ExecutionSummary {
 
 /// A receipt containing a `Proof` and associated `PublicValues`.
 #[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    BorshSerialize,
-    BorshDeserialize,
-    PartialEq,
-    Eq,
-    Arbitrary,
-    Default,
+    Debug, Clone, Serialize, Deserialize, BorshSerialize, BorshDeserialize, PartialEq, Eq, Default,
 )]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct ProofReceipt {
     /// The validity proof.
     proof: Proof,
@@ -174,17 +159,9 @@ impl ProofReceipt {
 /// system used. This metadata is essential for proof verification, compatibility checking, and
 /// debugging.
 #[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    BorshSerialize,
-    BorshDeserialize,
-    PartialEq,
-    Eq,
-    Arbitrary,
-    Default,
+    Debug, Clone, Serialize, Deserialize, BorshSerialize, BorshDeserialize, PartialEq, Eq, Default,
 )]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct ProofMetadata {
     /// The zero-knowledge virtual machine that generated this proof.
     zkvm: ZkVm,
@@ -214,17 +191,9 @@ impl ProofMetadata {
 
 /// A receipt containing a `Proof` and associated `PublicValues`.
 #[derive(
-    Debug,
-    Clone,
-    Serialize,
-    Deserialize,
-    BorshSerialize,
-    BorshDeserialize,
-    PartialEq,
-    Eq,
-    Arbitrary,
-    Default,
+    Debug, Clone, Serialize, Deserialize, BorshSerialize, BorshDeserialize, PartialEq, Eq, Default,
 )]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct ProofReceiptWithMetadata {
     /// The validity proof receipt.
     receipt: ProofReceipt,
@@ -300,9 +269,9 @@ impl AggregationInput {
     BorshDeserialize,
     PartialEq,
     Eq,
-    Arbitrary,
     Default,
 )]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct VerifyingKeyCommitment([u32; 8]);
 
 impl VerifyingKeyCommitment {
@@ -319,17 +288,9 @@ impl VerifyingKeyCommitment {
 
 /// Enumeration of proof types supported by the system.
 #[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Eq,
-    Serialize,
-    Deserialize,
-    BorshSerialize,
-    BorshDeserialize,
-    Arbitrary,
+    Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, BorshSerialize, BorshDeserialize,
 )]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub enum ProofType {
     /// Represents a Groth16 proof.
     Groth16,

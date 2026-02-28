@@ -17,7 +17,6 @@
 
 use std::fmt::{Display, Formatter, Result};
 
-use arbitrary::Arbitrary;
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
@@ -58,8 +57,8 @@ pub use verifier::*;
     BorshDeserialize,
     Serialize,
     Deserialize,
-    Arbitrary,
 )]
+#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
 pub enum ZkVm {
     /// SP1 ZKVM
     SP1,
