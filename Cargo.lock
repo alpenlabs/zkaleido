@@ -9327,6 +9327,12 @@ dependencies = [
  "borsh",
  "serde",
  "thiserror 1.0.69",
+]
+
+[[package]]
+name = "zkaleido-logging"
+version = "0.1.0"
+dependencies = [
  "tracing",
 ]
 
