@@ -17,6 +17,9 @@
 
 use std::fmt::{Display, Formatter, Result};
 
+#[cfg(feature = "arbitrary")]
+use arbitrary::Arbitrary;
+#[cfg(feature = "borsh")]
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{Deserialize, Serialize};
 
@@ -45,20 +48,9 @@ pub use verifier::*;
 /// Represents the ZkVm host used for proof generation.
 ///
 /// This enum identifies the ZkVm environment utilized to create a proof.
-#[derive(
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-    Default,
-    Eq,
-    Hash,
-    BorshSerialize,
-    BorshDeserialize,
-    Serialize,
-    Deserialize,
-)]
-#[cfg_attr(feature = "arbitrary", derive(arbitrary::Arbitrary))]
+#[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Hash, Serialize, Deserialize)]
+#[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub enum ZkVm {
     /// SP1 ZKVM
     SP1,

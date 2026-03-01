@@ -70,6 +70,7 @@ pub enum DataFormatError {
     },
 
     /// An error occurred during borsh (de)serialization.
+    #[cfg(feature = "borsh")]
     #[error("{source}")]
     Borsh {
         /// The source borsh error.
@@ -167,6 +168,7 @@ impl From<bincode::Error> for DataFormatError {
 }
 
 /// Implement automatic conversion for `borsh::io::Error` to `DataFormatError`
+#[cfg(feature = "borsh")]
 impl From<borsh::io::Error> for DataFormatError {
     fn from(err: borsh::io::Error) -> Self {
         DataFormatError::Borsh { source: err }
@@ -182,6 +184,7 @@ impl From<bincode::Error> for ZkVmProofError {
 }
 
 /// Implement automatic conversion for `borsh::io::Error` to `InvalidProofReceiptSource`
+#[cfg(feature = "borsh")]
 impl From<borsh::io::Error> for ZkVmProofError {
     fn from(err: borsh::io::Error) -> Self {
         let source = DataFormatError::Borsh { source: err };
@@ -198,6 +201,7 @@ impl From<bincode::Error> for ZkVmInputError {
 }
 
 /// Implement automatic conversion for `borsh::io::Error` to `ZkVmInputError`
+#[cfg(feature = "borsh")]
 impl From<borsh::io::Error> for ZkVmInputError {
     fn from(err: borsh::io::Error) -> Self {
         let source = DataFormatError::Borsh { source: err };

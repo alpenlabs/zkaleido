@@ -1,3 +1,4 @@
+#[cfg(feature = "borsh")]
 use borsh::{BorshDeserialize, BorshSerialize};
 use serde::{de::DeserializeOwned, Serialize};
 
@@ -16,15 +17,6 @@ pub trait ZkVmEnv {
     /// [`write_serde`](crate::ZkVmInputBuilder::write_serde).
     fn read_serde<T: DeserializeOwned>(&self) -> T;
 
-    /// Reads a Borsh-serialized object from the guest code.
-    ///
-    /// The input is expected to be written with
-    /// [`write_borsh`](`crate::ZkVmInputBuilder::write_borsh).
-    fn read_borsh<T: BorshDeserialize>(&self) -> T {
-        let buf = self.read_buf();
-        borsh::from_slice(&buf).expect("borsh deserialization failed")
-    }
-
     /// Commits a pre-serialized buffer to the public values stream.
     ///
     /// This method is intended for cases where the data has already been serialized
@@ -36,13 +28,6 @@ pub trait ZkVmEnv {
     ///
     /// Values that are committed can be proven as public parameters.
     fn commit_serde<T: Serialize>(&self, output: &T);
-
-    /// Commits a Borsh-serializable object to the public values stream.
-    ///
-    /// Values that are committed can be proven as public parameters.
-    fn commit_borsh<T: BorshSerialize>(&self, output: &T) {
-        self.commit_buf(&borsh::to_vec(output).expect("borsh serialization failed"));
-    }
 
     /// Verifies a proof generated with the ZkVM.
     ///
@@ -72,20 +57,47 @@ pub trait ZkVmEnv {
     /// but avoids double serialization and deserialization. The function will panic if the
     /// proof fails to verify.
     fn read_verified_serde<T: DeserializeOwned>(&self, vk_digest: &[u32; 8]) -> T;
+}
+
+/// Extension trait for [`ZkVmEnv`] providing Borsh serialization support.
+///
+/// This trait is automatically implemented for all types that implement [`ZkVmEnv`]
+/// when the `borsh` feature is enabled.
+#[cfg(feature = "borsh")]
+pub trait ZkVmEnvBorsh: ZkVmEnv {
+    /// Reads a Borsh-serialized object from the guest code.
+    ///
+    /// The input is expected to be written with
+    /// [`write_borsh`](`crate::ZkVmInputBuilder::write_borsh).
+    fn read_borsh<T: BorshDeserialize>(&self) -> T {
+        let buf = self.read_buf();
+        borsh::from_slice(&buf).expect("borsh deserialization failed")
+    }
+
+    /// Commits a Borsh-serializable object to the public values stream.
+    ///
+    /// Values that are committed can be proven as public parameters.
+    fn commit_borsh<T: BorshSerialize>(&self, output: &T) {
+        self.commit_buf(&borsh::to_vec(output).expect("borsh serialization failed"));
+    }
 
     /// Reads and verifies a committed output from another guest function, deserializing it using
     /// Borsh.
     ///
     /// This function is similar to [`ZkVmEnv::read_verified_serde`], but is intended for guest
-    /// commitments committed via [`ZkVmEnv::commit_borsh`]. The output is expected to be
+    /// commitments committed via [`ZkVmEnvBorsh::commit_borsh`]. The output is expected to be
     /// Borsh-serializable. It then verifies the proof using the internal verification key
     /// context.
     ///
-    /// This is equivalent to calling [`ZkVmEnv::read_borsh`] and [`ZkVmEnv::verify_native_proof`],
-    /// but avoids double serialization and deserialization. The function will panic if the
-    /// proof fails to verify.
+    /// This is equivalent to calling [`ZkVmEnvBorsh::read_borsh`] and
+    /// [`ZkVmEnv::verify_native_proof`], but avoids double serialization and deserialization.
+    /// The function will panic if the proof fails to verify.
     fn read_verified_borsh<T: BorshDeserialize>(&self, vk_digest: &[u32; 8]) -> T {
         let verified_public_values_buf = self.read_verified_buf(vk_digest);
         borsh::from_slice(&verified_public_values_buf).expect("failed borsh deserialization")
     }
 }
+
+/// Blanket implementation of [`ZkVmEnvBorsh`] for all types that implement [`ZkVmEnv`].
+#[cfg(feature = "borsh")]
+impl<T: ZkVmEnv> ZkVmEnvBorsh for T {}
