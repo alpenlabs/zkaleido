@@ -19,6 +19,9 @@ serde.workspace = true
 thiserror.workspace = true
 async-trait.workspace = true
 
+[dev-dependencies]
+proptest.workspace = true
+
 [features]
 default = ["borsh", "perf"]
 arbitrary = ["dep:arbitrary"]

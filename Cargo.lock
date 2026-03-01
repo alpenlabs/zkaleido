@@ -9324,6 +9324,7 @@ dependencies = [
  "arbitrary",
  "async-trait",
  "borsh",
+ "proptest",
  "serde",
  "thiserror 1.0.69",
 ]

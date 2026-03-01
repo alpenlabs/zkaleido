@@ -348,15 +348,34 @@ pub enum ProofType {
 
 #[cfg(test)]
 mod tests {
-    use arbitrary::{Arbitrary, Unstructured};
+    use proptest::prelude::*;
 
     use super::*;
 
-    #[test]
-    fn encode_decode_roundtrip() {
-        let mut u = Unstructured::new(b"seed data for arbitrary!!");
-        let original = ProofReceiptWithMetadata::arbitrary(&mut u).unwrap();
-        let decoded = ProofReceiptWithMetadata::decode(&original.encode()).unwrap();
-        assert_eq!(original, decoded);
+    fn arb_zkvm() -> impl Strategy<Value = ZkVm> {
+        prop_oneof![Just(ZkVm::Native), Just(ZkVm::SP1), Just(ZkVm::Risc0),]
+    }
+
+    fn arb_proof_receipt_with_metadata() -> impl Strategy<Value = ProofReceiptWithMetadata> {
+        (
+            any::<Vec<u8>>(),
+            any::<Vec<u8>>(),
+            arb_zkvm(),
+            "[a-zA-Z0-9.]{1,20}",
+        )
+            .prop_map(|(proof, pv, zkvm, version)| {
+                ProofReceiptWithMetadata::new(
+                    ProofReceipt::new(Proof::new(proof), PublicValues::new(pv)),
+                    ProofMetadata::new(zkvm, version),
+                )
+            })
+    }
+
+    proptest! {
+        #[test]
+        fn encode_decode_roundtrip(original in arb_proof_receipt_with_metadata()) {
+            let decoded = ProofReceiptWithMetadata::decode(&original.encode()).unwrap();
+            prop_assert_eq!(original, decoded);
+        }
     }
 }
