@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-name = "zkaleido"
+name = "zkaleido-logging"
 version = "0.1.0"
 
 [lints]
@@ -12,14 +12,5 @@ rust.unused_crate_dependencies = "deny"
 rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
-[dependencies]
-arbitrary.workspace = true
-bincode.workspace = true
-borsh.workspace = true
-serde.workspace = true
-thiserror.workspace = true
-async-trait.workspace = true
-
-[features]
-default = ["perf"]
-perf = []
+[target.'cfg(not(target_os = "zkvm"))'.dependencies]
+tracing.workspace = true
