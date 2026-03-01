@@ -14,15 +14,15 @@ rustdoc.all = "warn"
 
 [dependencies]
 serde.workspace = true
-risc0-groth16 = "3.0.1"
-risc0-binfmt = "3.0.1"
-risc0-zkp = "3.0.1"
-bytemuck = { version = "1.23", features = ["derive"] }
+risc0-groth16 = "3.0.4"
+risc0-binfmt = "3.0.4"
+risc0-zkp = "3.0.4"
+bytemuck = { version = "1.25", features = ["derive"] }
 sha2.workspace = true
 thiserror.workspace = true
 zkaleido.workspace = true
 
 [dev-dependencies]
 hex.workspace = true
-risc0-zkvm = "3.0.1"
-risc0-circuit-recursion = "4.0.1"
+risc0-zkvm = "3.0.5"
+risc0-circuit-recursion = "4.0.4"
