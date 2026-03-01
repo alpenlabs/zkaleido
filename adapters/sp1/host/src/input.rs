@@ -2,8 +2,8 @@ use borsh::BorshSerialize;
 use serde::Serialize;
 use sp1_sdk::{SP1Proof, SP1Stdin, SP1VerifyingKey};
 use zkaleido::{
-    AggregationInput, ProofType, ZkVmInputBuilder, ZkVmInputError, ZkVmInputResult, ZkVmProofError,
-    ZkVmVerifyingKeyError,
+    AggregationInput, DataFormatError, ProofType, ZkVmInputBuilder, ZkVmInputError,
+    ZkVmInputResult, ZkVmProofError, ZkVmVerifyingKeyError,
 };
 
 use crate::proof::SP1ProofReceipt;
@@ -46,7 +46,7 @@ impl ZkVmInputBuilder<'_> for SP1ProofInputBuilder {
             .try_into()
             .map_err(ZkVmInputError::ProofReceipt)?;
         let vkey: SP1VerifyingKey = bincode::deserialize(item.vk().as_bytes())
-            .map_err(|e| ZkVmVerifyingKeyError::DataFormat(e.into()))
+            .map_err(|e| ZkVmVerifyingKeyError::DataFormat(DataFormatError::Serde(e.to_string())))
             .map_err(ZkVmInputError::VerifyingKey)?;
 
         // Write the public values of the program that'll be proven inside zkVM.

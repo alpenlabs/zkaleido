@@ -1,8 +1,8 @@
 use serde::{de::DeserializeOwned, Serialize};
 use sp1_sdk::{HashableKey, ProverClient};
 use zkaleido::{
-    PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError, ZkVmOutputExtractor, ZkVmResult,
-    ZkVmTypedVerifier, ZkVmVkProvider,
+    DataFormatError, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError,
+    ZkVmOutputExtractor, ZkVmResult, ZkVmTypedVerifier, ZkVmVkProvider,
 };
 
 use crate::{proof::SP1ProofReceipt, SP1Host};
@@ -34,8 +34,11 @@ impl ZkVmOutputExtractor for SP1Host {
     fn extract_serde_public_output<T: Serialize + DeserializeOwned>(
         public_values: &PublicValues,
     ) -> ZkVmResult<T> {
-        let public_params: T = bincode::deserialize(public_values.as_bytes())
-            .map_err(|e| ZkVmError::OutputExtractionError { source: e.into() })?;
+        let public_params: T = bincode::deserialize(public_values.as_bytes()).map_err(|e| {
+            ZkVmError::OutputExtractionError {
+                source: DataFormatError::Serde(e.to_string()),
+            }
+        })?;
         Ok(public_params)
     }
 }

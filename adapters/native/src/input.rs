@@ -1,4 +1,7 @@
-use zkaleido::{AggregationInput, ProofReceiptWithMetadata, ZkVmInputBuilder, ZkVmInputResult};
+use zkaleido::{
+    AggregationInput, DataFormatError, ProofReceiptWithMetadata, ZkVmInputBuilder, ZkVmInputError,
+    ZkVmInputResult,
+};
 
 use crate::env::NativeMachine;
 
@@ -24,7 +27,8 @@ impl ZkVmInputBuilder<'_> for NativeMachineInputBuilder {
     }
 
     fn write_serde<T: serde::Serialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
-        let slice = bincode::serialize(&item)?;
+        let slice = bincode::serialize(&item)
+            .map_err(|e| ZkVmInputError::DataFormat(DataFormatError::Serde(e.to_string())))?;
         self.write_buf(&slice)
     }
 

@@ -1,4 +1,8 @@
-use std::{fs::File, path::Path};
+use std::{
+    fs::File,
+    io::{Read as _, Write as _},
+    path::Path,
+};
 
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
@@ -205,16 +209,81 @@ impl ProofReceiptWithMetadata {
         &self.metadata
     }
 
-    /// Saves the proof to a path.
-    pub fn save(&self, path: impl AsRef<Path>) -> ZkVmResult<()> {
-        bincode::serialize_into(File::create(path).expect("failed to open file"), self)
-            .map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))
+    /// Encodes the receipt into a binary format.
+    ///
+    /// Layout: `[proof_len: u64 LE][proof][pv_len: u64 LE][public_values][zkvm: u8][ver_len: u64
+    /// LE][version]`
+    pub fn encode(&self) -> Vec<u8> {
+        let proof = self.receipt.proof.as_bytes();
+        let pv = self.receipt.public_values.as_bytes();
+        let zkvm_tag = self.metadata.zkvm as u8;
+        let version = self.metadata.version().as_bytes();
+
+        let capacity = 8 + proof.len() + 8 + pv.len() + 1 + 8 + version.len();
+        let mut buf = Vec::with_capacity(capacity);
+
+        buf.extend_from_slice(&(proof.len() as u64).to_le_bytes());
+        buf.extend_from_slice(proof);
+        buf.extend_from_slice(&(pv.len() as u64).to_le_bytes());
+        buf.extend_from_slice(pv);
+        buf.push(zkvm_tag);
+        buf.extend_from_slice(&(version.len() as u64).to_le_bytes());
+        buf.extend_from_slice(version);
+
+        buf
+    }
+
+    /// Decodes a receipt from the binary format produced by [`encode`](Self::encode).
+    pub fn decode(mut data: &[u8]) -> ZkVmResult<Self> {
+        let err = || ZkVmError::Other("unexpected end of data".into());
+
+        let read_bytes = |d: &mut &[u8]| -> ZkVmResult<Vec<u8>> {
+            let (len_bytes, rest) = d.split_at_checked(8).ok_or_else(err)?;
+            let len = u64::from_le_bytes(len_bytes.try_into().unwrap()) as usize;
+            let (payload, rest) = rest.split_at_checked(len).ok_or_else(err)?;
+            *d = rest;
+            Ok(payload.to_vec())
+        };
+
+        let proof = read_bytes(&mut data)?;
+        let public_values = read_bytes(&mut data)?;
+        let (&zkvm_tag, rest) = data.split_first().ok_or_else(err)?;
+        data = rest;
+        let version_bytes = read_bytes(&mut data)?;
+
+        Ok(Self {
+            receipt: ProofReceipt {
+                proof: Proof::new(proof),
+                public_values: PublicValues::new(public_values),
+            },
+            metadata: ProofMetadata {
+                zkvm: ZkVm::try_from(zkvm_tag)?,
+                version: String::from_utf8(version_bytes)
+                    .map_err(|e| ZkVmError::Other(format!("invalid utf-8 in version: {e}")))?,
+            },
+        })
+    }
+
+    /// Saves the proof to a file named `{program_name}_{zkvm}_{version}.proof`.
+    pub fn save(&self, program_name: impl AsRef<str>) -> ZkVmResult<()> {
+        let filename = format!(
+            "{}_{}_{}.proof",
+            program_name.as_ref(),
+            self.metadata.zkvm(),
+            self.metadata.version()
+        );
+        let mut file = File::create(filename).expect("failed to create file");
+        file.write_all(&self.encode())
+            .map_err(|e| ZkVmError::Other(format!("failed to write proof: {e}")))
     }
 
     /// Loads a proof from a path.
     pub fn load(path: impl AsRef<Path>) -> ZkVmResult<Self> {
-        bincode::deserialize_from(File::open(path).expect("failed to open file"))
-            .map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))
+        let mut file = File::open(path).expect("failed to open file");
+        let mut buf = Vec::new();
+        file.read_to_end(&mut buf)
+            .map_err(|e| ZkVmError::Other(format!("failed to read proof: {e}")))?;
+        Self::decode(&buf)
     }
 }
 
@@ -275,4 +344,19 @@ pub enum ProofType {
     Core,
     /// Represents a compressed proof.
     Compressed,
+}
+
+#[cfg(test)]
+mod tests {
+    use arbitrary::{Arbitrary, Unstructured};
+
+    use super::*;
+
+    #[test]
+    fn encode_decode_roundtrip() {
+        let mut u = Unstructured::new(b"seed data for arbitrary!!");
+        let original = ProofReceiptWithMetadata::arbitrary(&mut u).unwrap();
+        let decoded = ProofReceiptWithMetadata::decode(&original.encode()).unwrap();
+        assert_eq!(original, decoded);
+    }
 }

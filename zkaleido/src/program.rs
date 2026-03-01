@@ -108,8 +108,7 @@ pub trait ZkVmProgram {
             .map(|v| v == "1" || v.to_lowercase() == "true")
             .unwrap_or(false)
         {
-            let receipt_name = format!("{}_{:?}.proof", Self::name(), host);
-            receipt_with_metadata.save(receipt_name).unwrap();
+            receipt_with_metadata.save(Self::name()).unwrap();
         }
 
         Ok(receipt_with_metadata)

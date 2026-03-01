@@ -50,15 +50,17 @@ pub use verifier::*;
 /// This enum identifies the ZkVm environment utilized to create a proof.
 #[derive(Debug, Clone, Copy, PartialEq, Default, Eq, Hash, Serialize, Deserialize)]
 #[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
+#[cfg_attr(feature = "borsh", borsh(use_discriminant = true))]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
+#[repr(u8)]
 pub enum ZkVm {
-    /// SP1 ZKVM
-    SP1,
-    /// Risc0 ZKVM
-    Risc0,
     /// Native ZKVM
     #[default]
-    Native,
+    Native = 0,
+    /// SP1 ZKVM
+    SP1 = 1,
+    /// Risc0 ZKVM
+    Risc0 = 2,
 }
 
 impl Display for ZkVm {
@@ -69,5 +71,18 @@ impl Display for ZkVm {
             ZkVm::Native => "Native",
         };
         write!(f, "{}", s)
+    }
+}
+
+impl TryFrom<u8> for ZkVm {
+    type Error = ZkVmError;
+
+    fn try_from(tag: u8) -> ZkVmResult<Self> {
+        match tag {
+            0 => Ok(ZkVm::Native),
+            1 => Ok(ZkVm::SP1),
+            2 => Ok(ZkVm::Risc0),
+            _ => Err(ZkVmError::Other(format!("unknown zkvm tag: {tag}"))),
+        }
     }
 }

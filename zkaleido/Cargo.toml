@@ -14,7 +14,6 @@ rustdoc.all = "warn"
 
 [dependencies]
 arbitrary = { workspace = true, optional = true }
-bincode.workspace = true
 borsh = { workspace = true, optional = true }
 serde.workspace = true
 thiserror.workspace = true
