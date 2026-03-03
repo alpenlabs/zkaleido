@@ -18,7 +18,7 @@ impl ZkVmProgram for ShaChainProgram {
     where
         B: zkaleido::ZkVmInputBuilder<'a>,
     {
-        B::new().write_serde(input)?.build()
+        B::new().write_borsh(input)?.build()
     }
 
     fn process_output<H>(
@@ -27,7 +27,7 @@ impl ZkVmProgram for ShaChainProgram {
     where
         H: zkaleido::ZkVmHost,
     {
-        H::extract_serde_public_output(public_values)
+        H::extract_borsh_public_output(public_values)
     }
 }
 

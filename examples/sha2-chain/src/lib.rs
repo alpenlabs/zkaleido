@@ -1,14 +1,14 @@
 use sha2::{Digest, Sha256};
-use zkaleido::ZkVmEnvSerde;
+use zkaleido::ZkVmEnvBorsh;
 
 const MESSAGE_TO_HASH: &str = "Hello, world!";
 pub mod program;
 
-pub fn process_sha2_chain(zkvm: &impl ZkVmEnvSerde) {
-    let rounds: u32 = zkvm.read_serde();
+pub fn process_sha2_chain(zkvm: &impl ZkVmEnvBorsh) {
+    let rounds: u32 = zkvm.read_borsh();
     let final_hash = hash_n_rounds(MESSAGE_TO_HASH, rounds);
 
-    zkvm.commit_serde(&final_hash);
+    zkvm.commit_borsh(&final_hash);
 }
 
 fn hash_n_rounds(message: &str, rounds: u32) -> [u8; 32] {
