@@ -8,6 +8,7 @@ use std::{
 use arbitrary::Arbitrary;
 #[cfg(feature = "borsh")]
 use borsh::{BorshDeserialize, BorshSerialize};
+#[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
 use crate::{ZkVm, ZkVmError, ZkVmResult};
@@ -17,7 +18,8 @@ macro_rules! define_byte_wrapper {
     ($name:ident) => {
         /// A type wrapping a [`Vec<u8>`] with common trait implementations,
         /// allowing easy serialization, comparison, and other utility operations.
-        #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+        #[derive(Debug, Clone, PartialEq, Eq, Default)]
+        #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
         #[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
         #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
         pub struct $name(Vec<u8>);
@@ -73,7 +75,8 @@ define_byte_wrapper!(VerifyingKey);
 ///
 /// Contains the public output values from the execution along with execution performance metrics
 /// such as cycle count and optional gas usage.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct ExecutionSummary {
@@ -117,7 +120,8 @@ impl ExecutionSummary {
 }
 
 /// A receipt containing a `Proof` and associated `PublicValues`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct ProofReceipt {
@@ -152,7 +156,8 @@ impl ProofReceipt {
 /// Contains information about the ZKVM that generated the proof and the version of the proving
 /// system used. This metadata is essential for proof verification, compatibility checking, and
 /// debugging.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct ProofMetadata {
@@ -183,7 +188,8 @@ impl ProofMetadata {
 }
 
 /// A receipt containing a `Proof` and associated `PublicValues`.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct ProofReceiptWithMetadata {
@@ -316,7 +322,8 @@ impl AggregationInput {
 }
 
 /// Commitment of the [`VerifyingKey`]
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub struct VerifyingKeyCommitment([u32; 8]);
@@ -334,7 +341,8 @@ impl VerifyingKeyCommitment {
 }
 
 /// Enumeration of proof types supported by the system.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub enum ProofType {

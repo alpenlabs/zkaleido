@@ -1,5 +1,6 @@
 #[cfg(feature = "borsh")]
 use borsh::{BorshDeserialize, BorshSerialize};
+#[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Serialize};
 
 /// A trait representing a Zero-Knowledge Virtual Machine (ZkVM) interface.
@@ -15,6 +16,7 @@ pub trait ZkVmEnv {
     ///
     /// The input is expected to be written with
     /// [`write_serde`](crate::ZkVmInputBuilder::write_serde).
+    #[cfg(feature = "serde")]
     fn read_serde<T: DeserializeOwned>(&self) -> T;
 
     /// Commits a pre-serialized buffer to the public values stream.
@@ -27,6 +29,7 @@ pub trait ZkVmEnv {
     /// Commits a Serde-serializable object to the public values stream.
     ///
     /// Values that are committed can be proven as public parameters.
+    #[cfg(feature = "serde")]
     fn commit_serde<T: Serialize>(&self, output: &T);
 
     /// Verifies a proof generated with the ZkVM.
@@ -56,6 +59,7 @@ pub trait ZkVmEnv {
     /// This is equivalent to calling [`ZkVmEnv::read_serde`] and [`ZkVmEnv::verify_native_proof`],
     /// but avoids double serialization and deserialization. The function will panic if the
     /// proof fails to verify.
+    #[cfg(feature = "serde")]
     fn read_verified_serde<T: DeserializeOwned>(&self, vk_digest: &[u32; 8]) -> T;
 }
 

@@ -1,9 +1,11 @@
 use async_trait::async_trait;
 
 use crate::{
-    host::ZkVmHost, input::ZkVmInputBuilder, PerformanceReport, ProofReceiptWithMetadata,
-    ProofType, PublicValues, ZkVmHostPerf, ZkVmInputResult, ZkVmRemoteHost, ZkVmResult,
+    host::ZkVmHost, input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, PublicValues,
+    ZkVmInputResult, ZkVmRemoteHost, ZkVmResult,
 };
+#[cfg(feature = "perf")]
+use crate::{PerformanceReport, ZkVmHostPerf};
 
 /// A trait representing a "program" whose zero-knowledge proofs can be produced using a ZkVM.
 ///
@@ -119,6 +121,7 @@ pub trait ZkVmProgram {
 ///
 /// This trait introduces an additional method, `perf_report`, which accepts an input and returns a
 /// [`PerformanceReport`].
+#[cfg(feature = "perf")]
 pub trait ZkVmProgramPerf: ZkVmProgram {
     /// Generates a performance report for the proof process using a specified host.
     fn perf_report<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<PerformanceReport>
@@ -142,6 +145,7 @@ pub trait ZkVmProgramPerf: ZkVmProgram {
 /// This allows any program that provides the necessary `ZkVmProgram` implementation to
 /// automatically satisfy the `ZkVmProgramPerf` trait without requiring explicit implementations.
 /// The default `perf_report` method provided by the trait is sufficient for most use cases.
+#[cfg(feature = "perf")]
 impl<T: ZkVmProgram> ZkVmProgramPerf for T {}
 
 /// A trait representing a zkVM program that supports remote proving operations.

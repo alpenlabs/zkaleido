@@ -15,7 +15,7 @@ rustdoc.all = "warn"
 [dependencies]
 arbitrary = { workspace = true, optional = true }
 borsh = { workspace = true, optional = true }
-serde.workspace = true
+serde = { workspace = true, optional = true }
 thiserror.workspace = true
 async-trait.workspace = true
 
@@ -23,7 +23,8 @@ async-trait.workspace = true
 proptest.workspace = true
 
 [features]
-default = ["borsh", "perf"]
+default = ["borsh", "serde", "perf"]
 arbitrary = ["dep:arbitrary"]
 borsh = ["dep:borsh"]
+serde = ["dep:serde"]
 perf = []

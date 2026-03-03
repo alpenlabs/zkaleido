@@ -1,7 +1,6 @@
-use crate::{
-    input::ZkVmInputBuilder, PerformanceReport, ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver,
-    ZkVmTypedVerifier, ZkVmVkProvider,
-};
+use crate::{ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver, ZkVmTypedVerifier, ZkVmVkProvider};
+#[cfg(feature = "perf")]
+use crate::{input::ZkVmInputBuilder, PerformanceReport};
 
 /// A trait implemented by the host of a zkVM program.
 ///
@@ -18,6 +17,7 @@ pub trait ZkVmHost: ZkVmProver + ZkVmTypedVerifier + ZkVmOutputExtractor + ZkVmV
 ///
 /// This trait introduces an additional method, `perf_report`, which accepts an input
 /// constructed by the associated [`ZkVmInputBuilder`] and returns a [`PerformanceReport`].
+#[cfg(feature = "perf")]
 pub trait ZkVmHostPerf: ZkVmHost {
     /// Produces a performance report based on the provided input.
     ///

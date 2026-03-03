@@ -18,6 +18,7 @@ pub trait ZkVmInputBuilder<'a> {
     fn new() -> Self;
 
     /// Serializes the given item using Serde and appends it to the list of inputs.
+    #[cfg(feature = "serde")]
     fn write_serde<T: serde::Serialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
 
     /// Serializes the given item using the Borsh serialization format and appends
