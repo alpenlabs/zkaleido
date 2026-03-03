@@ -1,6 +1,6 @@
-use crate::{ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver, ZkVmTypedVerifier, ZkVmVkProvider};
 #[cfg(feature = "perf")]
 use crate::{input::ZkVmInputBuilder, PerformanceReport};
+use crate::{ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver, ZkVmTypedVerifier, ZkVmVkProvider};
 
 /// A trait implemented by the host of a zkVM program.
 ///

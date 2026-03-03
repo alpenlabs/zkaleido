@@ -27,12 +27,11 @@ impl ZkVmProgram for FibProgram {
     where
         H: zkaleido::ZkVmHost,
     {
-        let bytes: [u8; 4] = public_values
-            .as_bytes()
-            .try_into()
-            .map_err(|_| zkaleido::ZkVmError::OutputExtractionError {
+        let bytes: [u8; 4] = public_values.as_bytes().try_into().map_err(|_| {
+            zkaleido::ZkVmError::OutputExtractionError {
                 source: DataFormatError::Other("invalid output length".to_string()),
-            })?;
+            }
+        })?;
         Ok(u32::from_le_bytes(bytes))
     }
 }

@@ -5,10 +5,10 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-#[cfg(feature = "borsh")]
-use crate::ZkVmError;
 #[cfg(any(feature = "serde", feature = "borsh"))]
 use crate::PublicValues;
+#[cfg(feature = "borsh")]
+use crate::ZkVmError;
 use crate::{
     ProofReceipt, ProofReceiptWithMetadata, VerifyingKey, VerifyingKeyCommitment, ZkVmProofError,
     ZkVmResult,
