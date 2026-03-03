@@ -1,8 +1,8 @@
-use zkaleido::ZkVmEnv;
+use zkaleido::ZkVmEnvSerde;
 
 pub mod program;
 
-pub fn process_fibonacci_composition(zkvm: &impl ZkVmEnv) {
+pub fn process_fibonacci_composition(zkvm: &impl ZkVmEnvSerde) {
     // Read the verification key of sha2-chain program
     let fib_vk: [u32; 8] = zkvm.read_serde();
     let valid_fib_no: u32 = zkvm.read_verified_serde(&fib_vk);

@@ -1,6 +1,6 @@
 use risc0_zkvm::{guest::env, serde::from_slice};
 use serde::{de::DeserializeOwned, Serialize};
-use zkaleido::ZkVmEnv;
+use zkaleido::{ZkVmEnv, ZkVmEnvSerde};
 
 /// An environment adapter for the RISC0 system implementing [`ZkVmEnv`].
 ///
@@ -19,22 +19,25 @@ impl ZkVmEnv for Risc0ZkVmEnv {
         slice
     }
 
-    fn read_serde<T: DeserializeOwned>(&self) -> T {
-        env::read()
-    }
-
     fn commit_buf(&self, output_raw: &[u8]) {
         env::commit_slice(output_raw);
-    }
-
-    fn commit_serde<T: Serialize>(&self, output: &T) {
-        env::commit(output);
     }
 
     // FIXME: This is not consistent with SP1 where the vk_digest is passed
     fn verify_native_proof(&self, _vk_digest: &[u32; 8], public_values: &[u8]) {
         let vk: [u32; 8] = env::read();
         env::verify(vk, public_values).expect("verification failed")
+    }
+}
+
+/// Overrides the default bincode-based implementations with RISC0-specific I/O.
+impl ZkVmEnvSerde for Risc0ZkVmEnv {
+    fn read_serde<T: DeserializeOwned>(&self) -> T {
+        env::read()
+    }
+
+    fn commit_serde<T: Serialize>(&self, output: &T) {
+        env::commit(output);
     }
 
     fn read_verified_serde<T: DeserializeOwned>(&self, vk_digest: &[u32; 8]) -> T {

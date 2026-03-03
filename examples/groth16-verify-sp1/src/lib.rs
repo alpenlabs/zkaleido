@@ -1,11 +1,11 @@
-use zkaleido::ZkVmEnv;
+use zkaleido::ZkVmEnvSerde;
 
 use crate::input::SP1Groth16VerifyInput;
 
 pub mod input;
 pub mod program;
 
-pub fn process_groth16_verify_sp1(zkvm: &impl ZkVmEnv) {
+pub fn process_groth16_verify_sp1(zkvm: &impl ZkVmEnvSerde) {
     let SP1Groth16VerifyInput {
         sp1_receipt,
         sp1_verifier,

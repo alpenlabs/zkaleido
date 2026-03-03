@@ -1,8 +1,8 @@
-use zkaleido::ZkVmEnv;
+use zkaleido::ZkVmEnvSerde;
 
 pub mod program;
 
-pub fn process_fibonacci(zkvm: &impl ZkVmEnv) {
+pub fn process_fibonacci(zkvm: &impl ZkVmEnvSerde) {
     // Read an input to the program.
     let n: u32 = zkvm.read_serde();
 

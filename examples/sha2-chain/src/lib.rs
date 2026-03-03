@@ -1,10 +1,10 @@
 use sha2::{Digest, Sha256};
-use zkaleido::ZkVmEnv;
+use zkaleido::ZkVmEnvSerde;
 
 const MESSAGE_TO_HASH: &str = "Hello, world!";
 pub mod program;
 
-pub fn process_sha2_chain(zkvm: &impl ZkVmEnv) {
+pub fn process_sha2_chain(zkvm: &impl ZkVmEnvSerde) {
     let rounds: u32 = zkvm.read_serde();
     let final_hash = hash_n_rounds(MESSAGE_TO_HASH, rounds);
 

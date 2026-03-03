@@ -14,6 +14,7 @@ rustdoc.all = "warn"
 
 [dependencies]
 arbitrary = { workspace = true, optional = true }
+bincode = { workspace = true, optional = true }
 borsh = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 thiserror.workspace = true
@@ -26,5 +27,5 @@ proptest.workspace = true
 default = ["borsh", "serde", "perf"]
 arbitrary = ["dep:arbitrary"]
 borsh = ["dep:borsh"]
-serde = ["dep:serde"]
+serde = ["dep:serde", "dep:bincode"]
 perf = []
