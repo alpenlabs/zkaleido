@@ -61,15 +61,8 @@ pub enum ZkVmError {
 /// Errors related to data formatting and serialization/deserialization.
 #[derive(Debug, Error)]
 pub enum DataFormatError {
-    /// An error occurred during bincode (de)serialization.
-    #[error("{source}")]
-    Bincode {
-        /// The source bincode error.
-        #[source]
-        source: bincode::Error,
-    },
-
     /// An error occurred during borsh (de)serialization.
+    #[cfg(feature = "borsh")]
     #[error("{source}")]
     Borsh {
         /// The source borsh error.
@@ -159,29 +152,16 @@ pub enum InvalidVerifyingKeySource {
     DataFormat(#[from] DataFormatError),
 }
 
-/// Implement automatic conversion for `bincode::Error` to `DataFormatError`
-impl From<bincode::Error> for DataFormatError {
-    fn from(err: bincode::Error) -> Self {
-        DataFormatError::Bincode { source: err }
-    }
-}
-
 /// Implement automatic conversion for `borsh::io::Error` to `DataFormatError`
+#[cfg(feature = "borsh")]
 impl From<borsh::io::Error> for DataFormatError {
     fn from(err: borsh::io::Error) -> Self {
         DataFormatError::Borsh { source: err }
     }
 }
 
-/// Implement automatic conversion for `bincode::Error` to `InvalidProofReceipt`
-impl From<bincode::Error> for ZkVmProofError {
-    fn from(err: bincode::Error) -> Self {
-        let source = DataFormatError::Bincode { source: err };
-        ZkVmProofError::DataFormat(source)
-    }
-}
-
 /// Implement automatic conversion for `borsh::io::Error` to `InvalidProofReceiptSource`
+#[cfg(feature = "borsh")]
 impl From<borsh::io::Error> for ZkVmProofError {
     fn from(err: borsh::io::Error) -> Self {
         let source = DataFormatError::Borsh { source: err };
@@ -189,15 +169,8 @@ impl From<borsh::io::Error> for ZkVmProofError {
     }
 }
 
-/// Implement automatic conversion for `bincode::Error` to `ZkVmInputError`
-impl From<bincode::Error> for ZkVmInputError {
-    fn from(err: bincode::Error) -> Self {
-        let source = DataFormatError::Bincode { source: err };
-        ZkVmInputError::DataFormat(source)
-    }
-}
-
 /// Implement automatic conversion for `borsh::io::Error` to `ZkVmInputError`
+#[cfg(feature = "borsh")]
 impl From<borsh::io::Error> for ZkVmInputError {
     fn from(err: borsh::io::Error) -> Self {
         let source = DataFormatError::Borsh { source: err };

@@ -5,7 +5,7 @@ use sha2::{Digest, Sha256};
 use sp1_zkvm::io;
 #[cfg(feature = "zkvm-verify")]
 use sp1_zkvm::lib::verify::verify_sp1_proof;
-use zkaleido::ZkVmEnv;
+use zkaleido::{ZkVmEnv, ZkVmEnvSerde};
 
 /// An environment adapter for the SP1 proof system implementing [`ZkVmEnv`].
 ///
@@ -17,16 +17,8 @@ use zkaleido::ZkVmEnv;
 pub struct Sp1ZkVmEnv;
 
 impl ZkVmEnv for Sp1ZkVmEnv {
-    fn read_serde<T: DeserializeOwned>(&self) -> T {
-        io::read()
-    }
-
     fn read_buf(&self) -> Vec<u8> {
         io::read_vec()
-    }
-
-    fn commit_serde<T: Serialize>(&self, output: &T) {
-        io::commit(&output);
     }
 
     fn commit_buf(&self, output_raw: &[u8]) {
@@ -46,6 +38,17 @@ impl ZkVmEnv for Sp1ZkVmEnv {
                 );
             }
         }
+    }
+}
+
+/// Overrides the default bincode-based implementations with SP1-specific I/O.
+impl ZkVmEnvSerde for Sp1ZkVmEnv {
+    fn read_serde<T: DeserializeOwned>(&self) -> T {
+        io::read()
+    }
+
+    fn commit_serde<T: Serialize>(&self, output: &T) {
+        io::commit(&output);
     }
 
     fn read_verified_serde<T: DeserializeOwned>(&self, vk_digest: &[u32; 8]) -> T {

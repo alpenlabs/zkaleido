@@ -1,7 +1,7 @@
 use sp1_sdk::{SP1Proof, SP1ProofWithPublicValues, SP1PublicValues};
 use zkaleido::{
-    Mismatched, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, PublicValues, ZkVm,
-    ZkVmProofError,
+    DataFormatError, Mismatched, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata,
+    PublicValues, ZkVm, ZkVmProofError,
 };
 
 #[derive(Debug, Clone)]
@@ -54,7 +54,7 @@ impl TryFrom<&ProofReceiptWithMetadata> for SP1ProofReceipt {
 
         let public_values = SP1PublicValues::from(value.receipt().public_values().as_bytes());
         let proof: SP1Proof = bincode::deserialize(value.receipt().proof().as_bytes())
-            .map_err(|e| ZkVmProofError::DataFormat(e.into()))?;
+            .map_err(|e| ZkVmProofError::DataFormat(DataFormatError::Serde(e.to_string())))?;
         let proof_receipt = SP1ProofWithPublicValues {
             proof,
             public_values,
@@ -75,7 +75,7 @@ impl TryFrom<SP1ProofReceipt> for ProofReceiptWithMetadata {
         let proof_bytes = match sp1_receipt.proof.clone().try_as_groth_16() {
             Some(_) => sp1_receipt.bytes(),
             None => bincode::serialize(&sp1_receipt.proof)
-                .map_err(|e| ZkVmProofError::DataFormat(e.into()))?,
+                .map_err(|e| ZkVmProofError::DataFormat(DataFormatError::Serde(e.to_string())))?,
         };
 
         let proof = Proof::new(proof_bytes);

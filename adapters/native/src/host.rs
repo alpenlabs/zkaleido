@@ -7,10 +7,10 @@ use k256::schnorr::{
 };
 use rand_core::OsRng;
 use zkaleido::{
-    ExecutionSummary, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, ProofType,
-    PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm, ZkVmError, ZkVmExecutor, ZkVmHost,
-    ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver, ZkVmResult, ZkVmTypedVerifier,
-    ZkVmVkProvider,
+    DataFormatError, ExecutionSummary, Proof, ProofMetadata, ProofReceipt,
+    ProofReceiptWithMetadata, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm,
+    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver,
+    ZkVmResult, ZkVmTypedVerifier, ZkVmVkProvider,
 };
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
@@ -157,8 +157,11 @@ impl ZkVmOutputExtractor for NativeHost {
     fn extract_serde_public_output<T: serde::Serialize + serde::de::DeserializeOwned>(
         public_values_raw: &PublicValues,
     ) -> ZkVmResult<T> {
-        let public_params: T = bincode::deserialize(public_values_raw.as_bytes())
-            .map_err(|e| ZkVmError::OutputExtractionError { source: e.into() })?;
+        let public_params: T = bincode::deserialize(public_values_raw.as_bytes()).map_err(|e| {
+            ZkVmError::OutputExtractionError {
+                source: DataFormatError::Serde(e.to_string()),
+            }
+        })?;
         Ok(public_params)
     }
 }
@@ -189,12 +192,8 @@ impl ZkVmRemoteProver for NativeHost {
         // Execute proof synchronously
         let proof_receipt = self.prove(input, proof_type)?;
 
-        // Serialize using bincode
-        let serialized = bincode::serialize(&proof_receipt)
-            .map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))?;
-
-        // Encode as hex to use as "proof ID"
-        Ok(hex::encode(serialized))
+        // Encode and hex-encode as "proof ID"
+        Ok(hex::encode(proof_receipt.encode()))
     }
 
     async fn get_proof_if_ready_inner(
@@ -208,9 +207,8 @@ impl ZkVmRemoteProver for NativeHost {
             )
         })?;
 
-        // Deserialize the ProofReceiptWithMetadata
-        let proof: ProofReceiptWithMetadata =
-            bincode::deserialize(&decoded).map_err(|e| ZkVmError::InvalidProofReceipt(e.into()))?;
+        // Decode the ProofReceiptWithMetadata
+        let proof = ProofReceiptWithMetadata::decode(&decoded)?;
 
         // Convert to NativeProofReceipt
         let native_receipt = proof.try_into().map_err(ZkVmError::InvalidProofReceipt)?;

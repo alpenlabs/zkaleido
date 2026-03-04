@@ -1,11 +1,11 @@
-use zkaleido::ZkVmEnv;
+use zkaleido::ZkVmEnvSerde;
 
 use crate::input::Risc0Groth16VerifyInput;
 
 pub mod input;
 pub mod program;
 
-pub fn process_groth16_verify_risc0(zkvm: &impl ZkVmEnv) {
+pub fn process_groth16_verify_risc0(zkvm: &impl ZkVmEnvSerde) {
     let Risc0Groth16VerifyInput {
         risc0_receipt,
         risc0_verifier,

@@ -1,4 +1,4 @@
-use zkaleido::{ProofType, ZkVmInputResult, ZkVmProgram};
+use zkaleido::{DataFormatError, ProofType, ZkVmInputResult, ZkVmProgram};
 
 pub struct FibProgram;
 
@@ -18,7 +18,7 @@ impl ZkVmProgram for FibProgram {
     where
         B: zkaleido::ZkVmInputBuilder<'a>,
     {
-        B::new().write_serde(input)?.build()
+        B::new().write_buf(&input.to_le_bytes())?.build()
     }
 
     fn process_output<H>(
@@ -27,7 +27,12 @@ impl ZkVmProgram for FibProgram {
     where
         H: zkaleido::ZkVmHost,
     {
-        H::extract_serde_public_output(public_values)
+        let bytes: [u8; 4] = public_values.as_bytes().try_into().map_err(|_| {
+            zkaleido::ZkVmError::OutputExtractionError {
+                source: DataFormatError::Other("invalid output length".to_string()),
+            }
+        })?;
+        Ok(u32::from_le_bytes(bytes))
     }
 }
 

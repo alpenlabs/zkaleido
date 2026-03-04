@@ -9325,6 +9325,7 @@ dependencies = [
  "async-trait",
  "bincode",
  "borsh",
+ "proptest",
  "serde",
  "thiserror 1.0.69",
 ]

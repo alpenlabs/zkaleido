@@ -1,7 +1,7 @@
 use risc0_zkvm::{InnerReceipt, Receipt, VERSION};
 use zkaleido::{
-    Mismatched, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata, PublicValues, ZkVm,
-    ZkVmProofError,
+    DataFormatError, Mismatched, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata,
+    PublicValues, ZkVm, ZkVmProofError,
 };
 
 #[derive(Debug, Clone)]
@@ -54,7 +54,7 @@ impl TryFrom<&ProofReceiptWithMetadata> for Risc0ProofReceipt {
 
         let journal = value.receipt().public_values().as_bytes().to_vec();
         let inner: InnerReceipt = bincode::deserialize(value.receipt().proof().as_bytes())
-            .map_err(|e| ZkVmProofError::DataFormat(e.into()))?;
+            .map_err(|e| ZkVmProofError::DataFormat(DataFormatError::Serde(e.to_string())))?;
         Ok(Receipt::new(inner, journal).into())
     }
 }
@@ -67,7 +67,7 @@ impl TryFrom<Risc0ProofReceipt> for ProofReceiptWithMetadata {
         let proof_bytes = match value.0.inner.groth16() {
             Ok(receipt) => receipt.clone().seal,
             Err(_) => bincode::serialize(&value.0.inner)
-                .map_err(|e| ZkVmProofError::DataFormat(e.into()))?,
+                .map_err(|e| ZkVmProofError::DataFormat(DataFormatError::Serde(e.to_string())))?,
         };
         let proof = Proof::new(proof_bytes);
         let public_values = PublicValues::new(value.0.journal.bytes.to_vec());

@@ -1,9 +1,11 @@
 use std::time::{Duration, Instant};
 
+#[cfg(feature = "serde")]
 use serde::Serialize;
 
 /// A proof report containing a performance stats about proof generation.
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct ProofMetrics {
     /// The duration of the proving time in seconds.
     pub prove_duration: f64,
@@ -16,7 +18,8 @@ pub struct ProofMetrics {
 }
 
 /// Performance report
-#[derive(Debug, Clone, Serialize, Default)]
+#[derive(Debug, Clone, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct PerformanceReport {
     /// A human-readable name identifying the prover or proof process.
     pub name: String,

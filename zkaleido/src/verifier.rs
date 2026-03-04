@@ -1,11 +1,17 @@
 use std::fmt::Debug;
 
+#[cfg(feature = "borsh")]
 use borsh::{BorshDeserialize, BorshSerialize};
+#[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
+#[cfg(any(feature = "serde", feature = "borsh"))]
+use crate::PublicValues;
+#[cfg(feature = "borsh")]
+use crate::ZkVmError;
 use crate::{
-    ProofReceipt, ProofReceiptWithMetadata, PublicValues, VerifyingKey, VerifyingKeyCommitment,
-    ZkVmError, ZkVmProofError, ZkVmResult,
+    ProofReceipt, ProofReceiptWithMetadata, VerifyingKey, VerifyingKeyCommitment, ZkVmProofError,
+    ZkVmResult,
 };
 
 /// A trait implemented by verifiers that work with typed proof receipts.
@@ -64,12 +70,14 @@ pub trait ZkVmVkProvider: Send + Sync + Clone + Debug + 'static {
 pub trait ZkVmOutputExtractor: Send + Sync + Clone + Debug + 'static {
     /// Extracts the public output from the public values using ZkVm's `serde`
     /// serialization/deserialization.
+    #[cfg(feature = "serde")]
     fn extract_serde_public_output<T: Serialize + DeserializeOwned>(
         public_values: &PublicValues,
     ) -> ZkVmResult<T>;
 
     /// Extracts the public output from the given proof assuming the data was serialized using
     /// Borsh.
+    #[cfg(feature = "borsh")]
     fn extract_borsh_public_output<T: BorshDeserialize>(
         public_values: &PublicValues,
     ) -> ZkVmResult<T> {
@@ -82,7 +90,9 @@ pub trait ZkVmOutputExtractor: Send + Sync + Clone + Debug + 'static {
 ///
 /// Use this when you want to bypass verification logic entirely. It performs
 /// no cryptographic checks on the proof receipt.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, BorshSerialize, BorshDeserialize)]
+#[derive(Debug, Clone, Copy)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
 pub struct NoopVerifier;
 
 impl ZkVmVerifier for NoopVerifier {

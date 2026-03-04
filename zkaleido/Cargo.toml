@@ -13,13 +13,19 @@ rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
 [dependencies]
-arbitrary.workspace = true
-bincode.workspace = true
-borsh.workspace = true
-serde.workspace = true
+arbitrary = { workspace = true, optional = true }
+bincode = { workspace = true, optional = true }
+borsh = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
 thiserror.workspace = true
 async-trait.workspace = true
 
+[dev-dependencies]
+proptest.workspace = true
+
 [features]
-default = ["perf"]
+default = ["borsh", "serde", "perf"]
+arbitrary = ["dep:arbitrary"]
+borsh = ["dep:borsh"]
+serde = ["dep:serde", "dep:bincode"]
 perf = []

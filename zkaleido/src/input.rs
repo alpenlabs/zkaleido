@@ -18,10 +18,12 @@ pub trait ZkVmInputBuilder<'a> {
     fn new() -> Self;
 
     /// Serializes the given item using Serde and appends it to the list of inputs.
+    #[cfg(feature = "serde")]
     fn write_serde<T: serde::Serialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
 
     /// Serializes the given item using the Borsh serialization format and appends
     /// it to the list of inputs.
+    #[cfg(feature = "borsh")]
     fn write_borsh<T: borsh::BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
 
     /// Appends a pre-serialized byte array to the list of inputs.

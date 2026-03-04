@@ -2,11 +2,11 @@ pub mod input;
 pub mod logic;
 pub mod program;
 
-use zkaleido::ZkVmEnv;
+use zkaleido::ZkVmEnvSerde;
 
 use crate::logic::verify_schnorr_sig_k256;
 
-pub fn process_schnorr_sig_verify(zkvm: &impl ZkVmEnv) {
+pub fn process_schnorr_sig_verify(zkvm: &impl ZkVmEnvSerde) {
     let sig = zkvm.read_buf();
     let msg: [u8; 32] = zkvm.read_serde();
     let pk: [u8; 32] = zkvm.read_serde();

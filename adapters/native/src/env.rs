@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 
-use zkaleido::ZkVmEnv;
+use zkaleido::{ZkVmEnv, ZkVmEnvSerde};
 
 /// Encapsulates the mutable state of the NativeMachine.
 #[derive(Debug, Clone)]
@@ -65,23 +65,12 @@ impl ZkVmEnv for NativeMachine {
         buf
     }
 
-    fn read_serde<T: serde::de::DeserializeOwned>(&self) -> T {
-        let bytes = self.read_buf();
-        bincode::deserialize(&bytes).expect("bincode deserialization failed")
-    }
-
     fn commit_buf(&self, raw_output: &[u8]) {
         self.state.borrow_mut().output.extend_from_slice(raw_output);
     }
 
-    fn commit_serde<T: serde::Serialize>(&self, output: &T) {
-        let bytes = bincode::serialize(output).expect("bincode serialization failed");
-        self.commit_buf(&bytes);
-    }
-
     fn verify_native_proof(&self, _vk_digest: &[u32; 8], _public_values: &[u8]) {}
-
-    fn read_verified_serde<T: serde::de::DeserializeOwned>(&self, _vk_digest: &[u32; 8]) -> T {
-        self.read_serde()
-    }
 }
+
+/// Uses the default bincode-based implementations from [`ZkVmEnvSerde`].
+impl ZkVmEnvSerde for NativeMachine {}
