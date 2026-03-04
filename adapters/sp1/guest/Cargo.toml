@@ -13,7 +13,7 @@ rust.unused_must_use = "deny"
 rustdoc.all = "warn"
 
 [dependencies]
-sp1-zkvm = "5.2.1"
+sp1-zkvm = { version = "5.2.1", features = ["embedded"] }
 zkaleido.workspace = true
 
 bincode.workspace = true
