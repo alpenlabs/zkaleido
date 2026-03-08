@@ -36,7 +36,8 @@ jobs:
           persist-credentials: false
       - name: Install toolchains
         uses: ./.github/actions/toolchains # zizmor: ignore[unpinned-uses]
-      - uses: dtolnay/rust-toolchain@22a6a5b0f9f487c5f5587025ae9d4a1caf2a8a78 # clippy
+      - name: Install Rust toolchain
+        run: rustup show
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
         with:
           cache-on-failure: true
@@ -74,9 +75,10 @@ jobs:
       - name: Install toolchains
         uses: ./.github/actions/toolchains # zizmor: ignore[unpinned-uses]
 
-      - uses: dtolnay/rust-toolchain@a02741459ec5e501b9843ed30b535ca0a0376ae4 # nightly
-        with:
-          toolchain: ${{ needs.extract-rust-version.outputs.rust-version }}
+      - name: Install Rust toolchain
+        run: rustup toolchain install "$RUST_VERSION"
+        env:
+          RUST_VERSION: ${{ needs.extract-rust-version.outputs.rust-version }}
       - uses: taiki-e/install-action@1b0e852a3465a29cd0b17876f2de42a88d145e91 # cargo-hack
       - uses: Swatinem/rust-cache@779680da715d629ac1d338a641029a2f4372abb5 # v2
         with:
@@ -101,10 +103,10 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v4
         with:
           persist-credentials: false
-      - uses: dtolnay/rust-toolchain@a02741459ec5e501b9843ed30b535ca0a0376ae4 # nightly
-        with:
-          components: rustfmt
-          toolchain: ${{ needs.extract-rust-version.outputs.rust-version }}
+      - name: Install Rust toolchain
+        run: rustup toolchain install "$RUST_VERSION" --component rustfmt
+        env:
+          RUST_VERSION: ${{ needs.extract-rust-version.outputs.rust-version }}
       - run: cargo fmt --all --check
 
   codespell:
