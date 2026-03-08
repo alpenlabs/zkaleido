@@ -21,9 +21,9 @@ impl ZkVmProgram for SchnorrSigProgram {
         B: zkaleido::ZkVmInputBuilder<'a>,
     {
         B::new()
-            .write_buf(&input.sig)?
-            .write_serde(&input.msg)?
-            .write_serde(&input.pk)?
+            .write_ssz(&input.sig)?
+            .write_ssz(&input.msg)?
+            .write_ssz(&input.pk)?
             .build()
     }
 
@@ -33,7 +33,7 @@ impl ZkVmProgram for SchnorrSigProgram {
     where
         H: zkaleido::ZkVmHost,
     {
-        H::extract_serde_public_output(public_values)
+        H::extract_ssz_public_output(public_values)
     }
 }
 
