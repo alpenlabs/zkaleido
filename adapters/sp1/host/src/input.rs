@@ -1,4 +1,3 @@
-use borsh::BorshSerialize;
 use serde::Serialize;
 use sp1_sdk::{SP1Proof, SP1Stdin, SP1VerifyingKey};
 use zkaleido::{
@@ -28,16 +27,6 @@ impl ZkVmInputBuilder<'_> for SP1ProofInputBuilder {
     fn write_serde<T: Serialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
         self.0.write(item);
         Ok(self)
-    }
-
-    fn write_borsh<T: BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
-        let slice = borsh::to_vec(item).map_err(|e| ZkVmInputError::DataFormat(e.into()))?;
-        self.write_buf(&slice)
-    }
-
-    #[cfg(feature = "ssz")]
-    fn write_ssz<T: ssz::Encode>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
-        self.write_buf(&item.as_ssz_bytes())
     }
 
     fn write_buf(&mut self, item: &[u8]) -> ZkVmInputResult<&mut Self> {

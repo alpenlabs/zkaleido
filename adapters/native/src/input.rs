@@ -32,16 +32,6 @@ impl ZkVmInputBuilder<'_> for NativeMachineInputBuilder {
         self.write_buf(&slice)
     }
 
-    fn write_borsh<T: borsh::BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
-        let slice = borsh::to_vec(item)?;
-        self.write_buf(&slice)
-    }
-
-    #[cfg(feature = "ssz")]
-    fn write_ssz<T: ssz::Encode>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
-        self.write_buf(&item.as_ssz_bytes())
-    }
-
     fn write_proof(&mut self, item: &AggregationInput) -> ZkVmInputResult<&mut Self> {
         // For the native mode we only write the public values since the proof is expected to be
         // empty

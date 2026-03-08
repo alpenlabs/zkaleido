@@ -30,13 +30,24 @@ pub trait ZkVmInputBuilder<'a> {
 
     /// Serializes the given item using the Borsh serialization format and appends
     /// it to the list of inputs.
+    ///
+    /// The default implementation serializes using `borsh` and writes via
+    /// [`write_buf`](ZkVmInputBuilder::write_buf).
     #[cfg(feature = "borsh")]
-    fn write_borsh<T: borsh::BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
+    fn write_borsh<T: borsh::BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
+        let slice = borsh::to_vec(item)?;
+        self.write_buf(&slice)
+    }
 
     /// Serializes the given item using the SSZ serialization format and appends
     /// it to the list of inputs.
+    ///
+    /// The default implementation serializes using `ssz` and writes via
+    /// [`write_buf`](ZkVmInputBuilder::write_buf).
     #[cfg(feature = "ssz")]
-    fn write_ssz<T: ssz::Encode>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
+    fn write_ssz<T: ssz::Encode>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
+        self.write_buf(&item.as_ssz_bytes())
+    }
 
     /// Adds an `AggregationInput` to the list of aggregation/composition inputs.
     ///
