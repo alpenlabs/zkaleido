@@ -31,11 +31,6 @@ impl<'a> ZkVmInputBuilder<'a> for Risc0ProofInputBuilder<'a> {
         Ok(self)
     }
 
-    fn write_borsh<T: borsh::BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
-        let slice = borsh::to_vec(item)?;
-        self.write_buf(&slice)
-    }
-
     // TODO: replace this with `write_frame` once the API stabilizies
     fn write_buf(&mut self, item: &[u8]) -> ZkVmInputResult<&mut Self> {
         let len = item.len() as u32;

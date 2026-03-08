@@ -5,9 +5,9 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 
-#[cfg(any(feature = "serde", feature = "borsh"))]
+#[cfg(any(feature = "serde", feature = "borsh", feature = "ssz"))]
 use crate::PublicValues;
-#[cfg(feature = "borsh")]
+#[cfg(any(feature = "borsh", feature = "ssz"))]
 use crate::ZkVmError;
 use crate::{
     ProofReceipt, ProofReceiptWithMetadata, VerifyingKey, VerifyingKeyCommitment, ZkVmProofError,
@@ -82,6 +82,14 @@ pub trait ZkVmOutputExtractor: Send + Sync + Clone + Debug + 'static {
         public_values: &PublicValues,
     ) -> ZkVmResult<T> {
         borsh::from_slice(public_values.as_bytes())
+            .map_err(|e| ZkVmError::OutputExtractionError { source: e.into() })
+    }
+
+    /// Extracts the public output from the given proof assuming the data was serialized using
+    /// SSZ.
+    #[cfg(feature = "ssz")]
+    fn extract_ssz_public_output<T: ssz::Decode>(public_values: &PublicValues) -> ZkVmResult<T> {
+        T::from_ssz_bytes(public_values.as_bytes())
             .map_err(|e| ZkVmError::OutputExtractionError { source: e.into() })
     }
 }

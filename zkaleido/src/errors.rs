@@ -74,6 +74,15 @@ pub enum DataFormatError {
     #[error("{0}")]
     Serde(String),
 
+    /// An error occurred during SSZ (de)serialization.
+    #[cfg(feature = "ssz")]
+    #[error("{source}")]
+    Ssz {
+        /// The source SSZ decode error.
+        #[source]
+        source: ssz::DecodeError,
+    },
+
     /// A catch-all for other data format errors.
     #[error("error: {0}")]
     Other(String),
@@ -175,5 +184,13 @@ impl From<borsh::io::Error> for ZkVmInputError {
     fn from(err: borsh::io::Error) -> Self {
         let source = DataFormatError::Borsh { source: err };
         ZkVmInputError::DataFormat(source)
+    }
+}
+
+/// Implement automatic conversion for `ssz::DecodeError` to `DataFormatError`
+#[cfg(feature = "ssz")]
+impl From<ssz::DecodeError> for DataFormatError {
+    fn from(err: ssz::DecodeError) -> Self {
+        DataFormatError::Ssz { source: err }
     }
 }

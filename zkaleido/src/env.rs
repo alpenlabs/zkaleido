@@ -2,14 +2,17 @@
 use borsh::{BorshDeserialize, BorshSerialize};
 #[cfg(feature = "serde")]
 use serde::{de::DeserializeOwned, Serialize};
+#[cfg(feature = "ssz")]
+use ssz::{Decode, Encode};
 
 /// A trait representing a Zero-Knowledge Virtual Machine (ZkVM) interface.
 /// Provides methods for reading inputs, committing outputs, and verifying proofs
 /// within the ZkVM environment.
 ///
 /// This base trait provides raw buffer operations. For typed serialization,
-/// see the extension traits [`ZkVmEnvSerde`] (requires the `serde` feature) and
-/// [`ZkVmEnvBorsh`] (requires the `borsh` feature).
+/// see the extension traits [`ZkVmEnvSerde`] (requires the `serde` feature),
+/// [`ZkVmEnvBorsh`] (requires the `borsh` feature), and
+/// [`ZkVmEnvSsz`] (requires the `ssz` feature).
 pub trait ZkVmEnv {
     /// Reads a serialized byte buffer from the guest code.
     ///
@@ -138,3 +141,49 @@ pub trait ZkVmEnvBorsh: ZkVmEnv {
 /// Blanket implementation of [`ZkVmEnvBorsh`] for all types that implement [`ZkVmEnv`].
 #[cfg(feature = "borsh")]
 impl<T: ZkVmEnv> ZkVmEnvBorsh for T {}
+
+/// Extension trait for [`ZkVmEnv`] providing SSZ serialization support.
+///
+/// This trait provides methods for reading and committing SSZ-serializable types
+/// within the ZkVM environment. Default implementations use `ssz` for
+/// serialization/deserialization via the underlying buffer operations on [`ZkVmEnv`].
+///
+/// This trait is automatically implemented for all types that implement [`ZkVmEnv`]
+/// when the `ssz` feature is enabled.
+#[cfg(feature = "ssz")]
+pub trait ZkVmEnvSsz: ZkVmEnv {
+    /// Reads an SSZ-serialized object from the guest code.
+    ///
+    /// The input is expected to be written with
+    /// [`write_ssz`](`crate::ZkVmInputBuilder::write_ssz).
+    fn read_ssz<T: Decode>(&self) -> T {
+        let buf = self.read_buf();
+        T::from_ssz_bytes(&buf).expect("ssz deserialization failed")
+    }
+
+    /// Commits an SSZ-serializable object to the public values stream.
+    ///
+    /// Values that are committed can be proven as public parameters.
+    fn commit_ssz<T: Encode>(&self, output: &T) {
+        self.commit_buf(&output.as_ssz_bytes());
+    }
+
+    /// Reads and verifies a committed output from another guest function, deserializing it using
+    /// SSZ.
+    ///
+    /// This function is intended for guest commitments committed via
+    /// [`ZkVmEnvSsz::commit_ssz`]. The output is expected to be SSZ-serializable.
+    /// It then verifies the proof using the internal verification key context.
+    ///
+    /// This is equivalent to calling [`ZkVmEnvSsz::read_ssz`] and
+    /// [`ZkVmEnv::verify_native_proof`], but avoids double serialization and deserialization.
+    /// The function will panic if the proof fails to verify.
+    fn read_verified_ssz<T: Decode>(&self, vk_digest: &[u32; 8]) -> T {
+        let verified_buf = self.read_verified_buf(vk_digest);
+        T::from_ssz_bytes(&verified_buf).expect("ssz deserialization failed")
+    }
+}
+
+/// Blanket implementation of [`ZkVmEnvSsz`] for all types that implement [`ZkVmEnv`].
+#[cfg(feature = "ssz")]
+impl<T: ZkVmEnv> ZkVmEnvSsz for T {}
