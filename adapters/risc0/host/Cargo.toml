@@ -21,6 +21,8 @@ bincode.workspace = true
 borsh.workspace = true
 hex.workspace = true
 serde.workspace = true
+ssz = { workspace = true, optional = true }
 
 [features]
 perf = ["risc0-zkvm/prove", "dep:risc0-groth16"]
+ssz = ["dep:ssz", "zkaleido/ssz"]

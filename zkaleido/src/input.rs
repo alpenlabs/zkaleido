@@ -17,6 +17,13 @@ pub trait ZkVmInputBuilder<'a> {
     /// Creates a new instance of the `ProverInputs` struct.
     fn new() -> Self;
 
+    /// Appends a pre-serialized byte array to the list of inputs.
+    ///
+    /// This method is intended for cases where the data has already been serialized
+    /// outside of the zkVM's standard serialization methods. It allows you to provide
+    /// serialized inputs directly, bypassing any further serialization.
+    fn write_buf(&mut self, item: &[u8]) -> ZkVmInputResult<&mut Self>;
+
     /// Serializes the given item using Serde and appends it to the list of inputs.
     #[cfg(feature = "serde")]
     fn write_serde<T: serde::Serialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
@@ -26,12 +33,10 @@ pub trait ZkVmInputBuilder<'a> {
     #[cfg(feature = "borsh")]
     fn write_borsh<T: borsh::BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
 
-    /// Appends a pre-serialized byte array to the list of inputs.
-    ///
-    /// This method is intended for cases where the data has already been serialized
-    /// outside of the zkVM's standard serialization methods. It allows you to provide
-    /// serialized inputs directly, bypassing any further serialization.
-    fn write_buf(&mut self, item: &[u8]) -> ZkVmInputResult<&mut Self>;
+    /// Serializes the given item using the SSZ serialization format and appends
+    /// it to the list of inputs.
+    #[cfg(feature = "ssz")]
+    fn write_ssz<T: ssz::Encode>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
 
     /// Adds an `AggregationInput` to the list of aggregation/composition inputs.
     ///

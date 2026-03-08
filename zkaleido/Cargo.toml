@@ -17,6 +17,7 @@ arbitrary = { workspace = true, optional = true }
 bincode = { workspace = true, optional = true }
 borsh = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
+ssz = { workspace = true, optional = true }
 thiserror.workspace = true
 async-trait.workspace = true
 
@@ -28,4 +29,5 @@ default = ["borsh", "serde", "perf"]
 arbitrary = ["dep:arbitrary"]
 borsh = ["dep:borsh"]
 serde = ["dep:serde", "dep:bincode"]
+ssz = ["dep:ssz"]
 perf = []
