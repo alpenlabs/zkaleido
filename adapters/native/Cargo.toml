@@ -17,12 +17,10 @@ zkaleido.workspace = true
 
 async-trait.workspace = true
 bincode.workspace = true
-borsh.workspace = true
 hex.workspace = true
 k256.workspace = true
 rand_core.workspace = true
 serde.workspace = true
-ssz = { workspace = true, optional = true }
 
 [features]
-ssz = ["dep:ssz", "zkaleido/ssz"]
+ssz = ["zkaleido/ssz"]

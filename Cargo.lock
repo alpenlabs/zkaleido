@@ -9365,12 +9365,10 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bincode",
- "borsh",
  "hex",
  "k256",
  "rand_core 0.6.4",
  "serde",
- "ssz",
  "zkaleido",
 ]
 
@@ -9413,12 +9411,10 @@ name = "zkaleido-risc0-host"
 version = "0.1.0"
 dependencies = [
  "bincode",
- "borsh",
  "hex",
  "risc0-groth16",
  "risc0-zkvm",
  "serde",
- "ssz",
  "zkaleido",
 ]
 
@@ -9494,13 +9490,11 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bincode",
- "borsh",
  "hex",
  "serde",
  "sp1-prover",
  "sp1-sdk",
  "sp1-stark",
- "ssz",
  "zkaleido",
 ]
 
