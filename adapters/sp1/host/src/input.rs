@@ -35,6 +35,11 @@ impl ZkVmInputBuilder<'_> for SP1ProofInputBuilder {
         self.write_buf(&slice)
     }
 
+    #[cfg(feature = "ssz")]
+    fn write_ssz<T: ssz::Encode>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
+        self.write_buf(&item.as_ssz_bytes())
+    }
+
     fn write_buf(&mut self, item: &[u8]) -> ZkVmInputResult<&mut Self> {
         self.0.write_slice(item);
         Ok(self)
