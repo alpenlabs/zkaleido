@@ -23,6 +23,7 @@ bincode.workspace = true
 serde.workspace = true
 
 [features]
-default = ["remote-prover"]
-remote-prover = ["async-trait", "zkaleido/remote-prover"]
+default = []
+ssz = ["zkaleido/ssz"]
 perf = ["sp1-sdk/profiling", "sp1-prover", "sp1-stark"]
+remote-prover = ["async-trait", "zkaleido/remote-prover"]

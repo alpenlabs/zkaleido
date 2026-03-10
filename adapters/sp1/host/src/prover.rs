@@ -114,4 +114,3 @@ impl ZkVmProver for SP1Host {
         Ok(proof_info.into())
     }
 }
-
