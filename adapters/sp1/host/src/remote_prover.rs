@@ -1,39 +1,26 @@
 use sp1_sdk::{
     network::{
-        proto::types::{ExecutionStatus, FulfillmentStatus},
-        B256,
+        proto::types::{ExecutionStatus, FulfillmentStatus, GetProofRequestStatusResponse},
+        FulfillmentStrategy, B256,
     },
-    SP1ProofMode,
+    ProverClient, SP1ProofMode,
 };
-use sp1_sdk::network::FulfillmentStrategy;
 use zkaleido::{
     ProofReceiptWithMetadata, ProofType, RemoteProofStatus, ZkVmError, ZkVmInputBuilder,
     ZkVmRemoteProver, ZkVmResult,
 };
 
-use sp1_sdk::ProverClient;
-
-use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt, SP1Host};
-
-/// A typed proof identifier for the SP1 network prover.
-#[derive(Debug, Clone)]
-pub struct Sp1ProofId(B256);
-
-impl std::fmt::Display for Sp1ProofId {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", hex::encode(self.0 .0))
-    }
-}
+use crate::{proof::SP1ProofReceipt, SP1Host};
 
 #[async_trait::async_trait(?Send)]
 impl ZkVmRemoteProver for SP1Host {
-    type ProofId = Sp1ProofId;
+    type ProofId = B256;
 
     async fn start_proving<'a>(
         &self,
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
-    ) -> ZkVmResult<Sp1ProofId> {
+    ) -> ZkVmResult<B256> {
         let client = ProverClient::builder().network().build();
 
         let strategy = std::env::var("SP1_PROOF_STRATEGY")
@@ -56,43 +43,23 @@ impl ZkVmRemoteProver for SP1Host {
             .await
             .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
 
-        Ok(Sp1ProofId(request_id))
+        Ok(request_id)
     }
 
-    async fn get_status(&self, id: &Sp1ProofId) -> ZkVmResult<RemoteProofStatus> {
+    async fn get_status(&self, id: &B256) -> ZkVmResult<RemoteProofStatus> {
         let client = ProverClient::builder().network().build();
         let (status, _) = client
-            .get_proof_status(id.0)
+            .get_proof_status(*id)
             .await
             .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
 
-        let execution_status = ExecutionStatus::try_from(status.execution_status)
-            .unwrap_or(ExecutionStatus::UnspecifiedExecutionStatus);
-
-        if execution_status == ExecutionStatus::Unexecutable {
-            return Ok(RemoteProofStatus::Failed("unexecutable".to_string()));
-        }
-
-        let fulfillment_status = FulfillmentStatus::try_from(status.fulfillment_status)
-            .unwrap_or(FulfillmentStatus::UnspecifiedFulfillmentStatus);
-
-        let status = match fulfillment_status {
-            FulfillmentStatus::Requested => RemoteProofStatus::Requested,
-            FulfillmentStatus::Assigned => RemoteProofStatus::InProgress,
-            FulfillmentStatus::Fulfilled => RemoteProofStatus::Completed,
-            FulfillmentStatus::Unfulfillable => {
-                RemoteProofStatus::Failed("unfulfillable".to_string())
-            }
-            FulfillmentStatus::UnspecifiedFulfillmentStatus => RemoteProofStatus::Unknown,
-        };
-
-        Ok(status)
+        Ok(convert_proof_status(status))
     }
 
-    async fn get_proof(&self, id: &Sp1ProofId) -> ZkVmResult<ProofReceiptWithMetadata> {
+    async fn get_proof(&self, id: &B256) -> ZkVmResult<ProofReceiptWithMetadata> {
         let client = ProverClient::builder().network().build();
         let (_, proof) = client
-            .get_proof_status(id.0)
+            .get_proof_status(*id)
             .await
             .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
 
@@ -105,5 +72,26 @@ impl ZkVmRemoteProver for SP1Host {
             }
             None => Err(ZkVmError::ProofNotReady),
         }
+    }
+}
+
+/// Converts an SP1 proof status response into a backend-agnostic [`RemoteProofStatus`].
+fn convert_proof_status(response: GetProofRequestStatusResponse) -> RemoteProofStatus {
+    let execution_status = ExecutionStatus::try_from(response.execution_status)
+        .unwrap_or(ExecutionStatus::UnspecifiedExecutionStatus);
+
+    if execution_status == ExecutionStatus::Unexecutable {
+        return RemoteProofStatus::Failed("unexecutable".to_string());
+    }
+
+    let fulfillment_status = FulfillmentStatus::try_from(response.fulfillment_status)
+        .unwrap_or(FulfillmentStatus::UnspecifiedFulfillmentStatus);
+
+    match fulfillment_status {
+        FulfillmentStatus::Requested => RemoteProofStatus::Requested,
+        FulfillmentStatus::Assigned => RemoteProofStatus::InProgress,
+        FulfillmentStatus::Fulfilled => RemoteProofStatus::Completed,
+        FulfillmentStatus::Unfulfillable => RemoteProofStatus::Failed("unfulfillable".to_string()),
+        FulfillmentStatus::UnspecifiedFulfillmentStatus => RemoteProofStatus::Unknown,
     }
 }

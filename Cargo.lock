@@ -9490,7 +9490,6 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "bincode",
- "hex",
  "serde",
  "sp1-prover",
  "sp1-sdk",
