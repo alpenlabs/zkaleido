@@ -1,11 +1,17 @@
 #[cfg(feature = "remote-prover")]
-use sp1_sdk::{network::B256, SP1ProofMode};
+use sp1_sdk::{
+    network::{
+        proto::types::{ExecutionStatus, FulfillmentStatus},
+        B256,
+    },
+    SP1ProofMode,
+};
 use sp1_sdk::{
     network::{Error as NetworkError, FulfillmentStrategy},
     ProverClient,
 };
 #[cfg(feature = "remote-prover")]
-use zkaleido::ZkVmRemoteProver;
+use zkaleido::{ProofReceiptWithMetadata, RemoteProofStatus, ZkVmRemoteProver};
 use zkaleido::{
     ExecutionSummary, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
     ZkVmProver, ZkVmResult,
@@ -119,14 +125,28 @@ impl ZkVmProver for SP1Host {
     }
 }
 
+/// A typed proof identifier for the SP1 network prover.
+#[cfg(feature = "remote-prover")]
+#[derive(Debug, Clone)]
+pub struct Sp1ProofId(B256);
+
+#[cfg(feature = "remote-prover")]
+impl std::fmt::Display for Sp1ProofId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", hex::encode(self.0 .0))
+    }
+}
+
 #[cfg(feature = "remote-prover")]
 #[async_trait::async_trait(?Send)]
 impl ZkVmRemoteProver for SP1Host {
+    type ProofId = Sp1ProofId;
+
     async fn start_proving<'a>(
         &self,
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
-    ) -> ZkVmResult<String> {
+    ) -> ZkVmResult<Sp1ProofId> {
         let client = ProverClient::builder().network().build();
 
         let strategy = std::env::var("SP1_PROOF_STRATEGY")
@@ -147,19 +167,56 @@ impl ZkVmRemoteProver for SP1Host {
             .mode(mode)
             .request_async()
             .await
-            .unwrap();
-        let id = hex::encode(request_id.0);
-        Ok(id)
+            .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
+
+        Ok(Sp1ProofId(request_id))
     }
 
-    async fn get_proof_if_ready_inner(&self, id: String) -> ZkVmResult<Option<SP1ProofReceipt>> {
+    async fn get_status(&self, id: &Sp1ProofId) -> ZkVmResult<RemoteProofStatus> {
         let client = ProverClient::builder().network().build();
-        let request_id = hex::decode(id).unwrap();
-        let request_id = B256::from_slice(&request_id);
-        let (_, proof) = client.get_proof_status(request_id).await.unwrap();
+        let (status, _) = client
+            .get_proof_status(id.0)
+            .await
+            .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
+
+        let execution_status = ExecutionStatus::try_from(status.execution_status)
+            .unwrap_or(ExecutionStatus::UnspecifiedExecutionStatus);
+
+        if execution_status == ExecutionStatus::Unexecutable {
+            return Ok(RemoteProofStatus::Failed("unexecutable".to_string()));
+        }
+
+        let fulfillment_status = FulfillmentStatus::try_from(status.fulfillment_status)
+            .unwrap_or(FulfillmentStatus::UnspecifiedFulfillmentStatus);
+
+        let status = match fulfillment_status {
+            FulfillmentStatus::Requested => RemoteProofStatus::Requested,
+            FulfillmentStatus::Assigned => RemoteProofStatus::InProgress,
+            FulfillmentStatus::Fulfilled => RemoteProofStatus::Completed,
+            FulfillmentStatus::Unfulfillable => {
+                RemoteProofStatus::Failed("unfulfillable".to_string())
+            }
+            FulfillmentStatus::UnspecifiedFulfillmentStatus => RemoteProofStatus::Unknown,
+        };
+
+        Ok(status)
+    }
+
+    async fn get_proof(&self, id: &Sp1ProofId) -> ZkVmResult<ProofReceiptWithMetadata> {
+        let client = ProverClient::builder().network().build();
+        let (_, proof) = client
+            .get_proof_status(id.0)
+            .await
+            .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
+
         match proof {
-            Some(proof) => Ok(Some(proof.into())),
-            None => Ok(None),
+            Some(proof) => {
+                let sp1_receipt: SP1ProofReceipt = proof.into();
+                sp1_receipt
+                    .try_into()
+                    .map_err(ZkVmError::InvalidProofReceipt)
+            }
+            None => Err(ZkVmError::ProofNotReady),
         }
     }
 }

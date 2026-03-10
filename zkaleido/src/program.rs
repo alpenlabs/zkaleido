@@ -157,8 +157,8 @@ impl<T: ZkVmProgram> ZkVmProgramPerf for T {}
 /// proof once it is ready.
 #[async_trait(?Send)]
 pub trait ZkVmRemoteProgram: ZkVmProgram {
-    /// Proves the computation using any zkVM host.
-    async fn start_proving<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<String>
+    /// Starts the proving process using any zkVM remote host, returning a typed proof ID.
+    async fn start_proving<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<H::ProofId>
     where
         H: ZkVmRemoteHost,
         H::Input<'a>: ZkVmInputBuilder<'a>,
