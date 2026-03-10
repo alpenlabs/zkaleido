@@ -17,21 +17,37 @@ pub trait ZkVmInputBuilder<'a> {
     /// Creates a new instance of the `ProverInputs` struct.
     fn new() -> Self;
 
-    /// Serializes the given item using Serde and appends it to the list of inputs.
-    #[cfg(feature = "serde")]
-    fn write_serde<T: serde::Serialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
-
-    /// Serializes the given item using the Borsh serialization format and appends
-    /// it to the list of inputs.
-    #[cfg(feature = "borsh")]
-    fn write_borsh<T: borsh::BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
-
     /// Appends a pre-serialized byte array to the list of inputs.
     ///
     /// This method is intended for cases where the data has already been serialized
     /// outside of the zkVM's standard serialization methods. It allows you to provide
     /// serialized inputs directly, bypassing any further serialization.
     fn write_buf(&mut self, item: &[u8]) -> ZkVmInputResult<&mut Self>;
+
+    /// Serializes the given item using Serde and appends it to the list of inputs.
+    #[cfg(feature = "serde")]
+    fn write_serde<T: serde::Serialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self>;
+
+    /// Serializes the given item using the Borsh serialization format and appends
+    /// it to the list of inputs.
+    ///
+    /// The default implementation serializes using `borsh` and writes via
+    /// [`write_buf`](ZkVmInputBuilder::write_buf).
+    #[cfg(feature = "borsh")]
+    fn write_borsh<T: borsh::BorshSerialize>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
+        let slice = borsh::to_vec(item)?;
+        self.write_buf(&slice)
+    }
+
+    /// Serializes the given item using the SSZ serialization format and appends
+    /// it to the list of inputs.
+    ///
+    /// The default implementation serializes using `ssz` and writes via
+    /// [`write_buf`](ZkVmInputBuilder::write_buf).
+    #[cfg(feature = "ssz")]
+    fn write_ssz<T: ssz::Encode>(&mut self, item: &T) -> ZkVmInputResult<&mut Self> {
+        self.write_buf(&item.as_ssz_bytes())
+    }
 
     /// Adds an `AggregationInput` to the list of aggregation/composition inputs.
     ///

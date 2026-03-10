@@ -18,9 +18,9 @@ risc0-groth16 = { version = "3.0.4", optional = true }
 zkaleido.workspace = true
 
 bincode.workspace = true
-borsh.workspace = true
 hex.workspace = true
 serde.workspace = true
 
 [features]
 perf = ["risc0-zkvm/prove", "dep:risc0-groth16"]
+ssz = ["zkaleido/ssz"]
