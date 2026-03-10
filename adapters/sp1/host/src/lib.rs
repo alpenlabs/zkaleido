@@ -17,6 +17,8 @@ mod host;
 mod input;
 mod proof;
 mod prover;
+#[cfg(feature = "remote-prover")]
+mod remote_prover;
 mod verifier;
 
 pub use host::SP1Host;
