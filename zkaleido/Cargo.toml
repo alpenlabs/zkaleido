@@ -19,7 +19,7 @@ borsh = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 ssz = { workspace = true, optional = true }
 thiserror.workspace = true
-async-trait.workspace = true
+async-trait = { workspace = true, optional = true }
 
 [dev-dependencies]
 proptest.workspace = true
@@ -31,3 +31,4 @@ borsh = ["dep:borsh"]
 serde = ["dep:serde", "dep:bincode"]
 ssz = ["dep:ssz"]
 perf = []
+remote-prover = ["dep:async-trait"]

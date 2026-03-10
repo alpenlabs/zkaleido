@@ -2,9 +2,7 @@ use std::fmt::{Debug, Display};
 
 use async_trait::async_trait;
 
-use crate::{
-    input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, ZkVmProver, ZkVmResult,
-};
+use crate::{input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, ZkVmProver, ZkVmResult};
 
 /// Status of a remote proof request.
 ///

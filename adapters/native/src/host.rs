@@ -1,5 +1,6 @@
 use std::{env, fmt, sync::Arc};
 
+#[cfg(feature = "remote-prover")]
 use async_trait::async_trait;
 use k256::schnorr::{
     signature::{Signer, Verifier},
@@ -8,10 +9,12 @@ use k256::schnorr::{
 use rand_core::OsRng;
 use zkaleido::{
     DataFormatError, ExecutionSummary, Proof, ProofMetadata, ProofReceipt,
-    ProofReceiptWithMetadata, ProofType, PublicValues, RemoteProofStatus, VerifyingKey,
-    VerifyingKeyCommitment, ZkVm, ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor,
-    ZkVmProver, ZkVmRemoteProver, ZkVmResult, ZkVmTypedVerifier, ZkVmVkProvider,
+    ProofReceiptWithMetadata, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm,
+    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmResult,
+    ZkVmTypedVerifier, ZkVmVkProvider,
 };
+#[cfg(feature = "remote-prover")]
+use zkaleido::{RemoteProofStatus, ZkVmRemoteProver};
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
 
@@ -176,9 +179,11 @@ impl fmt::Debug for NativeHost {
 ///
 /// Since `NativeHost` executes proofs synchronously, the proof ID contains the
 /// hex-encoded proof receipt itself, making the proof immediately available.
+#[cfg(feature = "remote-prover")]
 #[derive(Debug, Clone)]
 pub struct NativeProofId(String);
 
+#[cfg(feature = "remote-prover")]
 impl fmt::Display for NativeProofId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -195,6 +200,7 @@ impl fmt::Display for NativeProofId {
 /// Combined with the blanket impl `impl<T: ZkVmHost + ZkVmRemoteProver> ZkVmRemoteHost for T`,
 /// this automatically gives `NativeHost` the `ZkVmRemoteHost` trait, allowing it to work
 /// seamlessly with async/remote proving interfaces.
+#[cfg(feature = "remote-prover")]
 #[async_trait(?Send)]
 impl ZkVmRemoteProver for NativeHost {
     type ProofId = NativeProofId;

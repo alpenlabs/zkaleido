@@ -10,12 +10,12 @@ use sp1_sdk::{
     network::{Error as NetworkError, FulfillmentStrategy},
     ProverClient,
 };
-#[cfg(feature = "remote-prover")]
-use zkaleido::{ProofReceiptWithMetadata, RemoteProofStatus, ZkVmRemoteProver};
 use zkaleido::{
     ExecutionSummary, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
     ZkVmProver, ZkVmResult,
 };
+#[cfg(feature = "remote-prover")]
+use zkaleido::{ProofReceiptWithMetadata, RemoteProofStatus, ZkVmRemoteProver};
 
 use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt, SP1Host};
 

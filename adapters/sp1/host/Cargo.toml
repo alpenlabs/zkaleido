@@ -24,6 +24,5 @@ hex = { workspace = true, optional = true }
 serde.workspace = true
 
 [features]
-ssz = ["zkaleido/ssz"]
-remote-prover = ["async-trait", "hex"]
+remote-prover = ["async-trait", "hex", "zkaleido/remote-prover"]
 perf = ["sp1-sdk/profiling", "sp1-prover", "sp1-stark"]
