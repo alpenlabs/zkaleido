@@ -15,12 +15,12 @@ rustdoc.all = "warn"
 [dependencies]
 zkaleido.workspace = true
 
-async-trait.workspace = true
+async-trait = { workspace = true, optional = true }
 bincode.workspace = true
-hex.workspace = true
+hex = { workspace = true, optional = true }
 k256.workspace = true
 rand_core.workspace = true
 serde.workspace = true
 
 [features]
-ssz = ["zkaleido/ssz"]
+remote-prover = ["dep:async-trait", "dep:hex", "zkaleido/remote-prover"]

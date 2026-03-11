@@ -1,6 +1,8 @@
+#[cfg(feature = "remote-prover")]
+use crate::ZkVmRemoteProver;
 #[cfg(feature = "perf")]
 use crate::{input::ZkVmInputBuilder, PerformanceReport};
-use crate::{ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver, ZkVmTypedVerifier, ZkVmVkProvider};
+use crate::{ZkVmOutputExtractor, ZkVmProver, ZkVmTypedVerifier, ZkVmVkProvider};
 
 /// A trait implemented by the host of a zkVM program.
 ///
@@ -34,6 +36,7 @@ pub trait ZkVmHostPerf: ZkVmHost {
 }
 
 /// A trait implemented by the host of a zkVM program with support for remote proving operations.
+#[cfg(feature = "remote-prover")]
 pub trait ZkVmRemoteHost: ZkVmHost + ZkVmRemoteProver {}
 
 /// Blanket implementation of `ZkVmRemoteHost` for any type that implements both
@@ -41,4 +44,5 @@ pub trait ZkVmRemoteHost: ZkVmHost + ZkVmRemoteProver {}
 ///
 /// This allows any host that provides the necessary trait implementations to automatically
 /// satisfy the `ZkVmRemoteHost` trait without requiring explicit implementations.
+#[cfg(feature = "remote-prover")]
 impl<T> ZkVmRemoteHost for T where T: ZkVmHost + ZkVmRemoteProver {}

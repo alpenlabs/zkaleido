@@ -33,6 +33,8 @@ mod perf;
 mod program;
 mod proof;
 mod prover;
+#[cfg(feature = "remote-prover")]
+mod remote_prover;
 mod verifier;
 
 pub use env::*;
@@ -44,6 +46,8 @@ pub use perf::*;
 pub use program::*;
 pub use proof::*;
 pub use prover::*;
+#[cfg(feature = "remote-prover")]
+pub use remote_prover::*;
 pub use verifier::*;
 
 /// Represents the ZkVm host used for proof generation.

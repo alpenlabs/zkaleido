@@ -1,8 +1,11 @@
+#[cfg(feature = "remote-prover")]
 use async_trait::async_trait;
 
+#[cfg(feature = "remote-prover")]
+use crate::ZkVmRemoteHost;
 use crate::{
     host::ZkVmHost, input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, PublicValues,
-    ZkVmInputResult, ZkVmRemoteHost, ZkVmResult,
+    ZkVmInputResult, ZkVmResult,
 };
 #[cfg(feature = "perf")]
 use crate::{PerformanceReport, ZkVmHostPerf};
@@ -155,10 +158,11 @@ impl<T: ZkVmProgram> ZkVmProgramPerf for T {}
 /// that use this trait can leverage a remote prover (one implementing `ZkVmRemoteProver`)
 /// to initiate asynchronous proof generation via the `start_proving` method, and later retrieve the
 /// proof once it is ready.
+#[cfg(feature = "remote-prover")]
 #[async_trait(?Send)]
 pub trait ZkVmRemoteProgram: ZkVmProgram {
-    /// Proves the computation using any zkVM host.
-    async fn start_proving<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<String>
+    /// Starts the proving process using any zkVM remote host, returning a typed proof ID.
+    async fn start_proving<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<H::ProofId>
     where
         H: ZkVmRemoteHost,
         H::Input<'a>: ZkVmInputBuilder<'a>,
@@ -175,5 +179,6 @@ pub trait ZkVmRemoteProgram: ZkVmProgram {
 /// This allows any program that provides the necessary `ZkVmProgram` implementation to
 /// automatically satisfy the `ZkVmRemoteProgram` trait without requiring explicit implementations.
 /// The default `start_proving` method provided by the trait is sufficient for most use cases.
+#[cfg(feature = "remote-prover")]
 #[async_trait(?Send)]
 impl<T: ZkVmProgram> ZkVmRemoteProgram for T {}
