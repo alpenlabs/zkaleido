@@ -178,15 +178,30 @@ impl fmt::Debug for NativeHost {
 /// A proof identifier for native execution.
 ///
 /// Since `NativeHost` executes proofs synchronously, the proof ID contains the
-/// hex-encoded proof receipt itself, making the proof immediately available.
+/// encoded proof receipt itself as raw bytes, making the proof immediately available.
+/// Displayed as a hex string for logging.
 #[cfg(feature = "remote-prover")]
 #[derive(Debug, Clone)]
-pub struct NativeProofId(String);
+pub struct NativeProofId(Vec<u8>);
 
 #[cfg(feature = "remote-prover")]
 impl fmt::Display for NativeProofId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
+        write!(f, "{}", hex::encode(&self.0))
+    }
+}
+
+#[cfg(feature = "remote-prover")]
+impl From<NativeProofId> for Vec<u8> {
+    fn from(id: NativeProofId) -> Self {
+        id.0
+    }
+}
+
+#[cfg(feature = "remote-prover")]
+impl From<Vec<u8>> for NativeProofId {
+    fn from(bytes: Vec<u8>) -> Self {
+        NativeProofId(bytes)
     }
 }
 
@@ -194,7 +209,7 @@ impl fmt::Display for NativeProofId {
 ///
 /// Since `NativeHost` executes proofs synchronously, this implementation:
 /// - Runs the proof immediately in `start_proving`
-/// - Serializes the result and hex-encodes it as the proof ID
+/// - Serializes the result as the proof ID
 /// - Returns `Completed` status and decodes the proof on retrieval
 ///
 /// Combined with the blanket impl `impl<T: ZkVmHost + ZkVmRemoteProver> ZkVmRemoteHost for T`,
@@ -213,8 +228,8 @@ impl ZkVmRemoteProver for NativeHost {
         // Execute proof synchronously
         let proof_receipt = self.prove(input, proof_type)?;
 
-        // Encode and hex-encode as the proof ID
-        Ok(NativeProofId(hex::encode(proof_receipt.encode())))
+        // Encode the proof receipt as the proof ID
+        Ok(NativeProofId(proof_receipt.encode()))
     }
 
     async fn get_status(&self, _id: &NativeProofId) -> ZkVmResult<RemoteProofStatus> {
@@ -223,14 +238,6 @@ impl ZkVmRemoteProver for NativeHost {
     }
 
     async fn get_proof(&self, id: &NativeProofId) -> ZkVmResult<ProofReceiptWithMetadata> {
-        // Decode the hex-encoded proof
-        let decoded = hex::decode(&id.0).map_err(|_| {
-            ZkVmError::InvalidProofReceipt(
-                std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid hex encoding").into(),
-            )
-        })?;
-
-        // Decode and return the ProofReceiptWithMetadata
-        ProofReceiptWithMetadata::decode(&decoded)
+        ProofReceiptWithMetadata::decode(&id.0)
     }
 }

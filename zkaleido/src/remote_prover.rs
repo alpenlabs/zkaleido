@@ -31,8 +31,10 @@ pub enum RemoteProofStatus {
 pub trait ZkVmRemoteProver: ZkVmProver {
     /// A typed proof identifier returned by [`start_proving`](Self::start_proving).
     ///
-    /// Must be displayable for logging and cloneable for repeated status queries.
-    type ProofId: Debug + Display + Clone + 'static;
+    /// Must be displayable for logging, cloneable for repeated status queries, and
+    /// convertible to/from `Vec<u8>` for persistent storage (e.g. in a database) so
+    /// that proof status polling can be resumed across restarts.
+    type ProofId: Debug + Display + Clone + Into<Vec<u8>> + TryFrom<Vec<u8>> + 'static;
 
     /// Starts the proving process for the given input and proof type.
     ///

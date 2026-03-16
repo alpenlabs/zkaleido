@@ -1,3 +1,5 @@
+use std::fmt;
+
 use sp1_sdk::{
     network::{
         proto::types::{ExecutionStatus, FulfillmentStatus, GetProofRequestStatusResponse},
@@ -12,15 +14,43 @@ use zkaleido::{
 
 use crate::{proof::SP1ProofReceipt, SP1Host};
 
+/// A typed proof identifier for the SP1 network prover.
+///
+/// Wraps [`B256`] to implement the byte-conversion traits (`Into<Vec<u8>>` and
+/// `TryFrom<Vec<u8>>`) required by [`ZkVmRemoteProver::ProofId`], which cannot
+/// be implemented directly on the foreign `B256` type.
+#[derive(Debug, Clone)]
+pub struct Sp1ProofId(B256);
+
+impl fmt::Display for Sp1ProofId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+impl From<Sp1ProofId> for Vec<u8> {
+    fn from(id: Sp1ProofId) -> Self {
+        id.0.as_slice().to_vec()
+    }
+}
+
+impl TryFrom<Vec<u8>> for Sp1ProofId {
+    type Error = <B256 as TryFrom<&'static [u8]>>::Error;
+
+    fn try_from(bytes: Vec<u8>) -> Result<Self, Self::Error> {
+        B256::try_from(bytes.as_slice()).map(Sp1ProofId)
+    }
+}
+
 #[async_trait::async_trait(?Send)]
 impl ZkVmRemoteProver for SP1Host {
-    type ProofId = B256;
+    type ProofId = Sp1ProofId;
 
     async fn start_proving<'a>(
         &self,
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
-    ) -> ZkVmResult<B256> {
+    ) -> ZkVmResult<Sp1ProofId> {
         let client = ProverClient::builder().network().build();
 
         let strategy = std::env::var("SP1_PROOF_STRATEGY")
@@ -43,23 +73,23 @@ impl ZkVmRemoteProver for SP1Host {
             .await
             .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
 
-        Ok(request_id)
+        Ok(Sp1ProofId(request_id))
     }
 
-    async fn get_status(&self, id: &B256) -> ZkVmResult<RemoteProofStatus> {
+    async fn get_status(&self, id: &Sp1ProofId) -> ZkVmResult<RemoteProofStatus> {
         let client = ProverClient::builder().network().build();
         let (status, _) = client
-            .get_proof_status(*id)
+            .get_proof_status(id.0)
             .await
             .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
 
         Ok(convert_proof_status(status))
     }
 
-    async fn get_proof(&self, id: &B256) -> ZkVmResult<ProofReceiptWithMetadata> {
+    async fn get_proof(&self, id: &Sp1ProofId) -> ZkVmResult<ProofReceiptWithMetadata> {
         let client = ProverClient::builder().network().build();
         let (_, proof) = client
-            .get_proof_status(*id)
+            .get_proof_status(id.0)
             .await
             .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
 
