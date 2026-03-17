@@ -1,6 +1,12 @@
 use std::fmt::{Debug, Display};
 
+#[cfg(feature = "arbitrary")]
+use arbitrary::Arbitrary;
 use async_trait::async_trait;
+#[cfg(feature = "borsh")]
+use borsh::{BorshDeserialize, BorshSerialize};
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 
 use crate::{input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, ZkVmProver, ZkVmResult};
 
@@ -8,6 +14,9 @@ use crate::{input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, ZkVmPr
 ///
 /// Modeled after SP1's `FulfillmentStatus` but simplified to be backend-agnostic.
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
 pub enum RemoteProofStatus {
     /// The proof request has been submitted but work has not started.
     Requested,
