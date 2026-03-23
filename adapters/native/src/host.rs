@@ -1,5 +1,6 @@
 use std::{env, fmt, sync::Arc};
 
+#[cfg(feature = "remote-prover")]
 use async_trait::async_trait;
 use k256::schnorr::{
     signature::{Signer, Verifier},
@@ -9,9 +10,11 @@ use rand_core::OsRng;
 use zkaleido::{
     DataFormatError, ExecutionSummary, Proof, ProofMetadata, ProofReceipt,
     ProofReceiptWithMetadata, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm,
-    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmRemoteProver,
-    ZkVmResult, ZkVmTypedVerifier, ZkVmVkProvider,
+    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmResult,
+    ZkVmTypedVerifier, ZkVmVkProvider,
 };
+#[cfg(feature = "remote-prover")]
+use zkaleido::{RemoteProofStatus, ZkVmRemoteProver};
 
 use crate::{env::NativeMachine, input::NativeMachineInputBuilder, proof::NativeProofReceipt};
 
@@ -172,47 +175,69 @@ impl fmt::Debug for NativeHost {
     }
 }
 
+/// A proof identifier for native execution.
+///
+/// Since `NativeHost` executes proofs synchronously, the proof ID contains the
+/// encoded proof receipt itself as raw bytes, making the proof immediately available.
+/// Displayed as a hex string for logging.
+#[cfg(feature = "remote-prover")]
+#[derive(Debug, Clone)]
+pub struct NativeProofId(Vec<u8>);
+
+#[cfg(feature = "remote-prover")]
+impl fmt::Display for NativeProofId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", hex::encode(&self.0))
+    }
+}
+
+#[cfg(feature = "remote-prover")]
+impl From<NativeProofId> for Vec<u8> {
+    fn from(id: NativeProofId) -> Self {
+        id.0
+    }
+}
+
+#[cfg(feature = "remote-prover")]
+impl From<Vec<u8>> for NativeProofId {
+    fn from(bytes: Vec<u8>) -> Self {
+        NativeProofId(bytes)
+    }
+}
+
 /// Implementation of `ZkVmRemoteProver` for `NativeHost`.
 ///
 /// Since `NativeHost` executes proofs synchronously, this implementation:
 /// - Runs the proof immediately in `start_proving`
-/// - Serializes the result and hex-encodes it as the "proof ID"
-/// - Deserializes and returns the proof in `get_proof_if_ready_inner`
+/// - Serializes the result as the proof ID
+/// - Returns `Completed` status and decodes the proof on retrieval
 ///
 /// Combined with the blanket impl `impl<T: ZkVmHost + ZkVmRemoteProver> ZkVmRemoteHost for T`,
 /// this automatically gives `NativeHost` the `ZkVmRemoteHost` trait, allowing it to work
 /// seamlessly with async/remote proving interfaces.
+#[cfg(feature = "remote-prover")]
 #[async_trait(?Send)]
 impl ZkVmRemoteProver for NativeHost {
+    type ProofId = NativeProofId;
+
     async fn start_proving<'a>(
         &self,
         input: <Self::Input<'a> as zkaleido::ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
-    ) -> ZkVmResult<String> {
+    ) -> ZkVmResult<NativeProofId> {
         // Execute proof synchronously
         let proof_receipt = self.prove(input, proof_type)?;
 
-        // Encode and hex-encode as "proof ID"
-        Ok(hex::encode(proof_receipt.encode()))
+        // Encode the proof receipt as the proof ID
+        Ok(NativeProofId(proof_receipt.encode()))
     }
 
-    async fn get_proof_if_ready_inner(
-        &self,
-        id: String,
-    ) -> ZkVmResult<Option<Self::ZkVmProofReceipt>> {
-        // Decode the hex-encoded proof
-        let decoded = hex::decode(&id).map_err(|_| {
-            ZkVmError::InvalidProofReceipt(
-                std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid hex encoding").into(),
-            )
-        })?;
+    async fn get_status(&self, _id: &NativeProofId) -> ZkVmResult<RemoteProofStatus> {
+        // Native proofs are always immediately available.
+        Ok(RemoteProofStatus::Completed)
+    }
 
-        // Decode the ProofReceiptWithMetadata
-        let proof = ProofReceiptWithMetadata::decode(&decoded)?;
-
-        // Convert to NativeProofReceipt
-        let native_receipt = proof.try_into().map_err(ZkVmError::InvalidProofReceipt)?;
-
-        Ok(Some(native_receipt))
+    async fn get_proof(&self, id: &NativeProofId) -> ZkVmResult<ProofReceiptWithMetadata> {
+        ProofReceiptWithMetadata::decode(&id.0)
     }
 }

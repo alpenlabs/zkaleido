@@ -53,6 +53,10 @@ pub enum ZkVmError {
         source: DataFormatError,
     },
 
+    /// This error is returned when a proof is requested before it is ready.
+    #[error("Proof is not ready")]
+    ProofNotReady,
+
     /// A general catch-all variant for errors not covered by the other variants.
     #[error("{0}")]
     Other(String),
