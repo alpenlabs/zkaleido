@@ -26,10 +26,18 @@ pub struct PerformanceReport {
 
     /// The number of shards.
     pub shards: usize,
-    /// The reported number of cycles.
+
+    /// The number of VM execution cycles. Each cycle represents one basic operation
+    /// (e.g., an integer addition). Proving time scales proportionally with this value.
     ///
-    /// Note that this number may vary based on the zkVM.
+    /// The exact definition of a cycle may vary across zkVM backends.
     pub cycles: u64,
+
+    /// Prover gas consumption, a cost metric that accounts for both cycle count and precompile
+    /// cost profiles, giving a more accurate estimate of proving cost than raw cycles alone.
+    ///
+    /// `None` if the zkVM backend does not support gas metering.
+    pub gas: Option<u64>,
 
     /// The duration for execution in seconds
     pub execution_duration: f64,
@@ -58,6 +66,7 @@ impl PerformanceReport {
     pub fn new(
         shards: usize,
         cycles: u64,
+        gas: Option<u64>,
         execution_duration: f64,
         core_proof_report: Option<ProofMetrics>,
         compressed_proof_report: Option<ProofMetrics>,
@@ -83,6 +92,7 @@ impl PerformanceReport {
             name,
             shards,
             cycles,
+            gas,
             execution_duration,
             core_proof_metrics: core_proof_report,
             compressed_proof_metrics: compressed_proof_report,

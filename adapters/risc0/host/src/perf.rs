@@ -42,6 +42,7 @@ impl ZkVmHostPerf for Risc0Host {
         PerformanceReport::new(
             shards,
             cycles,
+            None,
             execution_duration.as_secs_f64(),
             core_proof_report,
             compressed_proof_report,
