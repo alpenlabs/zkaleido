@@ -20,7 +20,7 @@ impl ZkVmHostPerf for SP1Host {
         let context = SP1Context::default();
         let cycles = get_cycles(elf, &input);
 
-        let (_, execution_duration) =
+        let ((_, _, report), execution_duration) =
             time_operation(|| prover.execute(elf, &input, context.clone()).unwrap());
 
         // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
@@ -39,6 +39,7 @@ impl ZkVmHostPerf for SP1Host {
         PerformanceReport::new(
             shards,
             cycles,
+            report.gas,
             execution_duration.as_secs_f64(),
             core_proof_report,
             compressed_proof_report,
