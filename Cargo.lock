@@ -2867,6 +2867,7 @@ name = "fibonacci"
 version = "0.1.0"
 dependencies = [
  "zkaleido",
+ "zkaleido-logging",
  "zkaleido-native-adapter",
 ]
 
