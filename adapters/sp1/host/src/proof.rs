@@ -5,23 +5,28 @@ use zkaleido::{
 };
 
 #[derive(Debug, Clone)]
-pub struct SP1ProofReceipt(SP1ProofWithPublicValues);
-
-impl SP1ProofReceipt {
-    pub fn inner(self) -> SP1ProofWithPublicValues {
-        self.0
-    }
+pub struct SP1ProofReceipt {
+    inner: SP1ProofWithPublicValues,
+    program_id: ProgramId,
 }
 
-impl From<SP1ProofWithPublicValues> for SP1ProofReceipt {
-    fn from(receipt: SP1ProofWithPublicValues) -> Self {
-        SP1ProofReceipt(receipt)
+impl SP1ProofReceipt {
+    pub fn new(inner: SP1ProofWithPublicValues, program_id: ProgramId) -> Self {
+        Self { inner, program_id }
+    }
+
+    pub fn inner(self) -> SP1ProofWithPublicValues {
+        self.inner
+    }
+
+    pub fn program_id(&self) -> &ProgramId {
+        &self.program_id
     }
 }
 
 impl AsRef<SP1ProofWithPublicValues> for SP1ProofReceipt {
     fn as_ref(&self) -> &SP1ProofWithPublicValues {
-        &self.0
+        &self.inner
     }
 }
 
@@ -61,7 +66,8 @@ impl TryFrom<&ProofReceiptWithMetadata> for SP1ProofReceipt {
             sp1_version,
             tee_proof: None,
         };
-        Ok(SP1ProofReceipt(proof_receipt))
+        let program_id = value.metadata().program_id().clone();
+        Ok(SP1ProofReceipt::new(proof_receipt, program_id))
     }
 }
 
@@ -83,7 +89,7 @@ impl TryFrom<SP1ProofReceipt> for ProofReceiptWithMetadata {
         let receipt = ProofReceipt::new(proof, public_values);
 
         let sp1_version = sp1_sdk::SP1_CIRCUIT_VERSION.to_string();
-        let metadata = ProofMetadata::new(ZkVm::SP1, ProgramId([0u8; 32]), sp1_version); // FIXME:PG
+        let metadata = ProofMetadata::new(ZkVm::SP1, value.program_id().clone(), sp1_version);
 
         Ok(ProofReceiptWithMetadata::new(receipt, metadata))
     }

@@ -99,7 +99,7 @@ impl ZkVmProver for SP1Host {
                 },
             };
 
-            return Ok(proof.into());
+            return Ok(SP1ProofReceipt::new(proof, self.program_id()));
         }
 
         let client = ProverClient::from_env();
@@ -115,6 +115,6 @@ impl ZkVmProver for SP1Host {
             .run()
             .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
 
-        Ok(proof_info.into())
+        Ok(SP1ProofReceipt::new(proof_info, self.program_id()))
     }
 }
