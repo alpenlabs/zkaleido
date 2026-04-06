@@ -1,28 +1,32 @@
+/// No-op replacement for `tracing::error!` in zkVM builds.
+#[macro_export]
 macro_rules! error {
     ($($tt:tt)*) => {{}};
 }
 
+/// No-op replacement for `tracing::warn!` in zkVM builds.
+#[macro_export]
 macro_rules! warn {
     ($($tt:tt)*) => {{}};
 }
 
+/// No-op replacement for `tracing::info!` in zkVM builds.
+#[macro_export]
 macro_rules! info {
     ($($tt:tt)*) => {{}};
 }
 
+/// No-op replacement for `tracing::debug!` in zkVM builds.
+#[macro_export]
 macro_rules! debug {
     ($($tt:tt)*) => {{}};
 }
 
+/// No-op replacement for `tracing::trace!` in zkVM builds.
+#[macro_export]
 macro_rules! trace {
     ($($tt:tt)*) => {{}};
 }
-
-pub use debug;
-pub use error;
-pub use info;
-pub use trace;
-pub use warn;
 
 #[cfg(test)]
 mod tests {

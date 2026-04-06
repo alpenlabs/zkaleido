@@ -6,9 +6,6 @@
 
 #[cfg(target_os = "zkvm")]
 mod noop;
-
-#[cfg(target_os = "zkvm")]
-pub use noop::{debug, error, info, trace, warn};
 // When NOT building for zkVM, use real tracing macros
 #[cfg(not(target_os = "zkvm"))]
 pub use tracing::{debug, error, info, trace, warn};
