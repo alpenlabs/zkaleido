@@ -1,10 +1,10 @@
 use sp1_sdk::{
     network::{Error as NetworkError, FulfillmentStrategy},
-    ProverClient,
+    HashableKey, ProverClient,
 };
 use zkaleido::{
-    ExecutionSummary, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
-    ZkVmProver, ZkVmResult,
+    ExecutionSummary, ProgramId, ProofType, PublicValues, ZkVmError, ZkVmExecutor,
+    ZkVmInputBuilder, ZkVmProver, ZkVmResult,
 };
 
 use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt, SP1Host};
@@ -38,6 +38,10 @@ impl ZkVmExecutor for SP1Host {
     fn save_trace(&self, trace_name: &str) {
         let profiling_file_name = format!("{}_{:?}.trace_profile", trace_name, &self);
         std::env::set_var("TRACE_FILE", profiling_file_name);
+    }
+
+    fn program_id(&self) -> ProgramId {
+        ProgramId(self.proving_key.vk.bytes32_raw())
     }
 }
 

@@ -1,4 +1,5 @@
 use std::{
+    fmt,
     fs::File,
     io::{Read as _, Write as _},
     path::Path,
@@ -70,6 +71,22 @@ macro_rules! define_byte_wrapper {
 define_byte_wrapper!(Proof);
 define_byte_wrapper!(PublicValues);
 define_byte_wrapper!(VerifyingKey);
+
+/// Identifier of a zkVM program, derived deterministically from its ELF binary.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
+pub struct ProgramId(pub [u8; 32]);
+
+impl fmt::Display for ProgramId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
+        for byte in &self.0 {
+            write!(f, "{byte:02x}")?;
+        }
+        Ok(())
+    }
+}
 
 /// Summary of executing a zkVM program.
 ///

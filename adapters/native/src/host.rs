@@ -8,7 +8,7 @@ use k256::schnorr::{
 };
 use rand_core::OsRng;
 use zkaleido::{
-    DataFormatError, ExecutionSummary, Proof, ProofMetadata, ProofReceipt,
+    DataFormatError, ExecutionSummary, ProgramId, Proof, ProofMetadata, ProofReceipt,
     ProofReceiptWithMetadata, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm,
     ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmResult,
     ZkVmTypedVerifier, ZkVmVkProvider,
@@ -97,6 +97,10 @@ impl ZkVmExecutor for NativeHost {
     }
 
     fn save_trace(&self, _trace_name: &str) {}
+
+    fn program_id(&self) -> zkaleido::ProgramId {
+        ProgramId([0u8; 32])
+    }
 }
 
 impl ZkVmProver for NativeHost {

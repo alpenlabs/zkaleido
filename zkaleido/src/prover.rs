@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use crate::{
-    input::ZkVmInputBuilder, ExecutionSummary, ProofReceiptWithMetadata, ProofType, ZkVmError,
-    ZkVmProofError, ZkVmResult,
+    input::ZkVmInputBuilder, ExecutionSummary, ProgramId, ProofReceiptWithMetadata, ProofType,
+    ZkVmError, ZkVmProofError, ZkVmResult,
 };
 
 /// A trait implemented by types that execute zkVM programs.
@@ -20,6 +20,9 @@ pub trait ZkVmExecutor: Send + Sync + Clone + Debug + 'static {
 
     /// Returns the ELF for the loaded program
     fn get_elf(&self) -> &[u8];
+
+    /// Returns the program identifier, derived deterministically from the ELF.
+    fn program_id(&self) -> ProgramId;
 
     /// Save the generated trace
     fn save_trace(&self, trace_name: &str);

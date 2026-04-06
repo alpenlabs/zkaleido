@@ -1,7 +1,7 @@
 use risc0_zkvm::{default_executor, default_prover, ProverOpts};
 use zkaleido::{
-    ExecutionSummary, ProofType, PublicValues, ZkVmError, ZkVmExecutor, ZkVmInputBuilder,
-    ZkVmProver, ZkVmResult,
+    ExecutionSummary, ProgramId, ProofType, PublicValues, ZkVmError, ZkVmExecutor,
+    ZkVmInputBuilder, ZkVmProver, ZkVmResult,
 };
 
 use crate::{input::Risc0ProofInputBuilder, proof::Risc0ProofReceipt, Risc0Host};
@@ -32,6 +32,10 @@ impl ZkVmExecutor for Risc0Host {
     fn save_trace(&self, trace_name: &str) {
         let profiling_file_name = format!("{}_{:?}.trace_profile", trace_name, self);
         std::env::set_var("RISC0_PPROF_OUT", profiling_file_name);
+    }
+
+    fn program_id(&self) -> zkaleido::ProgramId {
+        ProgramId(self.image_id().into())
     }
 }
 
