@@ -313,14 +313,16 @@ impl ProofReceiptWithMetadata {
             self.metadata.zkvm(),
             self.metadata.version()
         );
-        let mut file = File::create(filename).expect("failed to create file");
+        let mut file = File::create(filename)
+            .map_err(|e| ZkVmError::Other(format!("failed to create file: {e}")))?;
         file.write_all(&self.encode())
             .map_err(|e| ZkVmError::Other(format!("failed to write proof: {e}")))
     }
 
     /// Loads a proof from a path.
     pub fn load(path: impl AsRef<Path>) -> ZkVmResult<Self> {
-        let mut file = File::open(path).expect("failed to open file");
+        let mut file =
+            File::open(path).map_err(|e| ZkVmError::Other(format!("failed to open file: {e}")))?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)
             .map_err(|e| ZkVmError::Other(format!("failed to read proof: {e}")))?;
