@@ -1,7 +1,7 @@
 use sp1_sdk::{SP1Proof, SP1ProofWithPublicValues, SP1PublicValues};
 use zkaleido::{
-    DataFormatError, Mismatched, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata,
-    PublicValues, ZkVm, ZkVmProofError,
+    DataFormatError, Mismatched, ProgramId, Proof, ProofMetadata, ProofReceipt,
+    ProofReceiptWithMetadata, PublicValues, ZkVm, ZkVmProofError,
 };
 
 #[derive(Debug, Clone)]
@@ -83,7 +83,7 @@ impl TryFrom<SP1ProofReceipt> for ProofReceiptWithMetadata {
         let receipt = ProofReceipt::new(proof, public_values);
 
         let sp1_version = sp1_sdk::SP1_CIRCUIT_VERSION.to_string();
-        let metadata = ProofMetadata::new(ZkVm::SP1, sp1_version);
+        let metadata = ProofMetadata::new(ZkVm::SP1, ProgramId([0u8; 32]), sp1_version); // FIXME:PG
 
         Ok(ProofReceiptWithMetadata::new(receipt, metadata))
     }

@@ -119,7 +119,7 @@ impl ZkVmProver for NativeHost {
         let receipt = ProofReceipt::new(proof, public_values);
 
         let version: &str = env!("CARGO_PKG_VERSION");
-        let metadata = ProofMetadata::new(ZkVm::Native, version.to_string());
+        let metadata = ProofMetadata::new(ZkVm::Native, ProgramId([0u8; 32]), version.to_string());
 
         let receipt = ProofReceiptWithMetadata::new(receipt, metadata);
         Ok(receipt.try_into()?)
