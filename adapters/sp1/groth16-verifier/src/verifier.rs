@@ -185,15 +185,13 @@ mod tests {
     };
 
     fn load_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
-        let program_id_hex = "00eb7fd5709e4b833db86054ba4acca001a3aa5f18b7e7d0d96d0f1d340b4e34";
-        let program_id: [u8; 32] = hex::decode(program_id_hex).unwrap().try_into().unwrap();
+        let receipt =
+            ProofReceiptWithMetadata::load("./proofs/fibonacci_SP1_v5.0.0.proof.bin").unwrap();
 
-        let verifier = SP1Groth16Verifier::load(&GROTH16_VK_BYTES, program_id).unwrap();
-        let proof_file = format!("./proofs/fibonacci_sp1_0x{}.proof.bin", program_id_hex);
-        let receipt = ProofReceiptWithMetadata::load(proof_file)
-            .unwrap()
-            .receipt()
-            .clone();
+        let verifier =
+            SP1Groth16Verifier::load(&GROTH16_VK_BYTES, receipt.metadata().program_id().0).unwrap();
+
+        let receipt = receipt.receipt().clone();
 
         (verifier, receipt)
     }

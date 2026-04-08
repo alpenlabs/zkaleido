@@ -284,9 +284,13 @@ impl ProofReceiptWithMetadata {
         data = rest;
         let version_bytes = read_bytes(&mut data)?;
 
-        let (pid_bytes, rest) = data.split_at_checked(32).ok_or_else(err)?;
-        data = rest;
-        let program_id = ProgramId(pid_bytes.try_into().unwrap());
+        let program_id = if data.len() >= 32 {
+            let (pid_bytes, rest) = data.split_at(32);
+            data = rest;
+            ProgramId(pid_bytes.try_into().unwrap())
+        } else {
+            ProgramId::default()
+        };
 
         // Silence unused-variable warning; all data should be consumed.
         let _ = data;

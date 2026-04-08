@@ -23,6 +23,5 @@ thiserror.workspace = true
 zkaleido.workspace = true
 
 [dev-dependencies]
-hex.workspace = true
 risc0-zkvm = "3.0.5"
 risc0-circuit-recursion = "4.0.4"
