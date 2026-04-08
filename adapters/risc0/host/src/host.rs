@@ -2,7 +2,7 @@ use std::fmt;
 
 use hex::encode;
 use risc0_zkvm::{compute_image_id, sha::Digest};
-use zkaleido::ZkVmHost;
+use zkaleido::{ZkVm, ZkVmHost};
 
 /// A host for the `Risc0` zkVM that stores the guest program in ELF format.
 ///
@@ -38,7 +38,11 @@ impl Risc0Host {
     }
 }
 
-impl ZkVmHost for Risc0Host {}
+impl ZkVmHost for Risc0Host {
+    fn zkvm(&self) -> ZkVm {
+        ZkVm::Risc0
+    }
+}
 
 impl fmt::Debug for Risc0Host {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

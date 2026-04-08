@@ -1,7 +1,7 @@
 use std::fmt;
 
 use sp1_sdk::{HashableKey, ProverClient, SP1ProvingKey};
-use zkaleido::ZkVmHost;
+use zkaleido::{ZkVm, ZkVmHost};
 
 /// A host for the `SP1` zkVM that stores the guest program in ELF format.
 /// The `SP1Host` is responsible for program execution and proving
@@ -32,7 +32,11 @@ impl SP1Host {
     }
 }
 
-impl ZkVmHost for SP1Host {}
+impl ZkVmHost for SP1Host {
+    fn zkvm(&self) -> ZkVm {
+        ZkVm::SP1
+    }
+}
 
 impl fmt::Debug for SP1Host {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
