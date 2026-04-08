@@ -98,7 +98,7 @@ impl ZkVmExecutor for NativeHost {
     fn save_trace(&self, _trace_name: &str) {}
 
     fn program_id(&self) -> zkaleido::ProgramId {
-        ProgramId([0u8; 32])
+        ProgramId(self.schnorr_key.verifying_key().to_bytes().into())
     }
 }
 

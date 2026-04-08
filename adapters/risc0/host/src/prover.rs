@@ -34,7 +34,7 @@ impl ZkVmExecutor for Risc0Host {
         std::env::set_var("RISC0_PPROF_OUT", profiling_file_name);
     }
 
-    fn program_id(&self) -> zkaleido::ProgramId {
+    fn program_id(&self) -> ProgramId {
         ProgramId(self.image_id().into())
     }
 }
