@@ -9,9 +9,8 @@ use k256::schnorr::{
 use rand_core::OsRng;
 use zkaleido::{
     DataFormatError, ExecutionSummary, ProgramId, Proof, ProofMetadata, ProofReceipt,
-    ProofReceiptWithMetadata, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm,
-    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmResult,
-    ZkVmTypedVerifier, ZkVmVkProvider,
+    ProofReceiptWithMetadata, ProofType, PublicValues, VerifyingKey, ZkVm, ZkVmError, ZkVmExecutor,
+    ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmResult, ZkVmTypedVerifier, ZkVmVkProvider,
 };
 #[cfg(feature = "remote-prover")]
 use zkaleido::{RemoteProofStatus, ZkVmRemoteProver};
@@ -153,10 +152,6 @@ impl ZkVmVkProvider for NativeHost {
         // Return the Schnorr public key (verifying key) as the verifying key
         let schnorr_public_key = self.schnorr_key.verifying_key().to_bytes().to_vec();
         VerifyingKey::new(schnorr_public_key)
-    }
-
-    fn vk_commitment(&self) -> VerifyingKeyCommitment {
-        VerifyingKeyCommitment::new([0u32; 8])
     }
 }
 

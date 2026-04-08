@@ -4,9 +4,7 @@ use risc0_zkvm::{
     get_prover_server, sha::Digest, ExecutorImpl, ProverOpts, ProverServer, Receipt, Session,
     VerifierContext,
 };
-use zkaleido::{
-    time_operation, PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf, ZkVmVkProvider,
-};
+use zkaleido::{time_operation, PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf};
 
 use crate::Risc0Host;
 
@@ -16,7 +14,7 @@ impl ZkVmHostPerf for Risc0Host {
         input: <Self::Input<'a> as zkaleido::ZkVmInputBuilder<'a>>::Input,
     ) -> zkaleido::PerformanceReport {
         let elf = self.get_elf();
-        let image_id = self.vk_commitment().into_inner();
+        let image_id = self.program_id().0;
 
         let opts = ProverOpts::default();
         let prover = get_prover_server(&opts).unwrap();
@@ -54,7 +52,7 @@ impl ZkVmHostPerf for Risc0Host {
 fn gen_proof_metrics(
     prover: Rc<dyn ProverServer>,
     session: Session,
-    image_id: [u32; 8],
+    image_id: [u8; 32],
     cycles: u64,
 ) -> (
     Option<ProofMetrics>,

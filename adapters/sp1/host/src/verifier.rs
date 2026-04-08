@@ -1,8 +1,8 @@
 use serde::{de::DeserializeOwned, Serialize};
-use sp1_sdk::{HashableKey, ProverClient};
+use sp1_sdk::ProverClient;
 use zkaleido::{
-    DataFormatError, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError,
-    ZkVmOutputExtractor, ZkVmResult, ZkVmTypedVerifier, ZkVmVkProvider,
+    DataFormatError, PublicValues, VerifyingKey, ZkVmError, ZkVmOutputExtractor, ZkVmResult,
+    ZkVmTypedVerifier, ZkVmVkProvider,
 };
 
 use crate::{proof::SP1ProofReceipt, SP1Host};
@@ -23,10 +23,6 @@ impl ZkVmVkProvider for SP1Host {
     fn vk(&self) -> VerifyingKey {
         let verification_key = bincode::serialize(&self.proving_key.vk).unwrap();
         VerifyingKey::new(verification_key)
-    }
-
-    fn vk_commitment(&self) -> VerifyingKeyCommitment {
-        VerifyingKeyCommitment::new(self.proving_key.vk.hash_u32())
     }
 }
 

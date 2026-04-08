@@ -15,8 +15,8 @@ pub struct Risc0Groth16VerifyInput {
 impl Risc0Groth16VerifyInput {
     pub fn load() -> Self {
         let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let proof_file =
-            base.join("../../adapters/risc0/groth16-verifier/proofs/fibonacci_Risc0_3.0.5.proof.bin");
+        let proof_file = base
+            .join("../../adapters/risc0/groth16-verifier/proofs/fibonacci_Risc0_3.0.5.proof.bin");
         let risc0_receipt = ProofReceiptWithMetadata::load(proof_file).unwrap();
 
         let image_id = Digest::from_bytes(risc0_receipt.metadata().program_id().0);

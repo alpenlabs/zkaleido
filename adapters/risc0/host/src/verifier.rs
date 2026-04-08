@@ -1,8 +1,8 @@
 use risc0_zkvm::Journal;
 use serde::{de::DeserializeOwned, Serialize};
 use zkaleido::{
-    PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVmError, ZkVmOutputExtractor, ZkVmResult,
-    ZkVmTypedVerifier, ZkVmVkProvider,
+    PublicValues, VerifyingKey, ZkVmError, ZkVmOutputExtractor, ZkVmResult, ZkVmTypedVerifier,
+    ZkVmVkProvider,
 };
 
 use crate::{proof::Risc0ProofReceipt, Risc0Host};
@@ -22,10 +22,6 @@ impl ZkVmTypedVerifier for Risc0Host {
 impl ZkVmVkProvider for Risc0Host {
     fn vk(&self) -> VerifyingKey {
         VerifyingKey::new(self.image_id().as_bytes().to_vec())
-    }
-
-    fn vk_commitment(&self) -> VerifyingKeyCommitment {
-        VerifyingKeyCommitment::new(self.image_id().into())
     }
 }
 
