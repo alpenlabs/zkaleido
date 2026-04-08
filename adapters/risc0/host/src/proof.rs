@@ -73,15 +73,7 @@ impl TryFrom<Risc0ProofReceipt> for ProofReceiptWithMetadata {
         let public_values = PublicValues::new(value.0.journal.bytes.to_vec());
         let receipt = ProofReceipt::new(proof, public_values);
 
-        let program_id = ProgramId(
-            value
-                .0
-                .metadata
-                .verifier_parameters
-                .as_bytes()
-                .try_into()
-                .expect("risc0 verifier parameters should be 32 bytes"),
-        );
+        let program_id = ProgramId(value.0.metadata.verifier_parameters.into());
         let metadata = ProofMetadata::new(ZkVm::Risc0, program_id, risc0_zkvm::VERSION);
         Ok(ProofReceiptWithMetadata::new(receipt, metadata))
     }
