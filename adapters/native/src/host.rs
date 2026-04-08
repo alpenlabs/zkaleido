@@ -79,7 +79,11 @@ impl NativeHost {
     }
 }
 
-impl ZkVmHost for NativeHost {}
+impl ZkVmHost for NativeHost {
+    fn zkvm(&self) -> ZkVm {
+        ZkVm::Native
+    }
+}
 
 impl ZkVmExecutor for NativeHost {
     type Input<'a> = NativeMachineInputBuilder;
@@ -109,6 +113,7 @@ impl ZkVmProver for NativeHost {
     ) -> ZkVmResult<NativeProofReceipt> {
         let execution_result = self.execute(native_machine)?;
         let public_values = execution_result.into_public_values();
+
         // Sign the public values using the Schnorr signing key
         let signature = self.schnorr_key.sign(public_values.as_bytes());
         let proof = Proof::new(signature.to_bytes().to_vec());
