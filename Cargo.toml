@@ -41,7 +41,7 @@ schnorr-sig-verify = { path = "examples/schnorr-sig-verify" }
 groth16-verify-sp1 = { path = "examples/groth16-verify-sp1" }
 groth16-verify-risc0 = { path = "examples/groth16-verify-risc0" }
 
-ssz = { git = "https://github.com/alpenlabs/ssz-gen", tag = "v0.14.0" }
+ssz = { git = "https://github.com/alpenlabs/ssz-gen", tag = "v0.15.0" }
 
 arbitrary = { version = "1.3.2", features = ["derive"] }
 async-trait = "0.1.86"
