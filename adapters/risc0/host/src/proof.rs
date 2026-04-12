@@ -1,7 +1,7 @@
 use risc0_zkvm::{InnerReceipt, Receipt, VERSION};
 use zkaleido::{
-    DataFormatError, Mismatched, Proof, ProofMetadata, ProofReceipt, ProofReceiptWithMetadata,
-    PublicValues, ZkVm, ZkVmProofError,
+    DataFormatError, Mismatched, ProgramId, Proof, ProofMetadata, ProofReceipt,
+    ProofReceiptWithMetadata, PublicValues, ZkVm, ZkVmProofError,
 };
 
 #[derive(Debug, Clone)]
@@ -73,7 +73,8 @@ impl TryFrom<Risc0ProofReceipt> for ProofReceiptWithMetadata {
         let public_values = PublicValues::new(value.0.journal.bytes.to_vec());
         let receipt = ProofReceipt::new(proof, public_values);
 
-        let metadata = ProofMetadata::new(ZkVm::Risc0, risc0_zkvm::VERSION);
+        let program_id = ProgramId(value.0.metadata.verifier_parameters.into());
+        let metadata = ProofMetadata::new(ZkVm::Risc0, program_id, risc0_zkvm::VERSION);
         Ok(ProofReceiptWithMetadata::new(receipt, metadata))
     }
 }

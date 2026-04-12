@@ -1,8 +1,8 @@
-use zkaleido::{AggregationInput, ProofType, VerifyingKeyCommitment, ZkVmInputResult, ZkVmProgram};
+use zkaleido::{AggregationInput, ProgramId, ProofType, ZkVmInputResult, ZkVmProgram};
 
 pub struct FibCompositionInput {
     pub fib_proof_with_vk: AggregationInput,
-    pub fib_vk_commitment: VerifyingKeyCommitment,
+    pub fib_program_id: ProgramId,
 }
 
 pub struct FibCompositionProgram;
@@ -24,7 +24,7 @@ impl ZkVmProgram for FibCompositionProgram {
         B: zkaleido::ZkVmInputBuilder<'a>,
     {
         B::new()
-            .write_serde(&input.fib_vk_commitment.into_inner())?
+            .write_serde(&input.fib_program_id)?
             .write_proof(&input.fib_proof_with_vk)?
             .build()
     }

@@ -12,22 +12,16 @@ pub struct SP1Groth16VerifyInput {
 
 impl SP1Groth16VerifyInput {
     pub fn load() -> Self {
-        let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-
-        let sp1_program_vk_hex = "00eb7fd5709e4b833db86054ba4acca001a3aa5f18b7e7d0d96d0f1d340b4e34";
-        let sp1_program_vk: [u8; 32] = hex::decode(sp1_program_vk_hex).unwrap().try_into().unwrap();
-
         let sp1_vk_bytes = include_bytes!("../vk/sp1_groth16_vk.bin");
-        let sp1_verifier = SP1Groth16Verifier::load(sp1_vk_bytes, sp1_program_vk).unwrap();
 
-        let sp1_proof_file = base.join(format!(
-            "../../adapters/sp1/groth16-verifier/proofs/fibonacci_sp1_0x{}.proof.bin",
-            sp1_program_vk_hex
-        ));
-        let sp1_receipt = ProofReceiptWithMetadata::load(sp1_proof_file)
-            .unwrap()
-            .receipt()
-            .clone();
+        let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let sp1_proof_file =
+            base.join("../../adapters/sp1/groth16-verifier/proofs/fibonacci_SP1_v5.0.0.proof.bin");
+        let sp1_receipt = ProofReceiptWithMetadata::load(sp1_proof_file).unwrap();
+
+        let sp1_verifier =
+            SP1Groth16Verifier::load(sp1_vk_bytes, sp1_receipt.metadata().program_id().0).unwrap();
+        let sp1_receipt = sp1_receipt.receipt().clone();
 
         SP1Groth16VerifyInput {
             sp1_receipt,

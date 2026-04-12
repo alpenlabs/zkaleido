@@ -8,10 +8,9 @@ use k256::schnorr::{
 };
 use rand_core::OsRng;
 use zkaleido::{
-    DataFormatError, ExecutionSummary, Proof, ProofMetadata, ProofReceipt,
-    ProofReceiptWithMetadata, ProofType, PublicValues, VerifyingKey, VerifyingKeyCommitment, ZkVm,
-    ZkVmError, ZkVmExecutor, ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmResult,
-    ZkVmTypedVerifier, ZkVmVkProvider,
+    DataFormatError, ExecutionSummary, ProgramId, Proof, ProofMetadata, ProofReceipt,
+    ProofReceiptWithMetadata, ProofType, PublicValues, VerifyingKey, ZkVm, ZkVmError, ZkVmExecutor,
+    ZkVmHost, ZkVmOutputExtractor, ZkVmProver, ZkVmResult, ZkVmTypedVerifier, ZkVmVkProvider,
 };
 #[cfg(feature = "remote-prover")]
 use zkaleido::{RemoteProofStatus, ZkVmRemoteProver};
@@ -101,6 +100,10 @@ impl ZkVmExecutor for NativeHost {
     }
 
     fn save_trace(&self, _trace_name: &str) {}
+
+    fn program_id(&self) -> zkaleido::ProgramId {
+        ProgramId(self.schnorr_key.verifying_key().to_bytes().into())
+    }
 }
 
 impl ZkVmProver for NativeHost {
@@ -120,7 +123,7 @@ impl ZkVmProver for NativeHost {
         let receipt = ProofReceipt::new(proof, public_values);
 
         let version: &str = env!("CARGO_PKG_VERSION");
-        let metadata = ProofMetadata::new(ZkVm::Native, version.to_string());
+        let metadata = ProofMetadata::new(ZkVm::Native, ProgramId([0u8; 32]), version.to_string());
 
         let receipt = ProofReceiptWithMetadata::new(receipt, metadata);
         Ok(receipt.try_into()?)
@@ -154,10 +157,6 @@ impl ZkVmVkProvider for NativeHost {
         // Return the Schnorr public key (verifying key) as the verifying key
         let schnorr_public_key = self.schnorr_key.verifying_key().to_bytes().to_vec();
         VerifyingKey::new(schnorr_public_key)
-    }
-
-    fn vk_commitment(&self) -> VerifyingKeyCommitment {
-        VerifyingKeyCommitment::new([0u32; 8])
     }
 }
 

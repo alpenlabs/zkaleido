@@ -15,19 +15,12 @@ pub struct Risc0Groth16VerifyInput {
 impl Risc0Groth16VerifyInput {
     pub fn load() -> Self {
         let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let proof_file = base
+            .join("../../adapters/risc0/groth16-verifier/proofs/fibonacci_Risc0_3.0.5.proof.bin");
+        let risc0_receipt = ProofReceiptWithMetadata::load(proof_file).unwrap();
 
-        let image_id_hex = "f4e0413eee665668164b02be80c63b5e71e387ae08b7f9e75e5983cf9eb9518a";
-        let image_id: [u8; 32] = hex::decode(image_id_hex).unwrap().try_into().unwrap();
-        let image_id = Digest::from_bytes(image_id);
-
-        let proof_file = base.join(format!(
-            "../../adapters/risc0/groth16-verifier/proofs/fibonacci_risc0_{}.proof.bin",
-            image_id_hex
-        ));
-        let risc0_receipt = ProofReceiptWithMetadata::load(proof_file)
-            .unwrap()
-            .receipt()
-            .clone();
+        let image_id = Digest::from_bytes(risc0_receipt.metadata().program_id().0);
+        let risc0_receipt = risc0_receipt.receipt().clone();
 
         let vk = verifying_key();
 

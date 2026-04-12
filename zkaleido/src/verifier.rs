@@ -9,10 +9,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use crate::PublicValues;
 #[cfg(any(feature = "borsh", feature = "ssz"))]
 use crate::ZkVmError;
-use crate::{
-    ProofReceipt, ProofReceiptWithMetadata, VerifyingKey, VerifyingKeyCommitment, ZkVmProofError,
-    ZkVmResult,
-};
+use crate::{ProofReceipt, ProofReceiptWithMetadata, VerifyingKey, ZkVmProofError, ZkVmResult};
 
 /// A trait implemented by verifiers that work with typed proof receipts.
 ///
@@ -61,9 +58,6 @@ pub trait ZkVmVerifier: Send + Sync + Clone + Debug + 'static {
 pub trait ZkVmVkProvider: Send + Sync + Clone + Debug + 'static {
     /// Returns the Verification key for the loaded program
     fn vk(&self) -> VerifyingKey;
-
-    /// Returns the commitment of the verification key for the loaded program
-    fn vk_commitment(&self) -> VerifyingKeyCommitment;
 }
 
 /// A trait providing metadata and utility functions for zkVM proof receipts public values.

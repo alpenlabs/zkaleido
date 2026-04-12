@@ -8,8 +8,8 @@ use sp1_sdk::{
     ProverClient, SP1ProofMode,
 };
 use zkaleido::{
-    ProofReceiptWithMetadata, ProofType, RemoteProofStatus, ZkVmError, ZkVmInputBuilder,
-    ZkVmRemoteProver, ZkVmResult,
+    ProofReceiptWithMetadata, ProofType, RemoteProofStatus, ZkVmError, ZkVmExecutor,
+    ZkVmInputBuilder, ZkVmRemoteProver, ZkVmResult,
 };
 
 use crate::{proof::SP1ProofReceipt, SP1Host};
@@ -95,7 +95,7 @@ impl ZkVmRemoteProver for SP1Host {
 
         match proof {
             Some(proof) => {
-                let sp1_receipt: SP1ProofReceipt = proof.into();
+                let sp1_receipt = SP1ProofReceipt::new(proof, self.program_id());
                 sp1_receipt
                     .try_into()
                     .map_err(ZkVmError::InvalidProofReceipt)

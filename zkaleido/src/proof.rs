@@ -1,4 +1,5 @@
 use std::{
+    fmt,
     fs::File,
     io::{Read as _, Write as _},
     path::Path,
@@ -70,6 +71,22 @@ macro_rules! define_byte_wrapper {
 define_byte_wrapper!(Proof);
 define_byte_wrapper!(PublicValues);
 define_byte_wrapper!(VerifyingKey);
+
+/// Identifier of a zkVM program, derived deterministically from its ELF binary.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
+pub struct ProgramId(pub [u8; 32]);
+
+impl fmt::Display for ProgramId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
+        for byte in &self.0 {
+            write!(f, "{byte:02x}")?;
+        }
+        Ok(())
+    }
+}
 
 /// Summary of executing a zkVM program.
 ///
@@ -163,15 +180,18 @@ impl ProofReceipt {
 pub struct ProofMetadata {
     /// The zero-knowledge virtual machine that generated this proof.
     zkvm: ZkVm,
+    /// Identifier of the program that generated this proof.
+    program_id: ProgramId,
     /// Version string of the ZKVM
     version: String,
 }
 
 impl ProofMetadata {
     /// Creates new proof metadata.
-    pub fn new(zkvm: ZkVm, version: impl Into<String>) -> Self {
+    pub fn new(zkvm: ZkVm, program_id: ProgramId, version: impl Into<String>) -> Self {
         Self {
             zkvm,
+            program_id,
             version: version.into(),
         }
     }
@@ -179,6 +199,11 @@ impl ProofMetadata {
     /// Returns the ZKVM that generated this proof.
     pub fn zkvm(&self) -> &ZkVm {
         &self.zkvm
+    }
+
+    /// Returns the identifier of the program that generated this proof.
+    pub fn program_id(&self) -> &ProgramId {
+        &self.program_id
     }
 
     /// Returns the version string of the proving system.
@@ -218,14 +243,15 @@ impl ProofReceiptWithMetadata {
     /// Encodes the receipt into a binary format.
     ///
     /// Layout: `[proof_len: u64 LE][proof][pv_len: u64 LE][public_values][zkvm: u8][ver_len: u64
-    /// LE][version]`
+    /// LE][version][program_id: 32 bytes]`
     pub fn encode(&self) -> Vec<u8> {
         let proof = self.receipt.proof.as_bytes();
         let pv = self.receipt.public_values.as_bytes();
         let zkvm_tag = self.metadata.zkvm as u8;
         let version = self.metadata.version().as_bytes();
+        let program_id = &self.metadata.program_id.0;
 
-        let capacity = 8 + proof.len() + 8 + pv.len() + 1 + 8 + version.len();
+        let capacity = 8 + proof.len() + 8 + pv.len() + 1 + 8 + version.len() + 32;
         let mut buf = Vec::with_capacity(capacity);
 
         buf.extend_from_slice(&(proof.len() as u64).to_le_bytes());
@@ -235,6 +261,7 @@ impl ProofReceiptWithMetadata {
         buf.push(zkvm_tag);
         buf.extend_from_slice(&(version.len() as u64).to_le_bytes());
         buf.extend_from_slice(version);
+        buf.extend_from_slice(program_id);
 
         buf
     }
@@ -257,6 +284,17 @@ impl ProofReceiptWithMetadata {
         data = rest;
         let version_bytes = read_bytes(&mut data)?;
 
+        let program_id = if data.len() >= 32 {
+            let (pid_bytes, rest) = data.split_at(32);
+            data = rest;
+            ProgramId(pid_bytes.try_into().unwrap())
+        } else {
+            ProgramId::default()
+        };
+
+        // Silence unused-variable warning; all data should be consumed.
+        let _ = data;
+
         Ok(Self {
             receipt: ProofReceipt {
                 proof: Proof::new(proof),
@@ -264,6 +302,7 @@ impl ProofReceiptWithMetadata {
             },
             metadata: ProofMetadata {
                 zkvm: ZkVm::try_from(zkvm_tag)?,
+                program_id,
                 version: String::from_utf8(version_bytes)
                     .map_err(|e| ZkVmError::Other(format!("invalid utf-8 in version: {e}")))?,
             },
@@ -278,14 +317,16 @@ impl ProofReceiptWithMetadata {
             self.metadata.zkvm(),
             self.metadata.version()
         );
-        let mut file = File::create(filename).expect("failed to create file");
+        let mut file = File::create(filename)
+            .map_err(|e| ZkVmError::Other(format!("failed to create file: {e}")))?;
         file.write_all(&self.encode())
             .map_err(|e| ZkVmError::Other(format!("failed to write proof: {e}")))
     }
 
     /// Loads a proof from a path.
     pub fn load(path: impl AsRef<Path>) -> ZkVmResult<Self> {
-        let mut file = File::open(path).expect("failed to open file");
+        let mut file =
+            File::open(path).map_err(|e| ZkVmError::Other(format!("failed to open file: {e}")))?;
         let mut buf = Vec::new();
         file.read_to_end(&mut buf)
             .map_err(|e| ZkVmError::Other(format!("failed to read proof: {e}")))?;
@@ -321,25 +362,6 @@ impl AggregationInput {
     }
 }
 
-/// Commitment of the [`VerifyingKey`]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
-#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
-pub struct VerifyingKeyCommitment([u32; 8]);
-
-impl VerifyingKeyCommitment {
-    /// Creates a new instance from a `Vec<u8>`.
-    pub fn new(data: [u32; 8]) -> Self {
-        Self(data)
-    }
-
-    /// Consumes the wrapper and returns the inner [u32; 8].
-    pub fn into_inner(self) -> [u32; 8] {
-        self.0
-    }
-}
-
 /// Enumeration of proof types supported by the system.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
@@ -370,11 +392,12 @@ mod tests {
             any::<Vec<u8>>(),
             arb_zkvm(),
             "[a-zA-Z0-9.]{1,20}",
+            any::<[u8; 32]>(),
         )
-            .prop_map(|(proof, pv, zkvm, version)| {
+            .prop_map(|(proof, pv, zkvm, version, pid)| {
                 ProofReceiptWithMetadata::new(
                     ProofReceipt::new(Proof::new(proof), PublicValues::new(pv)),
-                    ProofMetadata::new(zkvm, version),
+                    ProofMetadata::new(zkvm, ProgramId(pid), version),
                 )
             })
     }

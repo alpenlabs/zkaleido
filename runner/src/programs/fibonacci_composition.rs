@@ -12,10 +12,10 @@ fn fib_composition_prover_perf_report(
     let receipt = FibProgram::prove(&input, fib_host).unwrap();
     let vk = fib_host.vk();
     let fib_proof_with_vk = AggregationInput::new(receipt, vk);
-    let fib_vk_commitment = fib_host.vk_commitment();
+    let fib_program_id = fib_host.program_id();
     let input = FibCompositionInput {
         fib_proof_with_vk,
-        fib_vk_commitment,
+        fib_program_id,
     };
     FibCompositionProgram::perf_report(&input, fib_composition_host).unwrap()
 }

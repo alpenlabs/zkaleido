@@ -125,13 +125,13 @@ impl Groth16Proof {
 
 #[cfg(test)]
 mod tests {
+    use zkaleido::ProofReceiptWithMetadata;
+
     use super::*;
 
     fn load_test_proof() -> Groth16Proof {
         // Load a real proof from a test file
-        let program_id_hex = "00eb7fd5709e4b833db86054ba4acca001a3aa5f18b7e7d0d96d0f1d340b4e34";
-        let proof_file = format!("./proofs/fibonacci_sp1_0x{}.proof.bin", program_id_hex);
-        let receipt = zkaleido::ProofReceiptWithMetadata::load(proof_file)
+        let receipt = ProofReceiptWithMetadata::load("./proofs/fibonacci_SP1_v5.0.0.proof.bin")
             .unwrap()
             .receipt()
             .clone();
