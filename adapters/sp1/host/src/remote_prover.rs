@@ -65,10 +65,11 @@ impl ZkVmRemoteProver for SP1Host {
         };
 
         let pk = &self.proving_key;
-        let request_id = client
-            .prove(pk, &input)
-            .strategy(strategy)
-            .mode(mode)
+        let mut builder = client.prove(pk, &input).strategy(strategy).mode(mode);
+        if let Some(deadline) = self.deadline {
+            builder = builder.timeout(deadline);
+        }
+        let request_id = builder
             .request_async()
             .await
             .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;

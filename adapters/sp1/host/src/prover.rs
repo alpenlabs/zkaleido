@@ -73,9 +73,12 @@ impl ZkVmProver for SP1Host {
                 .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
                 .unwrap_or(FulfillmentStrategy::Auction);
 
-            let network_prover_builder = prover_client
+            let mut network_prover_builder = prover_client
                 .prove(&self.proving_key, &prover_input)
                 .strategy(strategy);
+            if let Some(deadline) = self.deadline {
+                network_prover_builder = network_prover_builder.timeout(deadline);
+            }
 
             let network_prover = match proof_type {
                 ProofType::Compressed => network_prover_builder.compressed(),
