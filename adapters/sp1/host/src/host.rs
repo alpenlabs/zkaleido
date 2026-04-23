@@ -15,11 +15,15 @@ pub struct SP1Host {
 }
 
 impl SP1Host {
-    /// Creates a new instance of [`SP1Host`] using the provided [`SP1ProvingKey`].
-    pub fn new(proving_key: SP1ProvingKey) -> Self {
+    /// Creates a new instance of [`SP1Host`] using the provided [`SP1ProvingKey`] and
+    /// an optional deadline for remote proof requests.
+    ///
+    /// Pass `None` for `deadline` to let the SP1 SDK fall back to its own default
+    /// (auto-calculated from the gas limit).
+    pub fn new(proving_key: SP1ProvingKey, deadline: Option<Duration>) -> Self {
         Self {
             proving_key,
-            deadline: None,
+            deadline,
         }
     }
 
@@ -27,14 +31,14 @@ impl SP1Host {
     pub fn new_from_pk_bytes(proving_key_bytes: &[u8]) -> Self {
         let proving_key: SP1ProvingKey =
             bincode::deserialize(proving_key_bytes).expect("invalid sp1 pk bytes");
-        SP1Host::new(proving_key)
+        SP1Host::new(proving_key, None)
     }
 
     /// Initializes a new [`SP1Host`] by setting up the proving key using the provided ELF bytes.
     pub fn init(elf: &[u8]) -> Self {
         let client = ProverClient::from_env();
         let (proving_key, _) = client.setup(elf);
-        SP1Host::new(proving_key)
+        SP1Host::new(proving_key, None)
     }
 
     /// Sets the deadline for remote proof requests submitted through this host.
