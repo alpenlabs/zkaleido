@@ -35,15 +35,15 @@ Currently, the repository supports the following ZKVMs:
 To generate a report of cycle counts for one or more programs, use the following command:
 
 ```bash
-make report PROGRAMS=<PROGRAM_NAME>
+PROGRAMS=<PROGRAM_NAME> just report
 ```
 
 ### Notes:
 - **Multiple Programs Supported:** You can specify multiple programs by separating them with commas.
 - **Example Commands:**
   ```bash
-  make report PROGRAMS=fibonacci
-  make report PROGRAMS=fibonacci,sha2-chain
+  PROGRAMS=fibonacci just report
+  PROGRAMS=fibonacci,sha2-chain just report
   ```
 - **Optional Parameter:** If `PROGRAMS` is left empty, the report will be generated for all supported programs.
 
@@ -58,22 +58,22 @@ Here is the list of currently supported programs:
 To generate profiling data for a specific ZKVM, use the following commands:
 
 ```bash
-make report-<ZkVm>
+just report-<ZkVm>
 ```
 
 ### Example Commands:
 - For Risc0:
   ```bash
-  make report-risc0
+  just report-risc0
   ```
 - For SP1:
   ```bash
-  make report-sp1
+  just report-sp1
   ```
-- Similar to the general `make report`, you can also pass the `PROGRAMS` parameter:
+- Similar to the general `just report`, you can also pass the `PROGRAMS` parameter:
   ```bash
-  make report-risc0 PROGRAMS=fibonacci
-  make report-sp1 PROGRAMS=fibonacci,sha2-chain
+  PROGRAMS=fibonacci just report-risc0
+  PROGRAMS=fibonacci,sha2-chain just report-sp1
   ```
 
 
@@ -82,7 +82,7 @@ make report-<ZkVm>
 To dump profiling data, set the environment variable `ZKVM_PROFILING_DUMP=1` while running any of the above command.
 
 ```bash
-ZKVM_PROFILING_DUMP=1 make report
+ZKVM_PROFILING_DUMP=1 just report
 ```
 
 
@@ -107,7 +107,7 @@ go tool pprof -http=127.0.0.1:8000 <FILENAME>.trace_profile
 If proof is required, use the following command:
 
 ```bash
-make proof ZKVM=<ZKVM_NAME> PROGRAMS=<PROGRAM_NAME>
+ZKVM=<ZKVM_NAME> PROGRAMS=<PROGRAM_NAME> just proof
 ```
 > The proofs are dumped by default
 
@@ -118,7 +118,7 @@ make proof ZKVM=<ZKVM_NAME> PROGRAMS=<PROGRAM_NAME>
 To clean up generated proofs and profiling data, run:
 
 ```bash
-make prover-clean
+just prover-clean
 ```
 This will remove all `.trace_profile` and `.proof` files from the current directory.
 
@@ -127,32 +127,32 @@ This will remove all `.trace_profile` and `.proof` files from the current direct
 ### Example Workflow
 1. **Generate Report for All Programs:**
    ```bash
-   make report
+   just report
    ```
 
 2. **Generate Report for Specific Programs:**
    ```bash
-   make report PROGRAMS=fibonacci,sha2-chain
+   PROGRAMS=fibonacci,sha2-chain just report
    ```
 
 3. **Generate SP1 Report for Specific Programs:**
    ```bash
-   make report-sp1 PROGRAMS=schnorr-sig-verify
+   PROGRAMS=schnorr-sig-verify just report-sp1
    ```
 
 4. **Dump Profiling Data for Risc0:**
    ```bash
-   ZKVM_PROFILING_DUMP=1 make report-risc0 PROGRAMS=fibonacci
+   ZKVM_PROFILING_DUMP=1 PROGRAMS=fibonacci just report-risc0
    ```
 
 5. **Generate and dump Risc0 Proof**
    ```bash
-   make proof ZKVM=risc0 PROGRAMS=fibonacci
+   ZKVM=risc0 PROGRAMS=fibonacci just proof
    ```
 
 6. **Clean Up Generated Data:**
    ```bash
-   make prover-clean
+   just prover-clean
    ```
 
 
