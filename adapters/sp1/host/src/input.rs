@@ -52,7 +52,7 @@ impl ZkVmInputBuilder<'_> for SP1ProofInputBuilder {
         // Note: this data will not actually be read by the aggregation program, instead it will
         // be witnessed by the prover during the recursive aggregation process
         // inside SP1 itself.
-        match receipt.inner().proof {
+        match receipt.into_inner().proof {
             SP1Proof::Compressed(compressed_proof) => {
                 self.0.write_proof(*compressed_proof, vkey.vk);
             }

@@ -7,9 +7,8 @@ version = "0.1.0"
 workspace = true
 
 [dependencies]
-sp1-sdk = "5.2.1"
-sp1-prover = { version = "5.2.1", optional = true }
-sp1-stark = { version = "5.2.1", optional = true }
+sp1-core-executor = { version = "6.1.0", optional = true }
+sp1-sdk = { version = "6.1.0", features = ["blocking", "network"] }
 zkaleido.workspace = true
 
 async-trait = { workspace = true, optional = true }
@@ -19,5 +18,5 @@ serde.workspace = true
 [features]
 default = []
 ssz = ["zkaleido/ssz"]
-perf = ["sp1-sdk/profiling", "sp1-prover", "sp1-stark"]
+perf = ["sp1-core-executor", "sp1-sdk/profiling"]
 remote-prover = ["async-trait", "zkaleido/remote-prover"]

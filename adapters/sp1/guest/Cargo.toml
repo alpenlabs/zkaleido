@@ -7,7 +7,7 @@ version = "0.1.0"
 workspace = true
 
 [dependencies]
-sp1-zkvm = "5.2.1"
+sp1-zkvm = "6.1.0"
 zkaleido.workspace = true
 
 bincode.workspace = true
