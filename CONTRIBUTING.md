@@ -82,12 +82,14 @@ you can run the basic CI checks in your local environment:
   modern test runner for Rust.
 - [`cargo-audit`](https://docs.rs/cargo-audit/latest/cargo_audit/):
   tool to check `Cargo.lock` files for security vulnerabilities.
+- [`just`](https://just.systems/man/en/):
+  command runner for local development tasks.
 
 ## Locally running CI
 
 Before you create a PR, make sure that all the required CI checks pass locally.
-For your convenience, a `Makefile` recipe has been created which you can run via:
+For your convenience, a `just` recipe has been created which you can run via:
 
 ```bash
-make pr # `make` should already be installed in most systems
+just pr
 ```
