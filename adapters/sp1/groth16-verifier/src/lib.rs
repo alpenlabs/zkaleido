@@ -2,6 +2,11 @@
 //!
 //! This crate integrates SP1-based Groth16 proof verification.
 
+#[cfg(all(test, not(feature = "serde")))]
+use bincode as _;
+#[cfg(all(test, not(feature = "serde")))]
+use serde_json as _;
+
 #[cfg(feature = "borsh")]
 mod borsh;
 mod error;

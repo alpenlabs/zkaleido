@@ -375,6 +375,7 @@ impl<'de> Deserialize<'de> for SP1Groth16Verifier {
         Ok(SP1Groth16Verifier {
             vk: helper.vk,
             vk_hash_tag: helper.vk_hash_tag,
+            vk_root: *sp1_verifier::VK_ROOT_BYTES,
         })
     }
 }

@@ -2800,7 +2800,6 @@ dependencies = [
  "ff 0.13.1",
  "generic-array 0.14.7",
  "group 0.13.0",
- "hkdf",
  "pem-rfc7468",
  "pkcs8",
  "rand_core 0.6.4",
@@ -3579,15 +3578,6 @@ name = "hex-literal"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6fe2267d4ed49bc07b63801559be28c718ea06c4738b7a03c94df7386d2cde46"
-
-[[package]]
-name = "hkdf"
-version = "0.12.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b5f8eb2ad728638ea2c7d47a21db23b7b58a72ed6a38256b8a1849f15fbbdf7"
-dependencies = [
- "hmac",
-]
 
 [[package]]
 name = "hmac"
@@ -8426,18 +8416,6 @@ dependencies = [
 
 [[package]]
 name = "sp1-lib"
-version = "5.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0e1fe81b6f87134f9170cb642f948ae41e0ee1cd3785e0cb665add5b67106d1a"
-dependencies = [
- "bincode",
- "elliptic-curve",
- "serde",
- "sp1-primitives 5.2.1",
-]
-
-[[package]]
-name = "sp1-lib"
 version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b96392c1b1c197beaa6b0806099a8d73643a09d5ac0874e26c9c5153a7fcb4c"
@@ -8588,7 +8566,7 @@ dependencies = [
  "sp1-recursion-executor",
  "sp1-recursion-gnark-ffi 6.1.0",
  "sp1-recursion-machine",
- "sp1-verifier 6.1.0",
+ "sp1-verifier",
  "static_assertions",
  "sysinfo",
  "tempfile",
@@ -8861,7 +8839,7 @@ dependencies = [
  "sp1-hypercube",
  "sp1-primitives 6.1.0",
  "sp1-recursion-compiler 6.1.0",
- "sp1-verifier 6.1.0",
+ "sp1-verifier",
  "tempfile",
  "tracing",
 ]
@@ -8982,7 +8960,7 @@ dependencies = [
  "sp1-prover 6.1.0",
  "sp1-prover-types",
  "sp1-recursion-executor",
- "sp1-verifier 6.1.0",
+ "sp1-verifier",
  "strum 0.27.2",
  "tempfile",
  "thiserror 1.0.69",
@@ -9030,21 +9008,6 @@ dependencies = [
 
 [[package]]
 name = "sp1-verifier"
-version = "5.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "76dd71dd696b258cbe6af9ef276dd22d1e8eedd0dab8184beb90facd414e327a"
-dependencies = [
- "blake3",
- "cfg-if",
- "hex",
- "lazy_static",
- "sha2",
- "substrate-bn-succinct",
- "thiserror 2.0.18",
-]
-
-[[package]]
-name = "sp1-verifier"
 version = "6.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f97f6c90e5f44ffaa18e0cf7aab2f4f02d0a2261aee21d4a48e09cc453ef0e0e"
@@ -9087,7 +9050,7 @@ dependencies = [
  "rand 0.8.5",
  "sha2",
  "slop-algebra",
- "sp1-lib 6.1.0",
+ "sp1-lib",
  "sp1-primitives 6.1.0",
 ]
 
@@ -9231,23 +9194,6 @@ dependencies = [
  "lazy_static",
  "rand 0.8.5",
  "rustc-hex",
-]
-
-[[package]]
-name = "substrate-bn-succinct"
-version = "0.6.0-v5.0.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ba32f1b74728f92887c3ad17c42bf82998eb52c9091018f35294e9cd388b0c8"
-dependencies = [
- "bytemuck",
- "byteorder",
- "cfg-if",
- "crunchy",
- "lazy_static",
- "num-bigint 0.4.6",
- "rand 0.8.5",
- "rustc-hex",
- "sp1-lib 5.2.1",
 ]
 
 [[package]]
@@ -11092,7 +11038,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha2",
- "sp1-verifier 5.2.1",
+ "sp1-verifier",
  "substrate-bn",
  "thiserror 1.0.69",
  "zkaleido",

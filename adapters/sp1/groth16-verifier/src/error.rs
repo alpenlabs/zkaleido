@@ -35,6 +35,14 @@ pub struct InvalidProofFormatError {
     pub actual: usize,
 }
 
+/// Error for Groth16 public input count mismatches.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[error("Invalid public input count: expected {expected}, got {actual}")]
+pub struct PublicInputCountError {
+    pub expected: usize,
+    pub actual: usize,
+}
+
 /// Error for invalid elliptic curve points.
 ///
 /// This occurs when:
@@ -113,6 +121,24 @@ pub enum Groth16Error {
     /// different verifying key.
     #[error("Verifying key hash mismatch")]
     VkeyHashMismatch,
+
+    /// SP1 recursion verifying key root mismatch.
+    ///
+    /// This occurs when an SP1 v6 proof is tied to a recursion verifying key set that does not
+    /// match the current SP1 verifier.
+    #[error("SP1 verifying key root mismatch")]
+    VkeyRootMismatch,
+
+    /// Exit code mismatch.
+    ///
+    /// SP1 Groth16 proofs expose the program exit code as a public input. The default verifier
+    /// expects successful execution, encoded as 32 zero bytes.
+    #[error("SP1 exit code mismatch")]
+    ExitCodeMismatch,
+
+    /// Public input count mismatch.
+    #[error(transparent)]
+    PublicInputCount(#[from] PublicInputCountError),
 
     /// Serialization or deserialization error.
     #[error(transparent)]

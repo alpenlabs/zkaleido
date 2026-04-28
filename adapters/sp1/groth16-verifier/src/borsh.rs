@@ -137,7 +137,11 @@ impl BorshDeserialize for SP1Groth16Verifier {
     fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
         let vk = Groth16VerifyingKey::deserialize_reader(reader)?;
         let vk_hash_tag = <[u8; 4]>::deserialize_reader(reader)?;
-        Ok(SP1Groth16Verifier { vk, vk_hash_tag })
+        Ok(SP1Groth16Verifier {
+            vk,
+            vk_hash_tag,
+            vk_root: *sp1_verifier::VK_ROOT_BYTES,
+        })
     }
 }
 
