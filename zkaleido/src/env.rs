@@ -1,7 +1,7 @@
 #[cfg(feature = "borsh")]
 use borsh::{BorshDeserialize, BorshSerialize};
 #[cfg(feature = "serde")]
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 #[cfg(feature = "ssz")]
 use ssz::{Decode, Encode};
 

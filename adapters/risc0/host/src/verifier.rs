@@ -1,11 +1,11 @@
 use risc0_zkvm::Journal;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use zkaleido::{
     PublicValues, VerifyingKey, ZkVmError, ZkVmOutputExtractor, ZkVmResult, ZkVmTypedVerifier,
     ZkVmVkProvider,
 };
 
-use crate::{proof::Risc0ProofReceipt, Risc0Host};
+use crate::{Risc0Host, proof::Risc0ProofReceipt};
 
 impl ZkVmTypedVerifier for Risc0Host {
     type ZkVmProofReceipt = Risc0ProofReceipt;

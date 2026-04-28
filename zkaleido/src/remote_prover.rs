@@ -8,7 +8,7 @@ use borsh::{BorshDeserialize, BorshSerialize};
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
 
-use crate::{input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, ZkVmProver, ZkVmResult};
+use crate::{ProofReceiptWithMetadata, ProofType, ZkVmProver, ZkVmResult, input::ZkVmInputBuilder};
 
 /// Status of a remote proof request.
 ///

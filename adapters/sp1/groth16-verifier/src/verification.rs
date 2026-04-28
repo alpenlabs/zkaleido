@@ -1,4 +1,4 @@
-use bn::{pairing_batch, Fr, Gt, G1, G2};
+use bn::{Fr, G1, G2, Gt, pairing_batch};
 
 use crate::{
     error::Groth16Error,

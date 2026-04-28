@@ -80,7 +80,7 @@ define_byte_wrapper!(VerifyingKey);
 pub struct ProgramId(pub [u8; 32]);
 
 impl fmt::Display for ProgramId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> core::fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for byte in &self.0 {
             write!(f, "{byte:02x}")?;
         }

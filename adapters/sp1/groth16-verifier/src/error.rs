@@ -26,7 +26,9 @@ pub struct InvalidDataFormatError;
 /// This occurs when the proof length does not match any supported format
 /// (compressed or uncompressed).
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
-#[error("Invalid proof format: expected {expected_compressed} bytes (compressed) or {expected_uncompressed} bytes (uncompressed), got {actual} bytes")]
+#[error(
+    "Invalid proof format: expected {expected_compressed} bytes (compressed) or {expected_uncompressed} bytes (uncompressed), got {actual} bytes"
+)]
 pub struct InvalidProofFormatError {
     pub expected_compressed: usize,
     pub expected_uncompressed: usize,

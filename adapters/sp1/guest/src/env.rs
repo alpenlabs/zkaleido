@@ -1,5 +1,5 @@
 use bincode::deserialize;
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 #[cfg(feature = "zkvm-verify")]
 use sha2::{Digest, Sha256};
 use sp1_zkvm::io;
@@ -26,6 +26,9 @@ impl ZkVmEnv for Sp1ZkVmEnv {
     }
 
     fn verify_native_proof(&self, vk_digest: &[u32; 8], public_values: &[u8]) {
+        #[cfg(not(feature = "zkvm-verify"))]
+        let _ = (vk_digest, public_values);
+
         cfg_if::cfg_if! {
             if #[cfg(feature = "zkvm-verify")] {
                 let pv_digest = Sha256::digest(public_values);

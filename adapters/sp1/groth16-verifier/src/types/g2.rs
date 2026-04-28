@@ -1,6 +1,6 @@
 use std::{cmp::Ordering, fmt};
 
-use bn::{AffineG2, Fq, Fq2, Group, G2};
+use bn::{AffineG2, Fq, Fq2, G2, Group};
 
 use crate::{
     error::{BufferLengthError, InvalidDataFormatError, InvalidPointError, SerializationError},
@@ -207,7 +207,7 @@ impl fmt::Debug for SAffineG2 {
 
 #[cfg(test)]
 mod tests {
-    use bn::{AffineG2, Group, G2};
+    use bn::{AffineG2, G2, Group};
 
     use crate::types::g2::SAffineG2;
 

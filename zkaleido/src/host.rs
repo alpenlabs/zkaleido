@@ -1,7 +1,7 @@
 #[cfg(feature = "remote-prover")]
 use crate::ZkVmRemoteProver;
 #[cfg(feature = "perf")]
-use crate::{input::ZkVmInputBuilder, PerformanceReport};
+use crate::{PerformanceReport, input::ZkVmInputBuilder};
 use crate::{ZkVm, ZkVmOutputExtractor, ZkVmProver, ZkVmTypedVerifier, ZkVmVkProvider};
 
 /// A trait implemented by the host of a zkVM program.

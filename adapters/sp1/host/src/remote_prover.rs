@@ -1,18 +1,18 @@
-use std::fmt;
+use std::{env::var, fmt};
 
 use sp1_sdk::{
-    network::{
-        proto::types::{ExecutionStatus, FulfillmentStatus, GetProofRequestStatusResponse},
-        FulfillmentStrategy, B256,
-    },
     ProverClient, SP1ProofMode,
+    network::{
+        B256, FulfillmentStrategy,
+        proto::types::{ExecutionStatus, FulfillmentStatus, GetProofRequestStatusResponse},
+    },
 };
 use zkaleido::{
     ProofReceiptWithMetadata, ProofType, RemoteProofStatus, ZkVmError, ZkVmExecutor,
     ZkVmInputBuilder, ZkVmRemoteProver, ZkVmResult,
 };
 
-use crate::{proof::SP1ProofReceipt, SP1Host};
+use crate::{SP1Host, proof::SP1ProofReceipt};
 
 /// A typed proof identifier for the SP1 network prover.
 ///
@@ -53,7 +53,7 @@ impl ZkVmRemoteProver for SP1Host {
     ) -> ZkVmResult<Sp1ProofId> {
         let client = ProverClient::builder().network().build();
 
-        let strategy = std::env::var("SP1_PROOF_STRATEGY")
+        let strategy = var("SP1_PROOF_STRATEGY")
             .ok()
             .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
             .unwrap_or(FulfillmentStrategy::Auction);

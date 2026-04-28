@@ -1,4 +1,4 @@
-use secp256k1::{schnorr::Signature, Keypair, Message, SecretKey, XOnlyPublicKey, SECP256K1};
+use secp256k1::{Keypair, Message, SECP256K1, SecretKey, XOnlyPublicKey, schnorr::Signature};
 
 pub fn sign_schnorr_sig(msg: &[u8; 32], sk: &[u8; 32]) -> [u8; 64] {
     let sk = SecretKey::from_slice(sk.as_ref()).expect("Invalid private key");

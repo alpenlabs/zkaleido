@@ -1,10 +1,12 @@
-use risc0_zkvm::{default_executor, default_prover, ProverOpts};
+use std::env::{set_var, var};
+
+use risc0_zkvm::{ProverOpts, default_executor, default_prover};
 use zkaleido::{
     ExecutionSummary, ProgramId, ProofType, PublicValues, ZkVmError, ZkVmExecutor,
     ZkVmInputBuilder, ZkVmProver, ZkVmResult,
 };
 
-use crate::{input::Risc0ProofInputBuilder, proof::Risc0ProofReceipt, Risc0Host};
+use crate::{Risc0Host, input::Risc0ProofInputBuilder, proof::Risc0ProofReceipt};
 
 impl ZkVmExecutor for Risc0Host {
     type Input<'a> = Risc0ProofInputBuilder<'a>;
@@ -31,7 +33,12 @@ impl ZkVmExecutor for Risc0Host {
 
     fn save_trace(&self, trace_name: &str) {
         let profiling_file_name = format!("{}_{:?}.trace_profile", trace_name, self);
-        std::env::set_var("RISC0_PPROF_OUT", profiling_file_name);
+        // SAFETY: RISC0 consumes this process-global trace setting from the
+        // environment. Callers must configure tracing before concurrent prover
+        // work starts.
+        unsafe {
+            set_var("RISC0_PPROF_OUT", profiling_file_name);
+        }
     }
 
     fn program_id(&self) -> ProgramId {
@@ -50,11 +57,16 @@ impl ZkVmProver for Risc0Host {
         // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
         // then enable "RISC0_DEV_MODE" . This effectively enables the mock mode in the Risc0
         // prover.
-        if std::env::var("ZKVM_MOCK")
+        if var("ZKVM_MOCK")
             .map(|v| v == "1" || v.to_lowercase() == "true")
             .unwrap_or(false)
         {
-            std::env::set_var("RISC0_DEV_MODE", "true");
+            // SAFETY: RISC0's prover SDK reads mock mode from this
+            // process-global environment variable. This preserves the existing
+            // mock-mode API and must not race with other environment access.
+            unsafe {
+                set_var("RISC0_DEV_MODE", "true");
+            }
         }
 
         // Setup the prover

@@ -135,7 +135,7 @@ impl SP1Groth16Verifier {
                         actual: raw_proof_bytes.len(),
                     }
                     .into(),
-                ))
+                ));
             }
         };
 
@@ -169,19 +169,19 @@ impl ZkVmVerifier for SP1Groth16Verifier {
 
 #[cfg(test)]
 mod tests {
-    use bn::{AffineG1, AffineG2, Fq, Fq2, Group, G1, G2};
+    use bn::{AffineG1, AffineG2, Fq, Fq2, G1, G2, Group};
     use rand::thread_rng;
     use sp1_verifier::GROTH16_VK_BYTES;
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
     use crate::{
+        Groth16VerifyingKey, SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED,
+        SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED,
         types::{
             constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
             proof::Groth16Proof,
         },
         verifier::{SP1Groth16Verifier, VK_HASH_PREFIX_LENGTH},
-        Groth16VerifyingKey, SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED,
-        SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED,
     };
 
     fn load_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {

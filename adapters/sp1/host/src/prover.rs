@@ -1,13 +1,15 @@
+use std::env::{set_var, var};
+
 use sp1_sdk::{
-    network::{Error as NetworkError, FulfillmentStrategy},
     HashableKey, ProverClient,
+    network::{Error as NetworkError, FulfillmentStrategy},
 };
 use zkaleido::{
     ExecutionSummary, ProgramId, ProofType, PublicValues, ZkVmError, ZkVmExecutor,
     ZkVmInputBuilder, ZkVmProver, ZkVmResult,
 };
 
-use crate::{input::SP1ProofInputBuilder, proof::SP1ProofReceipt, SP1Host};
+use crate::{SP1Host, input::SP1ProofInputBuilder, proof::SP1ProofReceipt};
 
 impl ZkVmExecutor for SP1Host {
     type Input<'a> = SP1ProofInputBuilder;
@@ -37,7 +39,12 @@ impl ZkVmExecutor for SP1Host {
 
     fn save_trace(&self, trace_name: &str) {
         let profiling_file_name = format!("{}_{:?}.trace_profile", trace_name, &self);
-        std::env::set_var("TRACE_FILE", profiling_file_name);
+        // SAFETY: SP1 consumes this process-global trace setting from the
+        // environment. Callers must configure tracing before concurrent prover
+        // work starts.
+        unsafe {
+            set_var("TRACE_FILE", profiling_file_name);
+        }
     }
 
     fn program_id(&self) -> ProgramId {
@@ -55,20 +62,23 @@ impl ZkVmProver for SP1Host {
         // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
         // then set "SP1_PROVER" to "mock". This effectively enables the mock mode in the SP1
         // prover.
-        if std::env::var("ZKVM_MOCK")
+        if var("ZKVM_MOCK")
             .map(|v| v == "1" || v.to_lowercase() == "true")
             .unwrap_or(false)
         {
-            std::env::set_var("SP1_PROVER", "mock");
+            // SAFETY: SP1 reads this process-global prover selection from the
+            // environment. Existing callers configure prover mode before
+            // concurrent proving starts.
+            unsafe {
+                set_var("SP1_PROVER", "mock");
+            }
         }
 
-        let is_network_prover = std::env::var("SP1_PROVER")
-            .map(|v| v == "network")
-            .unwrap_or(false);
+        let is_network_prover = var("SP1_PROVER").map(|v| v == "network").unwrap_or(false);
 
         if is_network_prover {
             let prover_client = ProverClient::builder().network().build();
-            let strategy = std::env::var("SP1_PROOF_STRATEGY")
+            let strategy = var("SP1_PROOF_STRATEGY")
                 .ok()
                 .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
                 .unwrap_or(FulfillmentStrategy::Auction);

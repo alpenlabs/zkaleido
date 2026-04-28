@@ -1,6 +1,6 @@
 use std::fmt;
 
-use bn::{AffineG1, Fq, Group, G1};
+use bn::{AffineG1, Fq, G1, Group};
 
 use crate::{
     error::{BufferLengthError, InvalidDataFormatError, InvalidPointError, SerializationError},
@@ -149,7 +149,7 @@ impl fmt::Debug for SAffineG1 {
 
 #[cfg(test)]
 mod tests {
-    use bn::{AffineG1, Group, G1};
+    use bn::{AffineG1, G1, Group};
 
     use crate::types::g1::SAffineG1;
 

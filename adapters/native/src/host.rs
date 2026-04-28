@@ -3,10 +3,11 @@ use std::{env, fmt, sync::Arc};
 #[cfg(feature = "remote-prover")]
 use async_trait::async_trait;
 use k256::schnorr::{
-    signature::{Signer, Verifier},
     Signature, SigningKey,
+    signature::{Signer, Verifier},
 };
 use rand_core::OsRng;
+use serde::{Serialize, de::DeserializeOwned};
 use zkaleido::{
     DataFormatError, ExecutionSummary, ProgramId, Proof, ProofMetadata, ProofReceipt,
     ProofReceiptWithMetadata, ProofType, PublicValues, VerifyingKey, ZkVm, ZkVmError, ZkVmExecutor,
@@ -161,7 +162,7 @@ impl ZkVmVkProvider for NativeHost {
 }
 
 impl ZkVmOutputExtractor for NativeHost {
-    fn extract_serde_public_output<T: serde::Serialize + serde::de::DeserializeOwned>(
+    fn extract_serde_public_output<T: Serialize + DeserializeOwned>(
         public_values_raw: &PublicValues,
     ) -> ZkVmResult<T> {
         let public_params: T = bincode::deserialize(public_values_raw.as_bytes()).map_err(|e| {
