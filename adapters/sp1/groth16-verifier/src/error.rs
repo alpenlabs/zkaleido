@@ -23,15 +23,12 @@ pub struct InvalidDataFormatError;
 
 /// Error for unsupported or invalid proof format.
 ///
-/// This occurs when the proof length does not match any supported format
-/// (compressed or uncompressed).
+/// Raised when an SP1 Groth16 proof's byte length does not match any supported wire-format
+/// variant (any combination of `[+vk_hash_prefix] [+v6_metadata]` around a compressed or
+/// uncompressed Groth16 proof).
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
-#[error(
-    "Invalid proof format: expected {expected_compressed} bytes (compressed) or {expected_uncompressed} bytes (uncompressed), got {actual} bytes"
-)]
+#[error("Invalid SP1 Groth16 proof length: got {actual} bytes")]
 pub struct InvalidProofFormatError {
-    pub expected_compressed: usize,
-    pub expected_uncompressed: usize,
     pub actual: usize,
 }
 

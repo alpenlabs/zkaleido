@@ -3,24 +3,14 @@ use sha2::{Digest, Sha256};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
-    error::{BufferLengthError, Groth16Error, InvalidProofFormatError, SerializationError},
+    error::{BufferLengthError, Groth16Error, SerializationError},
     hashes::{blake3_to_fr, sha256_to_fr},
     types::{
-        constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
-        proof::Groth16Proof,
+        constant::VK_HASH_PREFIX_LENGTH, parsed_proof::ParsedSp1Groth16Proof,
         vk::Groth16VerifyingKey,
     },
     verification::verify_sp1_groth16_algebraic,
 };
-
-/// Number of bytes used from the SHA-256 hash of the Groth16 verifying key.
-/// SP1 prepends these bytes to each raw Groth16 proof to ensure the proof
-/// was generated with the expected verifying key.
-pub const VK_HASH_PREFIX_LENGTH: usize = 4;
-
-/// Number of 32-byte public-input fields embedded in SP1 6.1.0 Groth16 proofs:
-/// exit code, recursion verifying-key root, and proof nonce.
-const SP1_V6_PROOF_METADATA_LENGTH: usize = 32 * 3;
 
 /// Successful SP1 execution is encoded as a zero field element.
 const SUCCESS_EXIT_CODE: [u8; 32] = [0u8; 32];
@@ -158,31 +148,28 @@ impl SP1Groth16Verifier {
         public_values: &[u8],
         expected_exit_code: [u8; 32],
     ) -> Result<(), Groth16Error> {
-        // Ensure the proof is at least as long as the hash prefix.
-        if proof.len() < VK_HASH_PREFIX_LENGTH {
-            return Err(Groth16Error::Serialization(
-                BufferLengthError {
-                    context: "Groth16 proof with verifying key hash prefix",
-                    expected: VK_HASH_PREFIX_LENGTH,
-                    actual: proof.len(),
-                }
-                .into(),
-            ));
-        }
+        // Parse the full SP1 proof envelope (vk hash prefix + optional v6 metadata + raw proof).
+        let parsed = ParsedSp1Groth16Proof::parse(proof)?;
 
-        // Compare the leading bytes of `proof` with our cached verifying-key hash. If they differ,
-        // the proof was not generated with this verifying key.
-        if self.vk_hash_tag != proof[..VK_HASH_PREFIX_LENGTH] {
+        // SP1 prepends a `vk_hash_tag` (truncated SHA-256 of the verifying key) to its emitted
+        // proofs as a cheap, advisory early-out: a mismatch means the proof was generated under
+        // a different key, so the expensive pairing check is guaranteed to fail. The tag is not
+        // a security boundary — algebraic verification still binds the proof to `self.vk` — so
+        // we only enforce it when the caller actually included it in the envelope. Pruned
+        // envelopes (raw proof, or metadata + proof without the prefix) are accepted and fall
+        // through to algebraic verification.
+        if let Some(tag) = parsed.vk_hash_tag
+            && tag != self.vk_hash_tag
+        {
             return Err(Groth16Error::VkeyHashMismatch);
         }
 
-        // Extract the raw Groth16 proof (bytes after the prefix) and parse it.
-        // Support SP1 v6 proof metadata, plus both compressed and uncompressed proof formats.
-        let (proof, extra_public_inputs) = parse_proof_and_public_inputs(
-            &proof[VK_HASH_PREFIX_LENGTH..],
-            expected_exit_code,
-            &self.vk_root,
-        )?;
+        // The v6 envelope fields (`exit_code`, `vk_root`, `proof_nonce`) are validated and
+        // converted into algebraic public inputs by `extra_public_inputs`. When the envelope
+        // omits them (SP1 v5, or a pruned v6 envelope), it returns an empty vector and those
+        // public inputs are simply absent from the algebraic check.
+        let extra_public_inputs = parsed.extra_public_inputs(expected_exit_code, &self.vk_root)?;
+        let proof = parsed.proof;
 
         // Compute Fr element for hash(public_values) using SHA-256. SP1's Groth16 circuit expects
         // a program vkey hash, hash(public_values), and SP1-version-specific metadata. Since SP1
@@ -204,100 +191,6 @@ impl SP1Groth16Verifier {
         // Retry algebraic verification using Blake3 hash as the second input.
         verify_sp1_groth16_algebraic(&self.vk, &proof, &public_inputs)
     }
-}
-
-fn parse_proof_and_public_inputs(
-    proof_without_vk_hash: &[u8],
-    expected_exit_code: [u8; 32],
-    expected_vk_root: &[u8; 32],
-) -> Result<(Groth16Proof, Vec<Fr>), Groth16Error> {
-    match proof_without_vk_hash.len() {
-        GROTH16_PROOF_COMPRESSED_SIZE => Ok((
-            Groth16Proof::from_gnark_compressed_bytes(proof_without_vk_hash)?,
-            Vec::new(),
-        )),
-        GROTH16_PROOF_UNCOMPRESSED_SIZE => Ok((
-            Groth16Proof::from_uncompressed_bytes(proof_without_vk_hash)?,
-            Vec::new(),
-        )),
-        len if len == SP1_V6_PROOF_METADATA_LENGTH + GROTH16_PROOF_COMPRESSED_SIZE => {
-            let extra_public_inputs = parse_sp1_v6_public_inputs(
-                proof_without_vk_hash,
-                expected_exit_code,
-                expected_vk_root,
-            )?;
-            let proof_bytes = &proof_without_vk_hash[SP1_V6_PROOF_METADATA_LENGTH..];
-            Ok((
-                Groth16Proof::from_gnark_compressed_bytes(proof_bytes)?,
-                extra_public_inputs,
-            ))
-        }
-        len if len == SP1_V6_PROOF_METADATA_LENGTH + GROTH16_PROOF_UNCOMPRESSED_SIZE => {
-            let extra_public_inputs = parse_sp1_v6_public_inputs(
-                proof_without_vk_hash,
-                expected_exit_code,
-                expected_vk_root,
-            )?;
-            let proof_bytes = &proof_without_vk_hash[SP1_V6_PROOF_METADATA_LENGTH..];
-            Ok((
-                Groth16Proof::from_uncompressed_bytes(proof_bytes)?,
-                extra_public_inputs,
-            ))
-        }
-        _ => Err(Groth16Error::Serialization(
-            InvalidProofFormatError {
-                expected_compressed: GROTH16_PROOF_COMPRESSED_SIZE,
-                expected_uncompressed: GROTH16_PROOF_UNCOMPRESSED_SIZE,
-                actual: proof_without_vk_hash.len(),
-            }
-            .into(),
-        )),
-    }
-}
-
-fn parse_sp1_v6_public_inputs(
-    proof_without_vk_hash: &[u8],
-    expected_exit_code: [u8; 32],
-    expected_vk_root: &[u8; 32],
-) -> Result<Vec<Fr>, Groth16Error> {
-    let exit_code: [u8; 32] = proof_without_vk_hash[..32].try_into().map_err(|_| {
-        Groth16Error::Serialization(SerializationError::from(BufferLengthError {
-            context: "SP1 exit code",
-            expected: 32,
-            actual: proof_without_vk_hash.len(),
-        }))
-    })?;
-    let vk_root: [u8; 32] = proof_without_vk_hash[32..64].try_into().map_err(|_| {
-        Groth16Error::Serialization(SerializationError::from(BufferLengthError {
-            context: "SP1 verifying key root",
-            expected: 32,
-            actual: proof_without_vk_hash.len().saturating_sub(32),
-        }))
-    })?;
-    let proof_nonce: [u8; 32] = proof_without_vk_hash[64..96].try_into().map_err(|_| {
-        Groth16Error::Serialization(SerializationError::from(BufferLengthError {
-            context: "SP1 proof nonce",
-            expected: 32,
-            actual: proof_without_vk_hash.len().saturating_sub(64),
-        }))
-    })?;
-
-    if exit_code != expected_exit_code {
-        return Err(Groth16Error::ExitCodeMismatch);
-    }
-
-    if vk_root != *expected_vk_root {
-        return Err(Groth16Error::VkeyRootMismatch);
-    }
-
-    [exit_code, proof_nonce]
-        .iter()
-        .map(|input| {
-            Fr::from_slice(input)
-                .map_err(SerializationError::from)
-                .map_err(Into::into)
-        })
-        .collect()
 }
 
 impl ZkVmVerifier for SP1Groth16Verifier {
@@ -322,10 +215,13 @@ mod tests {
         SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED,
         error::Groth16Error,
         types::{
-            constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
+            constant::{
+                GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE,
+                VK_HASH_PREFIX_LENGTH,
+            },
             proof::Groth16Proof,
         },
-        verifier::{SP1Groth16Verifier, VK_HASH_PREFIX_LENGTH},
+        verifier::SP1Groth16Verifier,
     };
 
     const SP1_V5_GROTH16_VK_BYTES: &[u8] =
@@ -502,13 +398,18 @@ mod tests {
 
     #[test]
     fn test_sp1_v6_proof_rejects_wrong_vk_root() {
+        // Reuse a real (uncompressed) Groth16 proof so that point parsing succeeds and the
+        // wrong-vk_root error path is actually exercised.
+        let (_, receipt) = load_verifier_and_proof();
+        let raw_proof_bytes = &receipt.proof().as_bytes()[VK_HASH_PREFIX_LENGTH..];
+
         let verifier = SP1Groth16Verifier::load(&GROTH16_VK_BYTES, [0u8; 32]).unwrap();
         let mut proof = Vec::new();
         proof.extend_from_slice(&verifier.vk_hash_tag);
         proof.extend_from_slice(&[0u8; 32]);
         proof.extend_from_slice(&[1u8; 32]);
         proof.extend_from_slice(&[0u8; 32]);
-        proof.extend_from_slice(&[0u8; GROTH16_PROOF_UNCOMPRESSED_SIZE]);
+        proof.extend_from_slice(raw_proof_bytes);
 
         let err = verifier.verify(&proof, &[]).unwrap_err();
         assert!(matches!(err, Groth16Error::VkeyRootMismatch));

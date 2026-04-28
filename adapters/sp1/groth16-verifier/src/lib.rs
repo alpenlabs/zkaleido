@@ -21,9 +21,11 @@ pub use types::{
     constant::{
         GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE,
         SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED, SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED,
+        VK_HASH_PREFIX_LENGTH,
     },
+    parsed_proof::ParsedSp1Groth16Proof,
     proof::Groth16Proof,
     vk::Groth16VerifyingKey,
 };
 pub use verification::verify_sp1_groth16_algebraic;
-pub use verifier::{SP1Groth16Verifier, VK_HASH_PREFIX_LENGTH};
+pub use verifier::SP1Groth16Verifier;

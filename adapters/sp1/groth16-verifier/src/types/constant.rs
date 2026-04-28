@@ -2,6 +2,11 @@ use std::mem::size_of;
 
 use bn::Fq;
 
+/// Number of bytes used from the SHA-256 hash of the Groth16 verifying key.
+/// SP1 prepends these bytes to each raw Groth16 proof to ensure the proof
+/// was generated with the expected verifying key.
+pub const VK_HASH_PREFIX_LENGTH: usize = 4;
+
 /// Mask to clear out the two most significant bits when reconstructing an Fq element
 /// from a compressed representation.
 ///
