@@ -149,3 +149,43 @@ impl Sp1Groth16Proof {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use zkaleido::ProofReceiptWithMetadata;
+
+    use crate::{Sp1Groth16Proof, types::constant::VK_HASH_PREFIX_LENGTH};
+
+    #[test]
+    fn test_parse_sp1_v5_proof() {
+        let receipt =
+            ProofReceiptWithMetadata::load("./proofs/fibonacci_SP1_v5.0.0.proof.bin").unwrap();
+
+        // SP1 v5 proofs only carry the `vk_hash_tag` prefix; the other optional fields
+        // (`exit_code`, `vk_root`, `proof_nonce`) were introduced in v6. That `vk_hash_tag`-only
+        // shape isn't one of the valid encodings accepted by `parse`, so strip the 4-byte tag
+        // and parse the remainder as a bare proof.
+        let proof_bytes = &receipt.receipt().proof().as_bytes()[VK_HASH_PREFIX_LENGTH..];
+
+        let res = Sp1Groth16Proof::parse(proof_bytes);
+        assert!(res.is_ok());
+        let proof = res.unwrap();
+        assert!(proof.vk_hash_tag.is_none());
+        assert!(proof.vk_hash_tag.is_none());
+        assert!(proof.exit_code.is_none());
+        assert!(proof.vk_root.is_none());
+    }
+
+    #[test]
+    fn test_parse_sp1_v6_proof() {
+        let receipt =
+            ProofReceiptWithMetadata::load("./proofs/fibonacci_SP1_v6.1.0.proof.bin").unwrap();
+        let res = Sp1Groth16Proof::parse(receipt.receipt().proof().as_bytes());
+        assert!(res.is_ok());
+        let proof = res.unwrap();
+        assert!(proof.vk_hash_tag.is_some());
+        assert!(proof.exit_code.is_some());
+        assert!(proof.vk_root.is_some());
+        assert!(proof.proof_nonce.is_some());
+    }
+}
