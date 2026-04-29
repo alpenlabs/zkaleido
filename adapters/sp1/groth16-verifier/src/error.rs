@@ -1,6 +1,8 @@
 use bn::{CurveError, FieldError, GroupError};
 use thiserror::Error;
 
+use crate::types::constant::VK_HASH_PREFIX_LENGTH;
+
 /// Error for buffer length mismatches during deserialization.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[error("Invalid buffer length for {context}: expected {expected} bytes, got {actual} bytes")]
@@ -23,15 +25,20 @@ pub struct InvalidDataFormatError;
 
 /// Error for unsupported or invalid proof format.
 ///
-/// This occurs when the proof length does not match any supported format
-/// (compressed or uncompressed).
+/// Raised when an SP1 Groth16 proof's byte length does not match any supported wire-format
+/// variant (any combination of `[+vk_hash_prefix] [+v6_metadata]` around a compressed or
+/// uncompressed Groth16 proof).
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
-#[error(
-    "Invalid proof format: expected {expected_compressed} bytes (compressed) or {expected_uncompressed} bytes (uncompressed), got {actual} bytes"
-)]
+#[error("Invalid SP1 Groth16 proof length: got {actual} bytes")]
 pub struct InvalidProofFormatError {
-    pub expected_compressed: usize,
-    pub expected_uncompressed: usize,
+    pub actual: usize,
+}
+
+/// Error for Groth16 public input count mismatches.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[error("Invalid public input count: expected {expected}, got {actual}")]
+pub struct PublicInputCountError {
+    pub expected: usize,
     pub actual: usize,
 }
 
@@ -111,8 +118,43 @@ pub enum Groth16Error {
     /// This occurs when the hash of the verifying key embedded in the proof does not match the
     /// hash of the provided verifying key, indicating that the proof was generated with a
     /// different verifying key.
-    #[error("Verifying key hash mismatch")]
-    VkeyHashMismatch,
+    #[error("Verifying key hash mismatch: expected {expected:02x?}, got {actual:02x?}")]
+    VkeyHashMismatch {
+        expected: [u8; VK_HASH_PREFIX_LENGTH],
+        actual: [u8; VK_HASH_PREFIX_LENGTH],
+    },
+
+    /// SP1 recursion verifying key root mismatch.
+    ///
+    /// This occurs when an SP1 v6 proof is tied to a recursion verifying key set that does not
+    /// match the current SP1 verifier.
+    #[error("SP1 verifying key root mismatch: expected {expected:02x?}, got {actual:02x?}")]
+    VkeyRootMismatch {
+        expected: [u8; 32],
+        actual: [u8; 32],
+    },
+
+    /// Exit code mismatch.
+    ///
+    /// SP1 Groth16 proofs expose the program exit code as a public input. The default verifier
+    /// expects successful execution, encoded as 32 zero bytes.
+    #[error("SP1 exit code mismatch: expected {expected:02x?}, got {actual:02x?}")]
+    ExitCodeMismatch {
+        expected: [u8; 32],
+        actual: [u8; 32],
+    },
+
+    /// Exit code missing from proof.
+    ///
+    /// Raised when the verifier is configured with `require_success = false` (so it has no
+    /// default exit code to bind into the public inputs) but the proof carries no exit code
+    /// in its prefix fields.
+    #[error("SP1 exit code missing from proof")]
+    MissingExitCode,
+
+    /// Public input count mismatch.
+    #[error(transparent)]
+    PublicInputCount(#[from] PublicInputCountError),
 
     /// Serialization or deserialization error.
     #[error(transparent)]

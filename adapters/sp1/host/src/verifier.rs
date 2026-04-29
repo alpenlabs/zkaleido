@@ -1,5 +1,8 @@
 use serde::{Serialize, de::DeserializeOwned};
-use sp1_sdk::ProverClient;
+use sp1_sdk::{
+    ProvingKey, StatusCode,
+    blocking::{Prover, ProverClient},
+};
 use zkaleido::{
     DataFormatError, PublicValues, VerifyingKey, ZkVmError, ZkVmOutputExtractor, ZkVmResult,
     ZkVmTypedVerifier, ZkVmVkProvider,
@@ -10,18 +13,17 @@ use crate::{SP1Host, proof::SP1ProofReceipt};
 impl ZkVmTypedVerifier for SP1Host {
     type ZkVmProofReceipt = SP1ProofReceipt;
     fn verify_inner(&self, proof: &SP1ProofReceipt) -> ZkVmResult<()> {
-        let client = ProverClient::from_env();
+        let client = ProverClient::builder().light().build();
+        let vkey = self.proving_key.verifying_key();
         client
-            .verify(proof.as_ref(), &self.proving_key.vk)
-            .map_err(|e| ZkVmError::ProofVerificationError(e.to_string()))?;
-
-        Ok(())
+            .verify(proof.inner(), vkey, Some(StatusCode::SUCCESS))
+            .map_err(|e| ZkVmError::ProofVerificationError(e.to_string()))
     }
 }
 
 impl ZkVmVkProvider for SP1Host {
     fn vk(&self) -> VerifyingKey {
-        let verification_key = bincode::serialize(&self.proving_key.vk).unwrap();
+        let verification_key = bincode::serialize(self.proving_key.verifying_key()).unwrap();
         VerifyingKey::new(verification_key)
     }
 }

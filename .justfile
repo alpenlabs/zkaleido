@@ -2,8 +2,8 @@
 
 profile := env("PROFILE", "release")
 features := env("FEATURES", "")
-programs := env("PROGRAMS", "groth16-verify-sp1")
-zkvm := env("ZKVM", "risc0")
+programs := env("PROGRAMS", "fibonacci")
+zkvm := env("ZKVM", "sp1")
 unit_test_args := "--locked --workspace -E 'kind(lib)' -E 'kind(bin)' -E 'kind(proc-macro)'"
 cov_file := "lcov.info"
 

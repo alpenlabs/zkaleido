@@ -10,7 +10,7 @@ fn sha2_prover_perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {
 pub fn sp1_sha_report() -> PerformanceReport {
     use zkaleido_sp1_artifacts::SHA2_CHAIN_ELF;
     use zkaleido_sp1_host::SP1Host;
-    let host = SP1Host::init(SHA2_CHAIN_ELF);
+    let host = SP1Host::init(&SHA2_CHAIN_ELF);
 
     sha2_prover_perf_report(&host)
 }

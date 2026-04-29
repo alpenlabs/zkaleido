@@ -10,7 +10,7 @@ fn perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {
 pub fn sp1_groth16_verify() -> PerformanceReport {
     use zkaleido_sp1_artifacts::GROTH16_VERIFY_SP1_ELF;
     use zkaleido_sp1_host::SP1Host;
-    let host = SP1Host::init(GROTH16_VERIFY_SP1_ELF);
+    let host = SP1Host::init(&GROTH16_VERIFY_SP1_ELF);
     perf_report(&host)
 }
 
