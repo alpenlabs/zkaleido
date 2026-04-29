@@ -3,7 +3,7 @@ use std::env::{set_var, var};
 use sp1_sdk::{
     HashableKey, ProvingKey, SP1ProofWithPublicValues,
     blocking::{CpuProver, MockProver, NetworkProver, ProveRequest, Prover, ProverClient},
-    network::{Error as NetworkError, FulfillmentStrategy},
+    network::{Error as NetworkError, FulfillmentStrategy, NetworkMode},
 };
 use zkaleido::{
     ExecutionSummary, ProgramId, ProofType, PublicValues, ZkVmError, ZkVmExecutor,
@@ -64,11 +64,18 @@ impl ZkVmProver for SP1Host {
             !use_zkvm_mock() && var("SP1_PROVER").map(|v| v == "network").unwrap_or(false);
 
         if is_network_prover {
-            let prover_client = ProverClient::builder().network().build();
+            print!("using network");
             let strategy = var("SP1_PROOF_STRATEGY")
                 .ok()
                 .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
                 .unwrap_or(FulfillmentStrategy::Auction);
+
+            let builder = if strategy == FulfillmentStrategy::Reserved {
+                ProverClient::builder().network_for(NetworkMode::Reserved)
+            } else {
+                ProverClient::builder().network()
+            };
+            let prover_client = builder.build();
 
             let mut network_prover_builder = prover_client
                 .prove(&self.proving_key, prover_input)
