@@ -25,4 +25,4 @@ zkaleido.workspace = true
 serde_json = "1.0.140"
 bincode.workspace = true
 rand = "0.8.3"
-sp1-verifier = "6.1.0"
+sp1-verifier.workspace = true

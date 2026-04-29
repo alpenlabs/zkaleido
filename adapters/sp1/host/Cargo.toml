@@ -7,8 +7,8 @@ version = "0.1.0"
 workspace = true
 
 [dependencies]
-sp1-core-executor = { version = "6.1.0", optional = true }
-sp1-sdk = { version = "6.1.0", features = ["blocking", "network"] }
+sp1-core-executor = { workspace = true, optional = true }
+sp1-sdk = { workspace = true, features = ["blocking", "network"] }
 zkaleido.workspace = true
 
 async-trait = { workspace = true, optional = true }
