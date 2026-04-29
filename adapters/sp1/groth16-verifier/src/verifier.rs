@@ -54,22 +54,22 @@ impl SP1Groth16Verifier {
     ///
     /// 1. Computes `vk_hash_tag = Sha256(vk_bytes)[..VK_HASH_PREFIX_LENGTH]`, the advisory prefix
     ///    SP1 prepends to emitted proofs.
-    /// 2. **Folds the fixed public inputs into K0.** SP1's circuit takes
-    ///    `(program_vk_hash, hash(public_values), exit_code, vk_root, proof_nonce)` as public
-    ///    inputs. Since `program_vk_hash` and `vk_root` are constant for a given verifier
-    ///    instance, we pre-compute `K0 + program_vk_hash·K1 + vk_root·K4` once at load time and
-    ///    remove `K1` / `K4` from the dynamic input basis. Verification then only needs to
-    ///    scalar-multiply against the remaining three statement-specific inputs.
+    /// 2. **Folds the fixed public inputs into K0.** SP1's circuit takes `(program_vk_hash,
+    ///    hash(public_values), exit_code, vk_root, proof_nonce)` as public inputs. Since
+    ///    `program_vk_hash` and `vk_root` are constant for a given verifier instance, we
+    ///    pre-compute `K0 + program_vk_hash·K1 + vk_root·K4` once at load time and remove `K1` /
+    ///    `K4` from the dynamic input basis. Verification then only needs to scalar-multiply
+    ///    against the remaining three statement-specific inputs.
     ///
     /// # Parameters
     /// - `vk_bytes`: GNARK-compressed Groth16 verifying key, typically
     ///   [`static@sp1_verifier::GROTH16_VK_BYTES`] for the SP1 version in use.
     /// - `program_vk_hash`: 32-byte big-endian Fr-element identifier for the SP1 program.
-    /// - `vk_root`: 32-byte big-endian Fr-element pin for the SP1 recursion verifier-key root.
-    ///   Must match the `vk_root` baked into the SP1 circuit that produced the proofs being
-    ///   verified — typically `*sp1_verifier::VK_ROOT_BYTES` for the matching SP1 version.
-    /// - `require_success`: whether the verifier should enforce that proofs commit to a
-    ///   successful exit code; see [`SP1Groth16Verifier::verify`].
+    /// - `vk_root`: 32-byte big-endian Fr-element pin for the SP1 recursion verifier-key root. Must
+    ///   match the `vk_root` baked into the SP1 circuit that produced the proofs being verified —
+    ///   typically `*sp1_verifier::VK_ROOT_BYTES` for the matching SP1 version.
+    /// - `require_success`: whether the verifier should enforce that proofs commit to a successful
+    ///   exit code; see [`SP1Groth16Verifier::verify`].
     pub fn load(
         vk_bytes: &[u8],
         program_vk_hash: [u8; 32],
@@ -144,10 +144,10 @@ impl SP1Groth16Verifier {
     /// compressed and uncompressed raw-proof variants are accepted. Verification proceeds in
     /// three steps:
     ///
-    /// 1. **Cross-checks.** If the proof carries `vk_hash_tag` or `vk_root`, each must equal
-    ///    the verifier's pinned value, otherwise it is silently accepted (the algebraic check
-    ///    below still binds the proof to `self.vk`). If the proof carries `exit_code`, it is
-    ///    checked against `SUCCESS_EXIT_CODE` when `require_success` is set.
+    /// 1. **Cross-checks.** If the proof carries `vk_hash_tag` or `vk_root`, each must equal the
+    ///    verifier's pinned value, otherwise it is silently accepted (the algebraic check below
+    ///    still binds the proof to `self.vk`). If the proof carries `exit_code`, it is checked
+    ///    against `SUCCESS_EXIT_CODE` when `require_success` is set.
     /// 2. **Resolve missing fields.** A missing `exit_code` is filled from `require_success`:
     ///    `SUCCESS_EXIT_CODE` when set, a `Groth16Error::MissingExitCode` when not. A missing
     ///    `proof_nonce` defaults to zero. (`vk_hash_tag` and `vk_root` are not needed for the

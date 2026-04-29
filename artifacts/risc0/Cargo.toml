@@ -15,6 +15,5 @@ methods = [
   "sha2-chain",
   "schnorr-sig-verify",
   "fibonacci-composition",
-  "groth16-verify-risc0",
   "groth16-verify-sp1",
 ]

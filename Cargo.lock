@@ -3369,19 +3369,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "groth16-verify-risc0"
-version = "0.1.0"
-dependencies = [
- "hex",
- "risc0-groth16",
- "risc0-zkp",
- "serde",
- "zkaleido",
- "zkaleido-native-adapter",
- "zkaleido-risc0-groth16-verifier",
-]
-
-[[package]]
 name = "groth16-verify-sp1"
 version = "0.1.0"
 dependencies = [
@@ -11000,7 +10987,6 @@ dependencies = [
  "clap",
  "fibonacci",
  "fibonacci-composition",
- "groth16-verify-risc0",
  "groth16-verify-sp1",
  "num-format",
  "reqwest",

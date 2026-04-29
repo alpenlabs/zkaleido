@@ -10,14 +10,13 @@
 //!
 //! # What lives where
 //!
-//! - [`SP1Groth16Verifier`] — the public entry point and its [`zkaleido::ZkVmVerifier`]
-//!   adapter.
-//! - [`ParsedSp1Groth16Proof`] — on-wire byte format and parsing of the optional prefix
-//!   fields (see its docs for the exact layout and which prefix fields may be omitted).
-//! - [`verify_sp1_groth16_algebraic`] — the pure algebraic pairing check, separated out
-//!   so it can be reused without the SP1-specific cross-checks.
-//! - [`crate::hashes`] — hashing `public_values` to a BN254 `Fr` element (SHA-256 and
-//!   Blake3, both accepted by SP1's circuit).
+//! - [`SP1Groth16Verifier`] — the public entry point and its [`zkaleido::ZkVmVerifier`] adapter.
+//! - [`ParsedSp1Groth16Proof`] — on-wire byte format and parsing of the optional prefix fields (see
+//!   its docs for the exact layout and which prefix fields may be omitted).
+//! - [`verify_sp1_groth16_algebraic`] — the pure algebraic pairing check, separated out so it can
+//!   be reused without the SP1-specific cross-checks.
+//! - [`crate::hashes`] — hashing `public_values` to a BN254 `Fr` element (SHA-256 and Blake3, both
+//!   accepted by SP1's circuit).
 //!
 //! # The "fold fixed inputs into K0" optimisation
 //!
@@ -32,12 +31,11 @@
 //!
 //! # Trust boundaries enforced by [`SP1Groth16Verifier::verify`]
 //!
-//! 1. **Prefix cross-check.** The proof's optional `vk_hash_tag` and `vk_root` prefix
-//!    fields, when present, must equal the values pinned on the verifier; when absent,
-//!    the call falls through to the algebraic check, which still binds the proof to the
-//!    loaded VK.
-//! 2. **Exit-code policy.** Governed by `require_success` on [`SP1Groth16Verifier`] —
-//!    see that field's doc for the full `require_success × proof.exit_code` matrix.
+//! 1. **Prefix cross-check.** The proof's optional `vk_hash_tag` and `vk_root` prefix fields, when
+//!    present, must equal the values pinned on the verifier; when absent, the call falls through to
+//!    the algebraic check, which still binds the proof to the loaded VK.
+//! 2. **Exit-code policy.** Governed by `require_success` on [`SP1Groth16Verifier`] — see that
+//!    field's doc for the full `require_success × proof.exit_code` matrix.
 
 #[cfg(all(test, not(feature = "serde")))]
 use bincode as _;
