@@ -20,7 +20,8 @@ impl SP1Groth16VerifyInput {
         let sp1_receipt = ProofReceiptWithMetadata::load(sp1_proof_file).unwrap();
 
         let sp1_verifier =
-            SP1Groth16Verifier::load(sp1_vk_bytes, sp1_receipt.metadata().program_id().0).unwrap();
+            SP1Groth16Verifier::load(sp1_vk_bytes, sp1_receipt.metadata().program_id().0, true)
+                .unwrap();
         let sp1_receipt = sp1_receipt.receipt().clone();
 
         SP1Groth16VerifyInput {

@@ -7,6 +7,9 @@ use bn::Fq;
 /// was generated with the expected verifying key.
 pub const VK_HASH_PREFIX_LENGTH: usize = 4;
 
+/// SP1 program exit code committed to a successful execution (32 zero bytes).
+pub(crate) const SUCCESS_EXIT_CODE: [u8; 32] = [0u8; 32];
+
 /// Mask to clear out the two most significant bits when reconstructing an Fq element
 /// from a compressed representation.
 ///

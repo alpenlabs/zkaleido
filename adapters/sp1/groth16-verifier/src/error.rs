@@ -133,6 +133,13 @@ pub enum Groth16Error {
     #[error("SP1 exit code mismatch")]
     ExitCodeMismatch,
 
+    /// SP1 v6 envelope metadata missing.
+    ///
+    /// Raised when the verifier requires SP1 v6 envelope fields (exit code, vk_root, proof
+    /// nonce) but the proof carries none of them (SP1 v5 proof, or a pruned v6 envelope).
+    #[error("SP1 v6 envelope metadata missing from proof")]
+    MissingV6Metadata,
+
     /// Public input count mismatch.
     #[error(transparent)]
     PublicInputCount(#[from] PublicInputCountError),

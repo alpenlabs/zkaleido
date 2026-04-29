@@ -1,7 +1,5 @@
-use bn::Fr;
-
 use crate::{
-    error::{Groth16Error, InvalidProofFormatError, SerializationError},
+    error::{Groth16Error, InvalidProofFormatError},
     types::{
         constant::{
             GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE, VK_HASH_PREFIX_LENGTH,
@@ -120,35 +118,5 @@ impl ParsedSp1Groth16Proof {
             vk_root,
             proof_nonce,
         })
-    }
-
-    /// Validate the SP1 v6 metadata against the expected exit code and verifier key root, and
-    /// return the algebraic public inputs derived from it (exit code and proof nonce).
-    ///
-    /// Returns an empty vector when no v6 metadata is present (SP1 v5 proofs, or proofs that have
-    /// had the metadata pruned by the caller).
-    pub fn extra_public_inputs(
-        &self,
-        expected_exit_code: [u8; 32],
-        expected_vk_root: &[u8; 32],
-    ) -> Result<Vec<Fr>, Groth16Error> {
-        let (Some(exit_code), Some(vk_root), Some(proof_nonce)) =
-            (self.exit_code, self.vk_root, self.proof_nonce)
-        else {
-            return Ok(Vec::new());
-        };
-
-        if exit_code != expected_exit_code {
-            return Err(Groth16Error::ExitCodeMismatch);
-        }
-
-        if vk_root != *expected_vk_root {
-            return Err(Groth16Error::VkeyRootMismatch);
-        }
-
-        Ok(vec![
-            Fr::from_slice(&exit_code).map_err(SerializationError::from)?,
-            Fr::from_slice(&proof_nonce).map_err(SerializationError::from)?,
-        ])
     }
 }
