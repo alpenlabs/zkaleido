@@ -12,11 +12,11 @@ pub struct SP1Groth16VerifyInput {
 
 impl SP1Groth16VerifyInput {
     pub fn load() -> Self {
-        let sp1_vk_bytes = include_bytes!("../vk/sp1_groth16_vk.bin");
+        let sp1_vk_bytes = include_bytes!("../vk/sp1_groth16_vk_v6.bin");
 
         let base = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
         let sp1_proof_file =
-            base.join("../../adapters/sp1/groth16-verifier/proofs/fibonacci_SP1_v5.0.0.proof.bin");
+            base.join("../../adapters/sp1/groth16-verifier/proofs/fibonacci_SP1_v6.1.0.proof.bin");
         let sp1_receipt = ProofReceiptWithMetadata::load(sp1_proof_file).unwrap();
 
         let vk_root = *sp1_verifier::VK_ROOT_BYTES;
