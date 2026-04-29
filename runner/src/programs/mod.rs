@@ -54,7 +54,6 @@ pub fn run_sp1_programs(programs: &[GuestProgram]) -> Vec<PerformanceReport> {
             GuestProgram::Sha2Chain => sha2::sp1_sha_report(),
             GuestProgram::SchnorrSigVerify => schnorr::sp1_schnorr_sig_verify_report(),
             GuestProgram::Groth16VerifySP1 => groth16_verify_sp1::sp1_groth16_verify(),
-            GuestProgram::Groth16VerifyRisc0 => groth16_verify_risc0::sp1_groth16_verify(),
         })
         .collect()
 }

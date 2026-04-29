@@ -11022,8 +11022,8 @@ dependencies = [
 name = "zkaleido-sp1-artifacts"
 version = "0.1.0"
 dependencies = [
- "sp1-build 5.2.1",
- "sp1-sdk 5.2.1",
+ "sp1-build 6.1.0",
+ "sp1-sdk 6.1.0",
  "tera",
 ]
 
