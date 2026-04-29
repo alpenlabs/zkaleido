@@ -1,6 +1,8 @@
 use bn::{CurveError, FieldError, GroupError};
 use thiserror::Error;
 
+use crate::types::constant::VK_HASH_PREFIX_LENGTH;
+
 /// Error for buffer length mismatches during deserialization.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[error("Invalid buffer length for {context}: expected {expected} bytes, got {actual} bytes")]
@@ -116,29 +118,39 @@ pub enum Groth16Error {
     /// This occurs when the hash of the verifying key embedded in the proof does not match the
     /// hash of the provided verifying key, indicating that the proof was generated with a
     /// different verifying key.
-    #[error("Verifying key hash mismatch")]
-    VkeyHashMismatch,
+    #[error("Verifying key hash mismatch: expected {expected:02x?}, got {actual:02x?}")]
+    VkeyHashMismatch {
+        expected: [u8; VK_HASH_PREFIX_LENGTH],
+        actual: [u8; VK_HASH_PREFIX_LENGTH],
+    },
 
     /// SP1 recursion verifying key root mismatch.
     ///
     /// This occurs when an SP1 v6 proof is tied to a recursion verifying key set that does not
     /// match the current SP1 verifier.
-    #[error("SP1 verifying key root mismatch")]
-    VkeyRootMismatch,
+    #[error("SP1 verifying key root mismatch: expected {expected:02x?}, got {actual:02x?}")]
+    VkeyRootMismatch {
+        expected: [u8; 32],
+        actual: [u8; 32],
+    },
 
     /// Exit code mismatch.
     ///
     /// SP1 Groth16 proofs expose the program exit code as a public input. The default verifier
     /// expects successful execution, encoded as 32 zero bytes.
-    #[error("SP1 exit code mismatch")]
-    ExitCodeMismatch,
+    #[error("SP1 exit code mismatch: expected {expected:02x?}, got {actual:02x?}")]
+    ExitCodeMismatch {
+        expected: [u8; 32],
+        actual: [u8; 32],
+    },
 
-    /// SP1 v6 envelope metadata missing.
+    /// Exit code missing from proof.
     ///
-    /// Raised when the verifier requires SP1 v6 envelope fields (exit code, vk_root, proof
-    /// nonce) but the proof carries none of them (SP1 v5 proof, or a pruned v6 envelope).
-    #[error("SP1 v6 envelope metadata missing from proof")]
-    MissingV6Metadata,
+    /// Raised when the verifier is configured with `require_success = false` (so it has no
+    /// default exit code to bind into the public inputs) but the proof carries no exit code
+    /// in its prefix fields.
+    #[error("SP1 exit code missing from proof")]
+    MissingExitCode,
 
     /// Public input count mismatch.
     #[error(transparent)]
