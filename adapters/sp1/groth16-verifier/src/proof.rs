@@ -38,7 +38,7 @@ use crate::{
 /// whether a missing field is an error, gets a default, or is simply ignored is decided
 /// downstream by [`SP1Groth16Verifier::verify`](crate::SP1Groth16Verifier::verify).
 #[derive(Clone, Debug)]
-pub struct ParsedSp1Groth16Proof {
+pub struct Sp1Groth16Proof {
     /// First `VK_HASH_PREFIX_LENGTH` bytes of `Sha256(groth16_vk)`, when present in the input.
     pub vk_hash_tag: Option<[u8; VK_HASH_PREFIX_LENGTH]>,
     /// SP1 program exit code (SP1 v6+).
@@ -51,7 +51,7 @@ pub struct ParsedSp1Groth16Proof {
     pub proof: Groth16Proof,
 }
 
-impl From<Groth16Proof> for ParsedSp1Groth16Proof {
+impl From<Groth16Proof> for Sp1Groth16Proof {
     fn from(proof: Groth16Proof) -> Self {
         Self {
             vk_hash_tag: None,
@@ -63,7 +63,7 @@ impl From<Groth16Proof> for ParsedSp1Groth16Proof {
     }
 }
 
-impl ParsedSp1Groth16Proof {
+impl Sp1Groth16Proof {
     /// Parse an SP1 Groth16 proof from any of the byte encodings listed in the module-level
     /// docs.
     ///

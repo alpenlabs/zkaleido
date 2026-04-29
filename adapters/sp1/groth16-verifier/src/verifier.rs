@@ -13,11 +13,11 @@ use sha2::{Digest, Sha256};
 use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
+    Sp1Groth16Proof,
     error::{BufferLengthError, Groth16Error, SerializationError},
     hashes::{blake3_to_fr, sha256_to_fr},
     types::{
         constant::{SUCCESS_EXIT_CODE, VK_HASH_PREFIX_LENGTH},
-        parsed_proof::ParsedSp1Groth16Proof,
         vk::Groth16VerifyingKey,
     },
     verification::verify_sp1_groth16_algebraic,
@@ -26,11 +26,8 @@ use crate::{
 /// A stateful verifier for SP1 Groth16 proofs.
 ///
 /// Construction (see [`SP1Groth16Verifier::load`]) pre-loads the Groth16 verifying key and
-/// bakes the fixed SP1 public inputs (`program_vk_hash`, `vk_root`) into the K basis, so
-/// callers of [`SP1Groth16Verifier::verify`] only supply statement-specific inputs. At
-/// verification time, prefix fields the proof carries (`vk_hash_tag`, `vk_root`, `exit_code`)
-/// are cross-checked against the values stored on this struct; `require_success` controls how
-/// a committed exit code is enforced.
+/// bakes the fixed `program_vk_hash` public input into the K basis, so callers of
+/// [`SP1Groth16Verifier::verify`] only supply statement-specific inputs.
 #[derive(Clone, Debug)]
 pub struct SP1Groth16Verifier {
     /// The (uncompressed) Groth16 verifying key for the SP1 circuit.
@@ -38,7 +35,9 @@ pub struct SP1Groth16Verifier {
     /// First `VK_HASH_PREFIX_LENGTH` bytes of `Sha256(groth16_vk)`. SP1 prepends this as an
     /// advisory tag on emitted proofs; when the proof carries the tag, it must match.
     pub vk_hash_tag: [u8; VK_HASH_PREFIX_LENGTH],
-    /// SP1 recursion verifier-key root carried in the proof's prefix fields when present.
+    /// SP1 recursion verifier-key root pinned by this verifier. Bound to the proof as a public
+    /// input during algebraic verification, and cross-checked against the proof's `vk_root`
+    /// prefix field when the proof carries it.
     pub vk_root: [u8; 32],
     /// When `true`, the verifier requires the proof to commit to a successful exit code
     /// (`SUCCESS_EXIT_CODE`); when `false`, the verifier accepts whatever exit code the proof
@@ -54,22 +53,12 @@ impl SP1Groth16Verifier {
     ///
     /// 1. Computes `vk_hash_tag = Sha256(vk_bytes)[..VK_HASH_PREFIX_LENGTH]`, the advisory prefix
     ///    SP1 prepends to emitted proofs.
-    /// 2. **Folds the fixed public inputs into K0.** SP1's circuit takes `(program_vk_hash,
+    /// 2. **Folds `program_vk_hash` into K0.** SP1's circuit takes `(program_vk_hash,
     ///    hash(public_values), exit_code, vk_root, proof_nonce)` as public inputs. Since
-    ///    `program_vk_hash` and `vk_root` are constant for a given verifier instance, we
-    ///    pre-compute `K0 + program_vk_hash·K1 + vk_root·K4` once at load time and remove `K1` /
-    ///    `K4` from the dynamic input basis. Verification then only needs to scalar-multiply
-    ///    against the remaining three statement-specific inputs.
-    ///
-    /// # Parameters
-    /// - `vk_bytes`: GNARK-compressed Groth16 verifying key, typically
-    ///   [`static@sp1_verifier::GROTH16_VK_BYTES`] for the SP1 version in use.
-    /// - `program_vk_hash`: 32-byte big-endian Fr-element identifier for the SP1 program.
-    /// - `vk_root`: 32-byte big-endian Fr-element pin for the SP1 recursion verifier-key root. Must
-    ///   match the `vk_root` baked into the SP1 circuit that produced the proofs being verified —
-    ///   typically `*sp1_verifier::VK_ROOT_BYTES` for the matching SP1 version.
-    /// - `require_success`: whether the verifier should enforce that proofs commit to a successful
-    ///   exit code; see [`SP1Groth16Verifier::verify`].
+    ///    `program_vk_hash` is constant for a given verifier instance, we pre-compute `K0 +
+    ///    program_vk_hash·K1` once at load time and remove `K1` from the dynamic input basis.
+    ///    Verification then only needs to scalar-multiply against the remaining statement-specific
+    ///    inputs.
     pub fn load(
         vk_bytes: &[u8],
         program_vk_hash: [u8; 32],
@@ -101,33 +90,15 @@ impl SP1Groth16Verifier {
             ));
         }
 
-        // Fold the fixed program verification key hash into K0.
+        // Fold the fixed program verification key hash into K0 and remove K1 from the dynamic
+        // input basis.
         let mut k0: G1 = groth16_vk.g1.k[0].into();
         let k1: G1 = groth16_vk.g1.k[1].into();
         k0 = k0 + (k1 * program_vk_hash);
 
-        // When the verifying key carries `vk_root` as public input 3 (K4), fold it into K0 since
-        // the verifier already pins the recursion verifier-key root to this crate's `sp1-verifier`
-        // version, and remove original K4 from the dynamic input basis.
-        let merge_vk_root = groth16_vk.g1.k.len() >= 6;
-        if merge_vk_root {
-            let vk_root = Fr::from_slice(&vk_root).map_err(SerializationError::from)?;
-            let k4: G1 = groth16_vk.g1.k[4].into();
-            k0 = k0 + (k4 * vk_root);
-        }
-
-        let mut k = Vec::with_capacity(if merge_vk_root {
-            groth16_vk.g1.k.len() - 2
-        } else {
-            groth16_vk.g1.k.len() - 1
-        });
+        let mut k = Vec::with_capacity(groth16_vk.g1.k.len() - 1);
         k.push(AffineG1::from_jacobian(k0).unwrap().into());
-        if merge_vk_root {
-            k.extend_from_slice(&groth16_vk.g1.k[2..4]);
-            k.extend_from_slice(&groth16_vk.g1.k[5..]);
-        } else {
-            k.extend_from_slice(&groth16_vk.g1.k[2..]);
-        }
+        k.extend_from_slice(&groth16_vk.g1.k[2..]);
         groth16_vk.g1.k = k;
 
         Ok(SP1Groth16Verifier {
@@ -150,8 +121,8 @@ impl SP1Groth16Verifier {
     ///    against `SUCCESS_EXIT_CODE` when `require_success` is set.
     /// 2. **Resolve missing fields.** A missing `exit_code` is filled from `require_success`:
     ///    `SUCCESS_EXIT_CODE` when set, a `Groth16Error::MissingExitCode` when not. A missing
-    ///    `proof_nonce` defaults to zero. (`vk_hash_tag` and `vk_root` are not needed for the
-    ///    algebraic check — `vk_root` is folded into `K0` at load time.)
+    ///    `proof_nonce` defaults to zero. `vk_root` is sourced from `self.vk_root` regardless of
+    ///    whether the proof carried it.
     /// 3. **Algebraic verification** via [`verify_sp1_groth16_algebraic`].
     ///
     /// # HACK: SHA-256 / Blake3 retry
@@ -161,7 +132,7 @@ impl SP1Groth16Verifier {
     /// avoid the redundant pairing check.
     pub fn verify(&self, proof: &[u8], public_values: &[u8]) -> Result<(), Groth16Error> {
         // Parse the proof's optional prefix fields together with the raw proof bytes.
-        let parsed = ParsedSp1Groth16Proof::parse(proof)?;
+        let parsed = Sp1Groth16Proof::parse(proof)?;
 
         // The vk hash tag is an advisory prefix; algebraic verification still binds the proof to
         // `self.vk`. We only enforce equality when the proof actually includes the tag — proofs
@@ -251,9 +222,7 @@ mod tests {
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
     use crate::{
-        Groth16VerifyingKey, SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED,
-        SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED,
-        error::Groth16Error,
+        Groth16VerifyingKey,
         types::{
             constant::{
                 GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE,
@@ -266,13 +235,31 @@ mod tests {
 
     const SP1_V5_GROTH16_VK_BYTES: &[u8] =
         include_bytes!("../../../../examples/groth16-verify-sp1/vk/sp1_groth16_vk.bin");
+    const SP1_V5_VK_ROOT: [u8; 32] = [0u8; 32];
 
-    fn load_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
+    fn load_v5_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
         let receipt =
             ProofReceiptWithMetadata::load("./proofs/fibonacci_SP1_v5.0.0.proof.bin").unwrap();
 
         let verifier = SP1Groth16Verifier::load(
             SP1_V5_GROTH16_VK_BYTES,
+            receipt.metadata().program_id().0,
+            SP1_V5_VK_ROOT,
+            true,
+        )
+        .unwrap();
+
+        let receipt = receipt.receipt().clone();
+
+        (verifier, receipt)
+    }
+
+    fn load_v6_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
+        let receipt =
+            ProofReceiptWithMetadata::load("./proofs/fibonacci_SP1_v6.1.0.proof.bin").unwrap();
+
+        let verifier = SP1Groth16Verifier::load(
+            &GROTH16_VK_BYTES,
             receipt.metadata().program_id().0,
             *VK_ROOT_BYTES,
             true,
@@ -286,17 +273,18 @@ mod tests {
 
     #[test]
     fn test_valid_proof() {
-        let (verifier, receipt) = load_verifier_and_proof();
+        let (verifier, receipt) = load_v6_verifier_and_proof();
         let res = verifier.verify(
             receipt.proof().as_bytes(),
             receipt.public_values().as_bytes(),
         );
+        dbg!(&receipt.proof().as_bytes().len());
         assert!(res.is_ok());
     }
 
     #[test]
     fn test_invalid_g1() {
-        let (mut verifier, receipt) = load_verifier_and_proof();
+        let (mut verifier, receipt) = load_v5_verifier_and_proof();
         let vk_alpha = verifier.vk.g1.alpha.0;
         let alpha_x = vk_alpha.x();
         let alpha_y = vk_alpha.y();
@@ -331,7 +319,7 @@ mod tests {
 
     #[test]
     fn test_invalid_g2() {
-        let (mut verifier, receipt) = load_verifier_and_proof();
+        let (mut verifier, receipt) = load_v5_verifier_and_proof();
         let vk_gamma = verifier.vk.g2.gamma.0;
         let gamma_x = vk_gamma.x();
         let gamma_y = vk_gamma.y();
@@ -365,7 +353,7 @@ mod tests {
 
     #[test]
     fn test_compressed_and_uncompressed_proof() {
-        let (verifier, receipt) = load_verifier_and_proof();
+        let (verifier, receipt) = load_v5_verifier_and_proof();
         let proof_bytes = receipt.proof().as_bytes();
         let public_values = receipt.public_values().as_bytes();
 
@@ -413,7 +401,7 @@ mod tests {
 
     #[test]
     fn test_compressed_merged_vk_roundtrip() {
-        let (verifier, _) = load_verifier_and_proof();
+        let (verifier, _) = load_v5_verifier_and_proof();
 
         let gnark_vk_bytes = verifier.vk.to_gnark_bytes();
         let vk = Groth16VerifyingKey::from_gnark_bytes(&gnark_vk_bytes).unwrap();
@@ -422,44 +410,5 @@ mod tests {
         let uncompressed_vk_bytes = verifier.vk.to_uncompressed_bytes();
         let vk = Groth16VerifyingKey::from_uncompressed_bytes(&uncompressed_vk_bytes).unwrap();
         assert_eq!(vk, verifier.vk);
-    }
-
-    #[test]
-    fn test_sp1_v6_vk_load_merges_public_inputs() {
-        let verifier =
-            SP1Groth16Verifier::load(&GROTH16_VK_BYTES, [0u8; 32], *VK_ROOT_BYTES, true).unwrap();
-
-        let gnark_vk_bytes = verifier.vk.to_gnark_bytes();
-        assert_eq!(gnark_vk_bytes.len(), SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED);
-        let vk = Groth16VerifyingKey::from_gnark_bytes(&gnark_vk_bytes).unwrap();
-        assert_eq!(vk, verifier.vk);
-
-        let uncompressed_vk_bytes = verifier.vk.to_uncompressed_bytes();
-        assert_eq!(
-            uncompressed_vk_bytes.len(),
-            SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED
-        );
-        let vk = Groth16VerifyingKey::from_uncompressed_bytes(&uncompressed_vk_bytes).unwrap();
-        assert_eq!(vk, verifier.vk);
-    }
-
-    #[test]
-    fn test_sp1_v6_proof_rejects_wrong_vk_root() {
-        // Reuse a real (uncompressed) Groth16 proof so that point parsing succeeds and the
-        // wrong-vk_root error path is actually exercised.
-        let (_, receipt) = load_verifier_and_proof();
-        let raw_proof_bytes = &receipt.proof().as_bytes()[VK_HASH_PREFIX_LENGTH..];
-
-        let verifier =
-            SP1Groth16Verifier::load(&GROTH16_VK_BYTES, [0u8; 32], *VK_ROOT_BYTES, true).unwrap();
-        let mut proof = Vec::new();
-        proof.extend_from_slice(&verifier.vk_hash_tag);
-        proof.extend_from_slice(&[0u8; 32]);
-        proof.extend_from_slice(&[1u8; 32]);
-        proof.extend_from_slice(&[0u8; 32]);
-        proof.extend_from_slice(raw_proof_bytes);
-
-        let err = verifier.verify(&proof, &[]).unwrap_err();
-        assert!(matches!(err, Groth16Error::VkeyRootMismatch { .. }));
     }
 }

@@ -46,19 +46,20 @@ use serde_json as _;
 mod borsh;
 mod error;
 pub mod hashes;
+mod proof;
 #[cfg(feature = "serde")]
 mod serde;
 mod types;
 mod verification;
 mod verifier;
 
+pub use proof::Sp1Groth16Proof;
 pub use types::{
     constant::{
         GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE,
         SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED, SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED,
         VK_HASH_PREFIX_LENGTH,
     },
-    parsed_proof::ParsedSp1Groth16Proof,
     proof::Groth16Proof,
     vk::Groth16VerifyingKey,
 };
