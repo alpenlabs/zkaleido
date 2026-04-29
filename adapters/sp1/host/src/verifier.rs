@@ -1,11 +1,11 @@
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use sp1_sdk::ProverClient;
 use zkaleido::{
     DataFormatError, PublicValues, VerifyingKey, ZkVmError, ZkVmOutputExtractor, ZkVmResult,
     ZkVmTypedVerifier, ZkVmVkProvider,
 };
 
-use crate::{proof::SP1ProofReceipt, SP1Host};
+use crate::{SP1Host, proof::SP1ProofReceipt};
 
 impl ZkVmTypedVerifier for SP1Host {
     type ZkVmProofReceipt = SP1ProofReceipt;

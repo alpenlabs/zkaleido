@@ -1,6 +1,6 @@
 use num_format::{Locale, ToFormattedString};
 
-use crate::{args::EvalArgs, PerformanceReport};
+use crate::{PerformanceReport, args::EvalArgs};
 
 /// Returns a formatted header for the performance report with basic PR data.
 pub fn format_header(args: &EvalArgs) -> String {

@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use risc0_groth16::verifying_key;
-use risc0_zkp::core::digest::{digest, Digest};
+use risc0_zkp::core::digest::{Digest, digest};
 use serde::{Deserialize, Serialize};
 use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 use zkaleido_risc0_groth16_verifier::Risc0Groth16Verifier;

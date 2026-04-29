@@ -1,5 +1,5 @@
 use risc0_zkvm::{guest::env, serde::from_slice};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use zkaleido::{ZkVmEnv, ZkVmEnvSerde};
 
 /// An environment adapter for the RISC0 system implementing [`ZkVmEnv`].

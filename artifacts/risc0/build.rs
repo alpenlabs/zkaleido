@@ -59,7 +59,7 @@ fn build_from_templates(program_dir: &str) {
     // Create a Tera context and insert variables for use in the templates.
     let mut context = Context::new();
     context.insert("version", "0.1.0");
-    context.insert("edition", "2021");
+    context.insert("edition", "2024");
     context.insert("program", &program);
     context.insert("program_dir", &program_dir);
 

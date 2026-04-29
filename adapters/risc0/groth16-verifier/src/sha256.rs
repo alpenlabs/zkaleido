@@ -20,12 +20,12 @@
 use core::slice;
 
 use risc0_zkp::core::{
-    digest::{Digest, DIGEST_WORDS},
-    hash::sha::{Block, Sha256, SHA256_INIT},
+    digest::{DIGEST_WORDS, Digest},
+    hash::sha::{Block, SHA256_INIT, Sha256},
 };
 use sha2::{
-    digest::generic_array::{typenum::U64, GenericArray},
     Digest as _,
+    digest::generic_array::{GenericArray, typenum::U64},
 };
 
 /// A CPU-based [Sha256] implementation.

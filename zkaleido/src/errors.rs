@@ -1,5 +1,7 @@
 use std::fmt::{Debug, Display};
 
+#[cfg(feature = "borsh")]
+use borsh::io::Error as BorshIoError;
 use thiserror::Error;
 
 use crate::{ProofType, ZkVm};
@@ -71,7 +73,7 @@ pub enum DataFormatError {
     Borsh {
         /// The source borsh error.
         #[source]
-        source: borsh::io::Error,
+        source: BorshIoError,
     },
 
     /// An error occurred during Serde (de)serialization.
@@ -167,16 +169,16 @@ pub enum InvalidVerifyingKeySource {
 
 /// Implement automatic conversion for `borsh::io::Error` to `DataFormatError`
 #[cfg(feature = "borsh")]
-impl From<borsh::io::Error> for DataFormatError {
-    fn from(err: borsh::io::Error) -> Self {
+impl From<BorshIoError> for DataFormatError {
+    fn from(err: BorshIoError) -> Self {
         DataFormatError::Borsh { source: err }
     }
 }
 
 /// Implement automatic conversion for `borsh::io::Error` to `InvalidProofReceiptSource`
 #[cfg(feature = "borsh")]
-impl From<borsh::io::Error> for ZkVmProofError {
-    fn from(err: borsh::io::Error) -> Self {
+impl From<BorshIoError> for ZkVmProofError {
+    fn from(err: BorshIoError) -> Self {
         let source = DataFormatError::Borsh { source: err };
         ZkVmProofError::DataFormat(source)
     }
@@ -184,8 +186,8 @@ impl From<borsh::io::Error> for ZkVmProofError {
 
 /// Implement automatic conversion for `borsh::io::Error` to `ZkVmInputError`
 #[cfg(feature = "borsh")]
-impl From<borsh::io::Error> for ZkVmInputError {
-    fn from(err: borsh::io::Error) -> Self {
+impl From<BorshIoError> for ZkVmInputError {
+    fn from(err: BorshIoError) -> Self {
         let source = DataFormatError::Borsh { source: err };
         ZkVmInputError::DataFormat(source)
     }

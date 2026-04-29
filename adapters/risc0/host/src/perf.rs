@@ -1,10 +1,11 @@
-use std::rc::Rc;
+use std::{env, rc::Rc};
 
+use risc0_groth16::prove::shrink_wrap;
 use risc0_zkvm::{
-    get_prover_server, sha::Digest, ExecutorImpl, ProverOpts, ProverServer, Receipt, Session,
-    VerifierContext,
+    ExecutorImpl, ProverOpts, ProverServer, Receipt, Session, VerifierContext, get_prover_server,
+    sha::Digest,
 };
-use zkaleido::{time_operation, PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf};
+use zkaleido::{PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf, time_operation};
 
 use crate::Risc0Host;
 
@@ -28,7 +29,7 @@ impl ZkVmHostPerf for Risc0Host {
         // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
         // then do not generate the proof metrics
         let (core_proof_report, compressed_proof_report, groth16_proof_report) =
-            if std::env::var("ZKVM_MOCK")
+            if env::var("ZKVM_MOCK")
                 .map(|v| v == "1" || v.to_lowercase() == "true")
                 .unwrap_or(false)
             {
@@ -143,8 +144,7 @@ fn gen_groth16_proof_metrics(
             .unwrap()
     });
     let seal_bytes = bn254_proof.get_seal_bytes();
-    let (groth16_proof, groth16_duration) =
-        time_operation(|| risc0_groth16::prove::shrink_wrap(&seal_bytes).unwrap());
+    let (groth16_proof, groth16_duration) = time_operation(|| shrink_wrap(&seal_bytes).unwrap());
 
     let total_duration = bn254_compress_duration + groth16_duration;
     let speed = cycles as f64 / total_duration.as_secs_f64() / 1_000.0;

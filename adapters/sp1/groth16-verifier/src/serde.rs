@@ -12,9 +12,9 @@
 //! - **Binary formats** (bincode, MessagePack, etc.): Uses raw uncompressed byte representations
 //!   for efficient storage and transmission
 
-use bn::{Fq, Fq2, Group, G1, G2};
+use bn::{Fq, Fq2, G1, G2, Group};
 use serde::{
-    de::Error as DeError, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer,
+    Deserialize, Deserializer, Serialize, Serializer, de::Error as DeError, ser::SerializeStruct,
 };
 
 use crate::{

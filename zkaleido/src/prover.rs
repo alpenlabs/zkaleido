@@ -1,8 +1,8 @@
 use std::fmt::Debug;
 
 use crate::{
-    input::ZkVmInputBuilder, ExecutionSummary, ProgramId, ProofReceiptWithMetadata, ProofType,
-    ZkVmError, ZkVmProofError, ZkVmResult,
+    ExecutionSummary, ProgramId, ProofReceiptWithMetadata, ProofType, ZkVmError, ZkVmProofError,
+    ZkVmResult, input::ZkVmInputBuilder,
 };
 
 /// A trait implemented by types that execute zkVM programs.

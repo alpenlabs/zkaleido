@@ -59,7 +59,7 @@ impl ZkVmInputBuilder<'_> for SP1ProofInputBuilder {
             _ => {
                 return Err(ZkVmInputError::ProofReceipt(
                     ZkVmProofError::InvalidProofType(ProofType::Compressed),
-                ))
+                ));
             }
         }
 

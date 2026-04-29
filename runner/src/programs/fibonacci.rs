@@ -4,7 +4,11 @@ use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgram, ZkVmProgramPerf};
 fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {
     let input = 5;
     FibProgram::prove(&input, host).unwrap();
-    std::env::set_var("ZKVM_MOCK", "1");
+    // SAFETY: this runner configures mock mode in a single-threaded setup
+    // before requesting the performance report.
+    unsafe {
+        std::env::set_var("ZKVM_MOCK", "1");
+    }
     FibProgram::perf_report(&input, host).unwrap()
 }
 

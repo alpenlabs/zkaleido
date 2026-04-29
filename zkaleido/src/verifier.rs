@@ -3,7 +3,7 @@ use std::fmt::Debug;
 #[cfg(feature = "borsh")]
 use borsh::{BorshDeserialize, BorshSerialize};
 #[cfg(feature = "serde")]
-use serde::{de::DeserializeOwned, Deserialize, Serialize};
+use serde::{Deserialize, Serialize, de::DeserializeOwned};
 
 #[cfg(any(feature = "serde", feature = "borsh", feature = "ssz"))]
 use crate::PublicValues;

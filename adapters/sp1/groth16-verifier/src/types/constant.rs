@@ -1,3 +1,5 @@
+use std::mem::size_of;
+
 use bn::Fq;
 
 /// Mask to clear out the two most significant bits when reconstructing an Fq element
@@ -19,10 +21,10 @@ pub(crate) const COMPRESSED_NEGATIVE: u8 = 0b11 << 6;
 pub(crate) const COMPRESSED_INFINITY: u8 = 0b01 << 6;
 
 /// Size of a u32 in bytes (for num_k)
-pub(crate) const U32_SIZE: usize = std::mem::size_of::<u32>();
+pub(crate) const U32_SIZE: usize = size_of::<u32>();
 
 /// Size of an Fq field element in bytes
-pub(crate) const FQ_SIZE: usize = std::mem::size_of::<Fq>();
+pub(crate) const FQ_SIZE: usize = size_of::<Fq>();
 
 // Size constants for serialization
 /// Size of a GNARK-compressed G1 point in bytes

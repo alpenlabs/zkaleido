@@ -1,14 +1,16 @@
+use std::env::var;
+
 #[cfg(feature = "remote-prover")]
 use async_trait::async_trait;
 
 #[cfg(feature = "remote-prover")]
 use crate::ZkVmRemoteHost;
-use crate::{
-    host::ZkVmHost, input::ZkVmInputBuilder, ProofReceiptWithMetadata, ProofType, PublicValues,
-    ZkVmInputResult, ZkVmResult,
-};
 #[cfg(feature = "perf")]
 use crate::{PerformanceReport, ZkVmHostPerf};
+use crate::{
+    ProofReceiptWithMetadata, ProofType, PublicValues, ZkVmInputResult, ZkVmResult, host::ZkVmHost,
+    input::ZkVmInputBuilder,
+};
 
 /// A trait representing a "program" whose zero-knowledge proofs can be produced using a ZkVM.
 ///
@@ -65,7 +67,7 @@ pub trait ZkVmProgram {
         H::Input<'a>: ZkVmInputBuilder<'a>,
     {
         // 1) Check for profiling flag
-        if std::env::var("ZKVM_PROFILING_DUMP")
+        if var("ZKVM_PROFILING_DUMP")
             .map(|v| v == "1" || v.eq_ignore_ascii_case("true"))
             .unwrap_or(false)
         {
@@ -109,7 +111,7 @@ pub trait ZkVmProgram {
         let _ = Self::process_output::<H>(receipt_with_metadata.receipt().public_values())?;
 
         // Dump the proof to file if flag is enabled
-        if std::env::var("ZKVM_PROOF_DUMP")
+        if var("ZKVM_PROOF_DUMP")
             .map(|v| v == "1" || v.to_lowercase() == "true")
             .unwrap_or(false)
         {

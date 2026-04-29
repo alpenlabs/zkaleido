@@ -1,10 +1,12 @@
+use std::env::var;
+
 use sp1_prover::{
     build::try_build_groth16_bn254_artifacts_dev, components::CpuProverComponents,
     utils::get_cycles,
 };
 use sp1_sdk::{SP1Context, SP1Prover, SP1Stdin};
 use sp1_stark::SP1ProverOpts;
-use zkaleido::{time_operation, PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf};
+use zkaleido::{PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf, time_operation};
 
 use crate::SP1Host;
 
@@ -26,7 +28,7 @@ impl ZkVmHostPerf for SP1Host {
         // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
         // then do not generate the proof metrics
         let (core_proof_report, compressed_proof_report, groth16_proof_report, shards) =
-            if std::env::var("ZKVM_MOCK")
+            if var("ZKVM_MOCK")
                 .map(|v| v == "1" || v.to_lowercase() == "true")
                 .unwrap_or(false)
             {

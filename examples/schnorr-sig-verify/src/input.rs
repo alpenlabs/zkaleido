@@ -1,5 +1,5 @@
-use rand::{rngs::OsRng, Rng};
-use secp256k1::{SecretKey, SECP256K1};
+use rand::{Rng, rngs::OsRng};
+use secp256k1::{SECP256K1, SecretKey};
 
 use crate::logic::sign_schnorr_sig;
 
@@ -13,7 +13,7 @@ pub struct SchnorrSigInput {
 
 impl SchnorrSigInput {
     pub fn new_random() -> Self {
-        let msg: [u8; 32] = [(); 32].map(|_| OsRng.gen());
+        let msg: [u8; 32] = [(); 32].map(|_| OsRng.r#gen());
 
         let sk = SecretKey::new(&mut OsRng);
         let (pk, _) = sk.x_only_public_key(SECP256K1);
