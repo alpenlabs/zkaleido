@@ -129,6 +129,7 @@ impl BorshSerialize for SP1Groth16Verifier {
     fn serialize<W: io::Write>(&self, writer: &mut W) -> io::Result<()> {
         self.vk.serialize(writer)?;
         self.vk_hash_tag.serialize(writer)?;
+        self.vk_root.serialize(writer)?;
         self.require_success.serialize(writer)?;
         Ok(())
     }
@@ -138,12 +139,13 @@ impl BorshDeserialize for SP1Groth16Verifier {
     fn deserialize_reader<R: io::Read>(reader: &mut R) -> io::Result<Self> {
         let vk = Groth16VerifyingKey::deserialize_reader(reader)?;
         let vk_hash_tag = <[u8; 4]>::deserialize_reader(reader)?;
+        let vk_root = <[u8; 32]>::deserialize_reader(reader)?;
         let require_success = bool::deserialize_reader(reader)?;
         Ok(SP1Groth16Verifier {
             vk,
             vk_hash_tag,
+            vk_root,
             require_success,
-            vk_root: *sp1_verifier::VK_ROOT_BYTES,
         })
     }
 }

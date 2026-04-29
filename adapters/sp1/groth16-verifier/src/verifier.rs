@@ -50,12 +50,11 @@ impl SP1Groth16Verifier {
     /// Build a `SP1Groth16Verifier` from a GNARK-compressed Groth16 verifying key and a program
     /// identifier.
     ///
-    /// `load` does three things beyond plain VK parsing:
+    /// `load` does two things beyond plain VK parsing:
     ///
     /// 1. Computes `vk_hash_tag = Sha256(vk_bytes)[..VK_HASH_PREFIX_LENGTH]`, the advisory prefix
     ///    SP1 prepends to emitted proofs.
-    /// 2. Pins `vk_root` to this crate's `sp1-verifier` constant (`sp1_verifier::VK_ROOT_BYTES`).
-    /// 3. **Folds the fixed public inputs into K0.** SP1's circuit takes
+    /// 2. **Folds the fixed public inputs into K0.** SP1's circuit takes
     ///    `(program_vk_hash, hash(public_values), exit_code, vk_root, proof_nonce)` as public
     ///    inputs. Since `program_vk_hash` and `vk_root` are constant for a given verifier
     ///    instance, we pre-compute `K0 + program_vk_hash·K1 + vk_root·K4` once at load time and
@@ -66,11 +65,15 @@ impl SP1Groth16Verifier {
     /// - `vk_bytes`: GNARK-compressed Groth16 verifying key, typically
     ///   [`static@sp1_verifier::GROTH16_VK_BYTES`] for the SP1 version in use.
     /// - `program_vk_hash`: 32-byte big-endian Fr-element identifier for the SP1 program.
+    /// - `vk_root`: 32-byte big-endian Fr-element pin for the SP1 recursion verifier-key root.
+    ///   Must match the `vk_root` baked into the SP1 circuit that produced the proofs being
+    ///   verified — typically `*sp1_verifier::VK_ROOT_BYTES` for the matching SP1 version.
     /// - `require_success`: whether the verifier should enforce that proofs commit to a
     ///   successful exit code; see [`SP1Groth16Verifier::verify`].
     pub fn load(
         vk_bytes: &[u8],
         program_vk_hash: [u8; 32],
+        vk_root: [u8; 32],
         require_success: bool,
     ) -> Result<Self, Groth16Error> {
         // Compute the SHA-256 hash of `vk_bytes` and take the first `VK_HASH_PREFIX_LENGTH` bytes.
@@ -79,7 +82,6 @@ impl SP1Groth16Verifier {
         let digest = Sha256::digest(vk_bytes);
         let mut vk_hash_tag = [0u8; VK_HASH_PREFIX_LENGTH];
         vk_hash_tag.copy_from_slice(&digest[..VK_HASH_PREFIX_LENGTH]);
-        let vk_root = *sp1_verifier::VK_ROOT_BYTES;
 
         // Parse the Groth16 verifying key from its byte representation.
         // This returns a `Groth16VerifyingKey` that can be used for algebraic verification.
@@ -245,7 +247,7 @@ impl ZkVmVerifier for SP1Groth16Verifier {
 mod tests {
     use bn::{AffineG1, AffineG2, Fq, Fq2, G1, G2, Group};
     use rand::thread_rng;
-    use sp1_verifier::GROTH16_VK_BYTES;
+    use sp1_verifier::{GROTH16_VK_BYTES, VK_ROOT_BYTES};
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
     use crate::{
@@ -272,6 +274,7 @@ mod tests {
         let verifier = SP1Groth16Verifier::load(
             SP1_V5_GROTH16_VK_BYTES,
             receipt.metadata().program_id().0,
+            *VK_ROOT_BYTES,
             true,
         )
         .unwrap();
@@ -423,7 +426,8 @@ mod tests {
 
     #[test]
     fn test_sp1_v6_vk_load_merges_public_inputs() {
-        let verifier = SP1Groth16Verifier::load(&GROTH16_VK_BYTES, [0u8; 32], true).unwrap();
+        let verifier =
+            SP1Groth16Verifier::load(&GROTH16_VK_BYTES, [0u8; 32], *VK_ROOT_BYTES, true).unwrap();
 
         let gnark_vk_bytes = verifier.vk.to_gnark_bytes();
         assert_eq!(gnark_vk_bytes.len(), SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED);
@@ -446,7 +450,8 @@ mod tests {
         let (_, receipt) = load_verifier_and_proof();
         let raw_proof_bytes = &receipt.proof().as_bytes()[VK_HASH_PREFIX_LENGTH..];
 
-        let verifier = SP1Groth16Verifier::load(&GROTH16_VK_BYTES, [0u8; 32], true).unwrap();
+        let verifier =
+            SP1Groth16Verifier::load(&GROTH16_VK_BYTES, [0u8; 32], *VK_ROOT_BYTES, true).unwrap();
         let mut proof = Vec::new();
         proof.extend_from_slice(&verifier.vk_hash_tag);
         proof.extend_from_slice(&[0u8; 32]);

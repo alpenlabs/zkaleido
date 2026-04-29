@@ -353,9 +353,10 @@ impl Serialize for SP1Groth16Verifier {
     where
         S: Serializer,
     {
-        let mut state = serializer.serialize_struct("SP1Groth16Verifier", 3)?;
+        let mut state = serializer.serialize_struct("SP1Groth16Verifier", 4)?;
         state.serialize_field("vk", &self.vk)?;
         state.serialize_field("vk_hash_tag", &self.vk_hash_tag)?;
+        state.serialize_field("vk_root", &self.vk_root)?;
         state.serialize_field("require_success", &self.require_success)?;
         state.end()
     }
@@ -370,6 +371,7 @@ impl<'de> Deserialize<'de> for SP1Groth16Verifier {
         struct SP1Groth16VerifierHelper {
             vk: Groth16VerifyingKey,
             vk_hash_tag: [u8; 4],
+            vk_root: [u8; 32],
             require_success: bool,
         }
 
@@ -377,8 +379,8 @@ impl<'de> Deserialize<'de> for SP1Groth16Verifier {
         Ok(SP1Groth16Verifier {
             vk: helper.vk,
             vk_hash_tag: helper.vk_hash_tag,
+            vk_root: helper.vk_root,
             require_success: helper.require_success,
-            vk_root: *sp1_verifier::VK_ROOT_BYTES,
         })
     }
 }

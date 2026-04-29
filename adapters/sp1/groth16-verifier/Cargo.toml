@@ -18,7 +18,6 @@ borsh = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
 serde = { workspace = true, optional = true }
 sha2.workspace = true
-sp1-verifier = "6.1.0"
 thiserror.workspace = true
 zkaleido.workspace = true
 
@@ -26,3 +25,4 @@ zkaleido.workspace = true
 serde_json = "1.0.140"
 bincode.workspace = true
 rand = "0.8.3"
+sp1-verifier = "6.1.0"

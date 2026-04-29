@@ -3387,6 +3387,7 @@ version = "0.1.0"
 dependencies = [
  "hex",
  "serde",
+ "sp1-verifier",
  "zkaleido",
  "zkaleido-native-adapter",
  "zkaleido-sp1-groth16-verifier",

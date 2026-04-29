@@ -19,9 +19,14 @@ impl SP1Groth16VerifyInput {
             base.join("../../adapters/sp1/groth16-verifier/proofs/fibonacci_SP1_v5.0.0.proof.bin");
         let sp1_receipt = ProofReceiptWithMetadata::load(sp1_proof_file).unwrap();
 
-        let sp1_verifier =
-            SP1Groth16Verifier::load(sp1_vk_bytes, sp1_receipt.metadata().program_id().0, true)
-                .unwrap();
+        let vk_root = *sp1_verifier::VK_ROOT_BYTES;
+        let sp1_verifier = SP1Groth16Verifier::load(
+            sp1_vk_bytes,
+            sp1_receipt.metadata().program_id().0,
+            vk_root,
+            true,
+        )
+        .unwrap();
         let sp1_receipt = sp1_receipt.receipt().clone();
 
         SP1Groth16VerifyInput {
