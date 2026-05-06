@@ -77,6 +77,38 @@ impl NativeHost {
             schnorr_key,
         }
     }
+
+    /// Creates a new [`NativeHost`] with the given signing key and proof processing function.
+    ///
+    /// This can be used when you need the same verifying key across restarts. For fallible
+    /// functions, use [`with_key_fallible`](Self::with_key_fallible).
+    pub fn with_key<F>(signing_key: SigningKey, process_fn: F) -> Self
+    where
+        F: Fn(&NativeMachine) + Send + Sync + 'static,
+    {
+        Self {
+            process_fn: Arc::new(Box::new(move |zkvm: &NativeMachine| -> ZkVmResult<()> {
+                process_fn(zkvm);
+                Ok(())
+            })),
+            schnorr_key: signing_key,
+        }
+    }
+
+    /// Creates a new [`NativeHost`] with the given signing key and a fallible proof processing
+    /// function.
+    ///
+    /// This can be used when you need the same verifying key across restarts. For infallible
+    /// functions, use [`with_key`](Self::with_key).
+    pub fn with_key_fallible<F>(signing_key: SigningKey, process_fn: F) -> Self
+    where
+        F: Fn(&NativeMachine) -> ZkVmResult<()> + Send + Sync + 'static,
+    {
+        Self {
+            process_fn: Arc::new(Box::new(process_fn)),
+            schnorr_key: signing_key,
+        }
+    }
 }
 
 impl ZkVmHost for NativeHost {
