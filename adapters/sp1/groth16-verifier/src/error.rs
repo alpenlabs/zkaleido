@@ -105,7 +105,7 @@ impl From<CurveError> for SerializationError {
 
 /// Errors specific to Groth16 proof verification.
 #[derive(Debug, Error)]
-pub enum Groth16Error {
+pub enum Sp1Groth16Error {
     /// Proof verification failed.
     ///
     /// This occurs when the pairing check fails, indicating that the proof is invalid or does not

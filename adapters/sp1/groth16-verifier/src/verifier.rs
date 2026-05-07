@@ -14,7 +14,7 @@ use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
     Sp1Groth16Proof,
-    error::{BufferLengthError, Groth16Error, SerializationError},
+    error::{BufferLengthError, SerializationError, Sp1Groth16Error},
     hashes::{blake3_to_fr, sha256_to_fr},
     types::{
         constant::{SUCCESS_EXIT_CODE, VK_HASH_PREFIX_LENGTH},
@@ -64,7 +64,7 @@ impl SP1Groth16Verifier {
         program_vk_hash: [u8; 32],
         vk_root: [u8; 32],
         require_success: bool,
-    ) -> Result<Self, Groth16Error> {
+    ) -> Result<Self, Sp1Groth16Error> {
         // Compute the SHA-256 hash of `vk_bytes` and take the first `VK_HASH_PREFIX_LENGTH` bytes.
         // This prefix is prepended to every raw Groth16 proof by SP1 to signal which verifying key
         // was used during proving.
@@ -80,7 +80,7 @@ impl SP1Groth16Verifier {
         let program_vk_hash = Fr::from_slice(&program_vk_hash).map_err(SerializationError::from)?;
 
         if groth16_vk.g1.k.len() < 2 {
-            return Err(Groth16Error::Serialization(
+            return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
                     context: "Groth16 VK K points",
                     expected: 2,
@@ -130,7 +130,7 @@ impl SP1Groth16Verifier {
     /// the on-wire format does not record which was used. We try SHA-256 first, then retry
     /// with Blake3 if that fails. A future format revision could embed a hash-selector byte to
     /// avoid the redundant pairing check.
-    pub fn verify(&self, proof: &[u8], public_values: &[u8]) -> Result<(), Groth16Error> {
+    pub fn verify(&self, proof: &[u8], public_values: &[u8]) -> Result<(), Sp1Groth16Error> {
         // Parse the proof's optional prefix fields together with the raw proof bytes.
         let parsed = Sp1Groth16Proof::parse(proof)?;
 
@@ -140,7 +140,7 @@ impl SP1Groth16Verifier {
         if let Some(tag) = parsed.vk_hash_tag
             && tag != self.vk_hash_tag
         {
-            return Err(Groth16Error::VkeyHashMismatch {
+            return Err(Sp1Groth16Error::VkeyHashMismatch {
                 expected: self.vk_hash_tag,
                 actual: tag,
             });
@@ -150,7 +150,7 @@ impl SP1Groth16Verifier {
         if let Some(vk_root) = parsed.vk_root
             && vk_root != self.vk_root
         {
-            return Err(Groth16Error::VkeyRootMismatch {
+            return Err(Sp1Groth16Error::VkeyRootMismatch {
                 expected: self.vk_root,
                 actual: vk_root,
             });
@@ -161,7 +161,7 @@ impl SP1Groth16Verifier {
         let expected_exit_code = match (self.require_success, parsed.exit_code) {
             (true, Some(ec)) => {
                 if ec != SUCCESS_EXIT_CODE {
-                    return Err(Groth16Error::ExitCodeMismatch {
+                    return Err(Sp1Groth16Error::ExitCodeMismatch {
                         expected: SUCCESS_EXIT_CODE,
                         actual: ec,
                     });
@@ -170,7 +170,7 @@ impl SP1Groth16Verifier {
             }
             (true, None) => SUCCESS_EXIT_CODE,
             (false, Some(ec)) => ec,
-            (false, None) => return Err(Groth16Error::MissingExitCode),
+            (false, None) => return Err(Sp1Groth16Error::MissingExitCode),
         };
 
         let proof_nonce = parsed.proof_nonce.unwrap_or([0u8; 32]);

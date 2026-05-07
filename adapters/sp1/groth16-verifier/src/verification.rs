@@ -1,7 +1,7 @@
 use bn::{Fr, G1, G2, Gt, pairing_batch};
 
 use crate::{
-    error::Groth16Error,
+    error::Sp1Groth16Error,
     types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
 };
 
@@ -10,7 +10,7 @@ pub fn verify_sp1_groth16_algebraic(
     vk: &Groth16VerifyingKey,
     proof: &Groth16Proof,
     public_inputs: &[Fr],
-) -> Result<(), Groth16Error> {
+) -> Result<(), Sp1Groth16Error> {
     let prepared_input = public_inputs.iter().zip(vk.g1.k.iter().skip(1)).fold(
         Into::<G1>::into(vk.g1.k[0]),
         |acc, (input, k)| {
@@ -33,6 +33,6 @@ pub fn verify_sp1_groth16_algebraic(
     {
         Ok(())
     } else {
-        Err(Groth16Error::VerificationFailed)
+        Err(Sp1Groth16Error::VerificationFailed)
     }
 }

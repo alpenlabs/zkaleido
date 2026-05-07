@@ -21,7 +21,7 @@
 //! The raw proof itself is either GNARK-compressed or uncompressed; both lengths are accepted.
 
 use crate::{
-    error::{Groth16Error, InvalidProofFormatError},
+    error::{InvalidProofFormatError, Sp1Groth16Error},
     types::{
         constant::{
             GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE, VK_HASH_PREFIX_LENGTH,
@@ -76,7 +76,7 @@ impl Sp1Groth16Proof {
     ///
     /// This function does no semantic validation — see [`ParsedSp1Groth16Proof`] for what
     /// recovered fields mean.
-    pub fn parse(raw_bytes: &[u8]) -> Result<Self, Groth16Error> {
+    pub fn parse(raw_bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
         const C: usize = GROTH16_PROOF_COMPRESSED_SIZE;
         const U: usize = GROTH16_PROOF_UNCOMPRESSED_SIZE;
         const V: usize = VK_HASH_PREFIX_LENGTH;
@@ -99,7 +99,7 @@ impl Sp1Groth16Proof {
             l if l == V + 96 + C => (4, true),
             l if l == V + 96 + U => (4, false),
             _ => {
-                return Err(Groth16Error::Serialization(
+                return Err(Sp1Groth16Error::Serialization(
                     InvalidProofFormatError {
                         actual: raw_bytes.len(),
                     }
