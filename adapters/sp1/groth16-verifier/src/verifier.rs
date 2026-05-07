@@ -223,34 +223,11 @@ mod tests {
 
     use crate::{
         Groth16VerifyingKey, Sp1Groth16Proof,
-        types::constant::{
-            GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE, VK_HASH_PREFIX_LENGTH,
-        },
+        types::constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
         verifier::SP1Groth16Verifier,
     };
 
-    const SP1_V5_GROTH16_VK_BYTES: &[u8] =
-        include_bytes!("../../../../examples/groth16-verify-sp1/vk/sp1_groth16_vk_v5.bin");
-    const SP1_V5_VK_ROOT: [u8; 32] = [0u8; 32];
-
-    fn load_v5_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
-        let receipt =
-            ProofReceiptWithMetadata::load("./proofs/fibonacci_SP1_v5.0.0.proof.bin").unwrap();
-
-        let verifier = SP1Groth16Verifier::load(
-            SP1_V5_GROTH16_VK_BYTES,
-            receipt.metadata().program_id().0,
-            SP1_V5_VK_ROOT,
-            true,
-        )
-        .unwrap();
-
-        let receipt = receipt.receipt().clone();
-
-        (verifier, receipt)
-    }
-
-    fn load_v6_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
+    fn load_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
         let receipt =
             ProofReceiptWithMetadata::load("./proofs/fibonacci_SP1_v6.1.0.proof.bin").unwrap();
 
@@ -268,8 +245,8 @@ mod tests {
     }
 
     #[test]
-    fn test_valid_v6_proof() {
-        let (verifier, receipt) = load_v6_verifier_and_proof();
+    fn test_valid_proof() {
+        let (verifier, receipt) = load_verifier_and_proof();
         let res = verifier.verify(
             &receipt.proof().as_bytes()[4..],
             receipt.public_values().as_bytes(),
@@ -277,39 +254,9 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    // See the crate-level "Backwards compatibility with SP1 v5" docs for why this verifies
-    // under the v6-shaped public-input vector.
-    #[test]
-    fn test_valid_v5_proof() {
-        let (verifier, receipt) = load_v5_verifier_and_proof();
-        let res = verifier.verify(
-            &receipt.proof().as_bytes()[VK_HASH_PREFIX_LENGTH..],
-            receipt.public_values().as_bytes(),
-        );
-        assert!(res.is_ok());
-    }
-
-    #[test]
-    fn test_proof_vk_mismatch() {
-        let (v5_verifier, v5_receipt) = load_v5_verifier_and_proof();
-        let (v6_verifier, v6_receipt) = load_v6_verifier_and_proof();
-
-        let res = v6_verifier.verify(
-            v5_receipt.proof().as_bytes(),
-            v5_receipt.public_values().as_bytes(),
-        );
-        assert!(res.is_err());
-
-        let res = v5_verifier.verify(
-            v6_receipt.proof().as_bytes(),
-            v6_receipt.public_values().as_bytes(),
-        );
-        assert!(res.is_err());
-    }
-
     #[test]
     fn test_invalid_g1() {
-        let (mut verifier, receipt) = load_v5_verifier_and_proof();
+        let (mut verifier, receipt) = load_verifier_and_proof();
         let vk_alpha = verifier.vk.g1.alpha.0;
         let alpha_x = vk_alpha.x();
         let alpha_y = vk_alpha.y();
@@ -344,7 +291,7 @@ mod tests {
 
     #[test]
     fn test_invalid_g2() {
-        let (mut verifier, receipt) = load_v5_verifier_and_proof();
+        let (mut verifier, receipt) = load_verifier_and_proof();
         let vk_gamma = verifier.vk.g2.gamma.0;
         let gamma_x = vk_gamma.x();
         let gamma_y = vk_gamma.y();
@@ -378,7 +325,7 @@ mod tests {
 
     #[test]
     fn test_compressed_and_uncompressed_proof_v6() {
-        let (verifier, receipt) = load_v6_verifier_and_proof();
+        let (verifier, receipt) = load_verifier_and_proof();
         let proof_bytes = receipt.proof().as_bytes();
         let public_values = receipt.public_values().as_bytes();
 
@@ -411,7 +358,7 @@ mod tests {
 
     #[test]
     fn test_compressed_merged_vk_roundtrip() {
-        let (verifier, _) = load_v5_verifier_and_proof();
+        let (verifier, _) = load_verifier_and_proof();
 
         let gnark_vk_bytes = verifier.vk.to_gnark_bytes();
         let vk = Groth16VerifyingKey::from_gnark_bytes(&gnark_vk_bytes).unwrap();
@@ -420,5 +367,45 @@ mod tests {
         let uncompressed_vk_bytes = verifier.vk.to_uncompressed_bytes();
         let vk = Groth16VerifyingKey::from_uncompressed_bytes(&uncompressed_vk_bytes).unwrap();
         assert_eq!(vk, verifier.vk);
+    }
+}
+
+// See the crate-level "Backwards compatibility with SP1 v5" docs for why this verifies
+// under the v6-shaped public-input vector.
+#[cfg(test)]
+mod v5_tests {
+    use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
+
+    use crate::{SP1Groth16Verifier, VK_HASH_PREFIX_LENGTH};
+
+    fn load_v5_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
+        const SP1_V5_GROTH16_VK_BYTES: &[u8] =
+            include_bytes!("../../../../examples/groth16-verify-sp1/vk/sp1_groth16_vk_v5.bin");
+        const SP1_V5_VK_ROOT: [u8; 32] = [0u8; 32];
+
+        let receipt =
+            ProofReceiptWithMetadata::load("./proofs/fibonacci_SP1_v5.0.0.proof.bin").unwrap();
+
+        let verifier = SP1Groth16Verifier::load(
+            SP1_V5_GROTH16_VK_BYTES,
+            receipt.metadata().program_id().0,
+            SP1_V5_VK_ROOT,
+            true,
+        )
+        .unwrap();
+
+        let receipt = receipt.receipt().clone();
+
+        (verifier, receipt)
+    }
+
+    #[test]
+    fn test_valid_v5_proof() {
+        let (verifier, receipt) = load_v5_verifier_and_proof();
+        let res = verifier.verify(
+            &receipt.proof().as_bytes()[VK_HASH_PREFIX_LENGTH..],
+            receipt.public_values().as_bytes(),
+        );
+        assert!(res.is_ok());
     }
 }
