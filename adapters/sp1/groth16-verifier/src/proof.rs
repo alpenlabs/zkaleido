@@ -37,7 +37,7 @@ use crate::{
 /// Each `Option<...>` field below is `Some` iff that field was present in the parsed bytes;
 /// whether a missing field is an error, gets a default, or is simply ignored is decided
 /// downstream by [`SP1Groth16Verifier::verify_parsed`](crate::SP1Groth16Verifier::verify_parsed).
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Sp1Groth16Proof {
     /// First `VK_HASH_PREFIX_LENGTH` bytes of `Sha256(groth16_vk)`, when present in the input.
     pub vk_hash_tag: Option<[u8; VK_HASH_PREFIX_LENGTH]>,

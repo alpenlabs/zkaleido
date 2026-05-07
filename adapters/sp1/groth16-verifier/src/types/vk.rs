@@ -15,14 +15,14 @@ use crate::{
 };
 
 /// G1 elements of the verification key.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Groth16G1 {
     pub(crate) alpha: SAffineG1,
     pub(crate) k: Vec<SAffineG1>,
 }
 
 /// G2 elements of the verification key.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Groth16G2 {
     pub(crate) beta: SAffineG2,
     pub(crate) delta: SAffineG2,
@@ -30,7 +30,7 @@ pub(crate) struct Groth16G2 {
 }
 
 /// Verification key for the Groth16 proof.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Groth16VerifyingKey {
     pub(crate) g1: Groth16G1,
     pub(crate) g2: Groth16G2,

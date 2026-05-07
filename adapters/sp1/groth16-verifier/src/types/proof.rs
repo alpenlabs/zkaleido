@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Proof for the Groth16 verification.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Groth16Proof {
     pub(crate) ar: SAffineG1,
     pub(crate) krs: SAffineG1,
