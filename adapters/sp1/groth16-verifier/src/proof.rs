@@ -69,12 +69,12 @@ impl Sp1Groth16Proof {
     ///
     /// Detection is purely by length: `raw_bytes.len()` must equal exactly one of the ten
     /// valid combinations (five prefix shapes × {compressed, uncompressed} raw proof). Any
-    /// other length yields `Groth16Error::Serialization` wrapping an `InvalidProofFormatError`;
+    /// other length yields `Sp1Groth16Error::Serialization` wrapping an `InvalidProofFormatError`;
     /// a length match followed by a malformed raw proof yields the parse error from
     /// [`Groth16Proof::from_gnark_compressed_bytes`] /
     /// [`Groth16Proof::from_uncompressed_bytes`].
     ///
-    /// This function does no semantic validation — see [`ParsedSp1Groth16Proof`] for what
+    /// This function does no semantic validation — see [`Sp1Groth16Proof`] for what
     /// recovered fields mean.
     pub fn parse(raw_bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
         const C: usize = GROTH16_PROOF_COMPRESSED_SIZE;

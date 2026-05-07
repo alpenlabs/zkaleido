@@ -217,16 +217,19 @@ impl ZkVmVerifier for SP1Groth16Verifier {
 #[cfg(test)]
 mod tests {
     use bn::{AffineG1, AffineG2, Fq, Fq2, G1, G2, Group};
-    use rand::thread_rng;
+    use rand::{Rng, thread_rng};
     use sp1_verifier::{GROTH16_VK_BYTES, VK_ROOT_BYTES};
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
     use crate::{
         Groth16VerifyingKey, Sp1Groth16Proof,
-        types::constant::{GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE},
+        error::Sp1Groth16Error,
+        types::constant::{
+            GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE, SUCCESS_EXIT_CODE,
+            VK_HASH_PREFIX_LENGTH,
+        },
         verifier::SP1Groth16Verifier,
     };
-
     fn load_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
         let receipt =
             ProofReceiptWithMetadata::load("./proofs/fibonacci_SP1_v6.1.0.proof.bin").unwrap();
@@ -248,10 +251,136 @@ mod tests {
     fn test_valid_proof() {
         let (verifier, receipt) = load_verifier_and_proof();
         let res = verifier.verify(
-            &receipt.proof().as_bytes()[4..],
+            receipt.proof().as_bytes(),
             receipt.public_values().as_bytes(),
         );
         assert!(res.is_ok());
+    }
+
+    #[test]
+    fn test_invalid_vk_root() {
+        let (mut verifier, receipt) = load_verifier_and_proof();
+
+        // Flip a single random bit in the verifier's vk_root so it no longer matches the value
+        // baked into the proof.
+        let mut rng = thread_rng();
+        let byte_idx = rng.gen_range(0..verifier.vk_root.len());
+        let bit_idx = rng.gen_range(0..8);
+        verifier.vk_root[byte_idx] ^= 1u8 << bit_idx;
+
+        // The compressed proof carries the vk_root, so we preemptively check it
+        // and fail fast with `VkeyRootMismatch` before running the pairing check.
+        let err = verifier
+            .verify(
+                receipt.proof().as_bytes(),
+                receipt.public_values().as_bytes(),
+            )
+            .unwrap_err();
+        assert!(matches!(err, Sp1Groth16Error::VkeyRootMismatch { .. }));
+
+        // The uncompressed proof bytes don't include the vk_root, so the preemptive
+        // check is skipped and the mismatch only surfaces later as a pairing failure.
+        let parsed_proof = Sp1Groth16Proof::parse(receipt.proof().as_bytes()).unwrap();
+        let err = verifier
+            .verify(
+                &parsed_proof.proof.to_uncompressed_bytes(),
+                receipt.public_values().as_bytes(),
+            )
+            .unwrap_err();
+        assert!(matches!(err, Sp1Groth16Error::VerificationFailed));
+    }
+
+    #[test]
+    fn test_invalid_nonce() {
+        let (verifier, receipt) = load_verifier_and_proof();
+        let proof_bytes = receipt.proof().as_bytes();
+
+        // Sanity-check the original proof verifies and carries a nonce.
+        let original = Sp1Groth16Proof::parse(proof_bytes).unwrap();
+
+        // Wire layout when the full prefix is present:
+        //   [vk_hash_tag(V) || exit_code(32) || vk_root(32) || proof_nonce(32) || proof]
+        // Flip a bit in the nonce region without touching any other field.
+        let nonce_offset = VK_HASH_PREFIX_LENGTH + 32 + 32;
+        let mut tampered = proof_bytes.to_vec();
+        tampered[nonce_offset] ^= 0x01;
+
+        // The modified bytes should still parse, with every field except the nonce unchanged.
+        let modified = Sp1Groth16Proof::parse(&tampered).unwrap();
+        assert_eq!(modified.vk_hash_tag, original.vk_hash_tag);
+        assert_eq!(modified.exit_code, original.exit_code);
+        assert_eq!(modified.vk_root, original.vk_root);
+        assert_ne!(modified.proof_nonce, original.proof_nonce);
+        assert_eq!(
+            modified.proof.to_uncompressed_bytes(),
+            original.proof.to_uncompressed_bytes()
+        );
+
+        // No preemptive nonce check exists, so the mismatch surfaces at the pairing step.
+        let err = verifier
+            .verify(&tampered, receipt.public_values().as_bytes())
+            .unwrap_err();
+        assert!(matches!(err, Sp1Groth16Error::VerificationFailed));
+    }
+
+    #[test]
+    fn test_invalid_public_values() {
+        let (verifier, receipt) = load_verifier_and_proof();
+        let proof_bytes = receipt.proof().as_bytes();
+        let public_values = receipt.public_values().as_bytes();
+
+        // Sanity-check the unmodified inputs verify.
+        assert!(verifier.verify(proof_bytes, public_values).is_ok());
+
+        // Flip a single bit at a random position in the public values. The verifier hashes
+        // these bytes (SHA-256, with Blake3 fallback) into the algebraic public-input vector,
+        // so any change should make the pairing fail.
+        let mut rng = thread_rng();
+        let byte_idx = rng.gen_range(0..public_values.len());
+        let bit_idx = rng.gen_range(0..8);
+
+        let mut tampered = public_values.to_vec();
+        tampered[byte_idx] ^= 1u8 << bit_idx;
+        assert_ne!(tampered, public_values);
+
+        let err = verifier.verify(proof_bytes, &tampered).unwrap_err();
+        assert!(matches!(err, Sp1Groth16Error::VerificationFailed));
+    }
+
+    #[test]
+    fn test_invalid_exit_code() {
+        let (verifier, receipt) = load_verifier_and_proof();
+        let proof_bytes = receipt.proof().as_bytes();
+        let public_values = receipt.public_values().as_bytes();
+
+        // Wire layout: [vk_hash_tag(V) || exit_code(32) || vk_root(32) || proof_nonce(32) ||
+        // proof].
+        let exit_code_offset = VK_HASH_PREFIX_LENGTH;
+
+        let mut tampered_exit_code = [0u8; 32];
+        thread_rng().fill(&mut tampered_exit_code);
+        assert_ne!(tampered_exit_code, SUCCESS_EXIT_CODE);
+
+        let mut tampered = proof_bytes.to_vec();
+        tampered[exit_code_offset..exit_code_offset + 32].copy_from_slice(&tampered_exit_code);
+
+        // With `require_success = true`, the cross-check fires before the pairing, returning
+        // an `ExitCodeMismatch` whose `actual` matches the bytes we just spliced in.
+        let err = verifier.verify(&tampered, public_values).unwrap_err();
+        match err {
+            Sp1Groth16Error::ExitCodeMismatch { expected, actual } => {
+                assert_eq!(expected, SUCCESS_EXIT_CODE);
+                assert_eq!(actual, tampered_exit_code);
+            }
+            other => panic!("expected ExitCodeMismatch, got {other:?}"),
+        }
+
+        // With `require_success = false`, the cross-check is skipped and the tampered exit
+        // code is fed straight into the algebraic public inputs, so the pairing rejects it.
+        let mut permissive = verifier.clone();
+        permissive.require_success = false;
+        let err = permissive.verify(&tampered, public_values).unwrap_err();
+        assert!(matches!(err, Sp1Groth16Error::VerificationFailed));
     }
 
     #[test]
