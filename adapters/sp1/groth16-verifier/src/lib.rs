@@ -34,6 +34,18 @@
 //!    the algebraic check, which still binds the proof to the loaded VK.
 //! 2. **Exit-code policy.** Governed by `require_success` on [`SP1Groth16Verifier`] — see that
 //!    field's doc for the full `require_success × proof.exit_code` matrix.
+//!
+//! # Backwards compatibility with SP1 v5
+//!
+//! [`SP1Groth16Verifier::verify`] always builds the v6-shaped public-input vector
+//! `(program_vk_hash, hash(public_values), exit_code, vk_root, proof_nonce)`. v5 proofs,
+//! whose circuit only committed to `(program_vk_hash, hash(public_values))`, still verify
+//! under that vector when the v6 additions all default to zero on the v5 path:
+//! `require_success` resolves a missing `exit_code` to `SUCCESS_EXIT_CODE` (`0`), the
+//! verifier is loaded with the all-zero v5 `vk_root`, and a missing `proof_nonce` defaults
+//! to zero. [`verify_sp1_groth16_algebraic`] short-circuits zero public inputs, so the
+//! trailing K-basis terms drop out of the prepared point and the pairing reduces to
+//! exactly the v5 check.
 
 #[cfg(all(test, not(feature = "serde")))]
 use bincode as _;

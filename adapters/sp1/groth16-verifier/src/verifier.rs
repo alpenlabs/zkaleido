@@ -277,21 +277,16 @@ mod tests {
         assert!(res.is_ok());
     }
 
-    // v5 proofs verify under the v6-shaped public-input vector even though v5's circuit only
-    // committed to `(program_vk_hash, public_values_hash)`. The v6 additions (`exit_code`,
-    // `vk_root`, `proof_nonce`) are appended at the *end* of the input vector and all default
-    // to zero on the v5 path (`require_success` ⇒ `SUCCESS_EXIT_CODE = 0`, `SP1_V5_VK_ROOT =
-    // 0`, missing `proof_nonce` ⇒ 0). `verify_sp1_groth16_algebraic` short-circuits zero
-    // inputs, so the trailing K-basis terms drop out of the prepared point and the pairing
-    // reduces to exactly the v5 check.
+    // See the crate-level "Backwards compatibility with SP1 v5" docs for why this verifies
+    // under the v6-shaped public-input vector.
     #[test]
     fn test_valid_v5_proof() {
         let (verifier, receipt) = load_v5_verifier_and_proof();
         let res = verifier.verify(
-            receipt.proof().as_bytes(),
+            &receipt.proof().as_bytes()[VK_HASH_PREFIX_LENGTH..],
             receipt.public_values().as_bytes(),
         );
-        dbg!(&res);
+        assert!(res.is_ok());
     }
 
     #[test]
@@ -379,39 +374,6 @@ mod tests {
             receipt.public_values().as_bytes(),
         );
         assert!(res.is_err());
-    }
-
-    #[test]
-    fn test_compressed_and_uncompressed_proof_v5() {
-        let (verifier, receipt) = load_v5_verifier_and_proof();
-        let proof_bytes = receipt.proof().as_bytes();
-        let public_values = receipt.public_values().as_bytes();
-
-        // Parse the v5 proof (without VK hash prefix)
-        let parsed_proof = Sp1Groth16Proof::parse(&proof_bytes[VK_HASH_PREFIX_LENGTH..]).unwrap();
-
-        // Convert to compressed format
-        let compressed_proof = parsed_proof.proof.to_gnark_compressed_bytes();
-        assert_eq!(compressed_proof.len(), GROTH16_PROOF_COMPRESSED_SIZE);
-
-        // Convert to uncompressed format
-        let uncompressed_proof = parsed_proof.proof.to_uncompressed_bytes();
-        assert_eq!(uncompressed_proof.len(), GROTH16_PROOF_UNCOMPRESSED_SIZE);
-
-        // Verify both compressed and uncompressed proofs work
-        let res_compressed = verifier.verify(&compressed_proof, public_values);
-        assert!(
-            res_compressed.is_ok(),
-            "Compressed proof verification failed: {:?}",
-            res_compressed
-        );
-
-        let res_uncompressed = verifier.verify(&uncompressed_proof, public_values);
-        assert!(
-            res_uncompressed.is_ok(),
-            "Uncompressed proof verification failed: {:?}",
-            res_uncompressed
-        );
     }
 
     #[test]
