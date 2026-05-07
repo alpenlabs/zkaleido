@@ -1,5 +1,5 @@
 use crate::{
-    error::{BufferLengthError, Groth16Error},
+    error::{BufferLengthError, Sp1Groth16Error},
     types::{
         constant::{
             G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE, G2_COMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE,
@@ -11,7 +11,7 @@ use crate::{
 };
 
 /// Proof for the Groth16 verification.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Groth16Proof {
     pub(crate) ar: SAffineG1,
     pub(crate) krs: SAffineG1,
@@ -27,9 +27,9 @@ impl Groth16Proof {
     /// - bytes 192..256: uncompressed G1 point `K·R·S`
     ///
     /// Returns a `Groth16Proof` containing affine points `(ar, bs, krs)`.
-    pub fn from_uncompressed_bytes(buffer: &[u8]) -> Result<Groth16Proof, Groth16Error> {
+    pub fn from_uncompressed_bytes(buffer: &[u8]) -> Result<Groth16Proof, Sp1Groth16Error> {
         if buffer.len() != GROTH16_PROOF_UNCOMPRESSED_SIZE {
-            return Err(Groth16Error::Serialization(
+            return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
                     context: "Uncompressed Groth16 proof",
                     expected: GROTH16_PROOF_UNCOMPRESSED_SIZE,
@@ -52,9 +52,9 @@ impl Groth16Proof {
     }
 
     /// Deserialize from GNARK-compressed bytes (128 bytes).
-    pub fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Groth16Error> {
+    pub fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
         if bytes.len() != GROTH16_PROOF_COMPRESSED_SIZE {
-            return Err(Groth16Error::Serialization(
+            return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
                     context: "Gnark-compressed Groth16 proof",
                     expected: GROTH16_PROOF_COMPRESSED_SIZE,

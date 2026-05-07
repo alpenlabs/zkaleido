@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 serde.workspace = true
+sp1-verifier.workspace = true
 zkaleido-sp1-groth16-verifier = { path = "../../adapters/sp1/groth16-verifier" }
 zkaleido = { path = "../../zkaleido" }
 zkaleido-native-adapter = { path = "../../adapters/native" }

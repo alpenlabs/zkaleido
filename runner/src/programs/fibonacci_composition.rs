@@ -24,8 +24,8 @@ fn fib_composition_prover_perf_report(
 pub fn sp1_fib_composition_report() -> PerformanceReport {
     use zkaleido_sp1_artifacts::{FIBONACCI_COMPOSITION_ELF, FIBONACCI_ELF};
     use zkaleido_sp1_host::SP1Host;
-    let fib_host = SP1Host::init(FIBONACCI_ELF);
-    let fib_composition_host = SP1Host::init(FIBONACCI_COMPOSITION_ELF);
+    let fib_host = SP1Host::init(&FIBONACCI_ELF);
+    let fib_composition_host = SP1Host::init(&FIBONACCI_COMPOSITION_ELF);
     fib_composition_prover_perf_report(&fib_host, &fib_composition_host)
 }
 

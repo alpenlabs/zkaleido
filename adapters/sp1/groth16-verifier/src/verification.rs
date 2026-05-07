@@ -1,22 +1,28 @@
 use bn::{Fr, G1, G2, Gt, pairing_batch};
 
 use crate::{
-    error::Groth16Error,
+    error::Sp1Groth16Error,
     types::{proof::Groth16Proof, vk::Groth16VerifyingKey},
 };
 
-/// Verify SP1 Groth16 proof using algebraic inputs.
-///
-/// First, prepare the public inputs by folding them with the verification key.
-/// Then, verify the proof by checking the pairing equation.
+/// Verify an SP1 Groth16 proof using algebraic public inputs.
 pub fn verify_sp1_groth16_algebraic(
     vk: &Groth16VerifyingKey,
     proof: &Groth16Proof,
-    public_parameters_hash: &Fr,
-) -> Result<(), Groth16Error> {
-    let k0_prime: G1 = vk.g1.k[0].into();
-    let k1: G1 = vk.g1.k[1].into();
-    let prepared_input = k0_prime + k1 * *public_parameters_hash;
+    public_inputs: &[Fr],
+) -> Result<(), Sp1Groth16Error> {
+    let prepared_input = public_inputs.iter().zip(vk.g1.k.iter().skip(1)).fold(
+        Into::<G1>::into(vk.g1.k[0]),
+        |acc, (input, k)| {
+            // A zero public input contributes 0 to the prepared point, so the scalar
+            // multiplication and addition can be skipped.
+            if *input == Fr::zero() {
+                acc
+            } else {
+                acc + Into::<G1>::into(*k) * *input
+            }
+        },
+    );
 
     if pairing_batch(&[
         (-Into::<G1>::into(proof.ar), proof.bs.into()),
@@ -27,6 +33,6 @@ pub fn verify_sp1_groth16_algebraic(
     {
         Ok(())
     } else {
-        Err(Groth16Error::VerificationFailed)
+        Err(Sp1Groth16Error::VerificationFailed)
     }
 }
