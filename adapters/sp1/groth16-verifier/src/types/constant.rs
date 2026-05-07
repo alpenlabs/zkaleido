@@ -120,16 +120,16 @@ pub(crate) const SP1_GROTH16_VK_UNCOMPRESSED_SIZE: usize =
     GROTH16_VK_UNCOMPRESSED_HEADER_SIZE + (SP1_NUM_K * G1_UNCOMPRESSED_SIZE);
 
 /// Number of K points after merging fixed public inputs into K0.
-/// SP1 6.1.0 has 6 K points. During verifier loading, K1 (`program_vk_hash`) and K4
-/// (`vk_root`) are folded into K0, reducing the K points to 4.
-pub(crate) const SP1_NUM_K_MERGED: usize = 4;
+/// SP1 6.1.0 has 6 K points. During verifier loading, K1 (`program_vk_hash`) is folded
+/// into K0, reducing the K points to 5.
+pub(crate) const SP1_NUM_K_MERGED: usize = 5;
 
 /// Size of a GNARK-compressed SP1 Groth16 verifying key after merging in bytes
-/// Layout: header (292 bytes) + K points (4 * 32 = 128 bytes) = 420 bytes
+/// Layout: header (292 bytes) + K points (5 * 32 = 160 bytes) = 452 bytes
 pub const SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED: usize =
     GNARK_VK_COMPRESSED_HEADER_SIZE + (SP1_NUM_K_MERGED * G1_COMPRESSED_SIZE);
 
 /// Size of an uncompressed SP1 Groth16 verifying key after merging in bytes
-/// Layout: header (452 bytes) + K points (4 * 64 = 256 bytes) = 708 bytes
+/// Layout: header (452 bytes) + K points (5 * 64 = 320 bytes) = 772 bytes
 pub const SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED: usize =
     GROTH16_VK_UNCOMPRESSED_HEADER_SIZE + (SP1_NUM_K_MERGED * G1_UNCOMPRESSED_SIZE);

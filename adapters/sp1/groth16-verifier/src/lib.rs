@@ -22,12 +22,10 @@
 //!
 //! SP1's Groth16 circuit takes
 //! `(program_vk_hash, hash(public_values), exit_code, vk_root, proof_nonce)` as public
-//! inputs. Two of those — `program_vk_hash` and `vk_root` — are constant for a given
-//! verifier instance, so [`SP1Groth16Verifier::load`] folds them into `K0` once at load
-//! time and removes the corresponding `K1` and `K4` from the dynamic input basis. This
-//! drops the per-verify scalar multiplications from five to three and shrinks the stored
-//! VK. SP1 versions before v6 do not expose `vk_root` as a public input, so only the
-//! `program_vk_hash` fold applies there.
+//! inputs. `program_vk_hash` is constant for a given verifier instance, so
+//! [`SP1Groth16Verifier::load`] folds it into `K0` once at load time and removes `K1`
+//! from the dynamic input basis. This drops the per-verify scalar multiplications from
+//! five to four and shrinks the stored VK by one K point.
 //!
 //! # Trust boundaries enforced by [`SP1Groth16Verifier::verify`]
 //!
