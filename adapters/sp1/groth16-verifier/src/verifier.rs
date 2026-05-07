@@ -2,7 +2,7 @@
 //!
 //! See the [crate-level docs](crate) for the operational model, the module map, the K0
 //! pre-folding optimisation, and the trust boundaries enforced by `verify`. This module
-//! just wires those pieces together: [`ParsedSp1Groth16Proof`] for prefix-field parsing,
+//! just wires those pieces together: [`Sp1Groth16Proof`] for prefix-field parsing,
 //! [`verify_sp1_groth16_algebraic`](crate::verify_sp1_groth16_algebraic) for the pairing
 //! check, and [`crate::hashes`] for the `public_values` hash. The [`ZkVmVerifier`] impl
 //! at the bottom of the file is a thin adapter that stringifies `Groth16Error` into
@@ -109,11 +109,10 @@ impl SP1Groth16Verifier {
         })
     }
 
-    /// Verify a Groth16 proof against the given public values.
+    /// Verify an already-parsed SP1 Groth16 proof against the given public values.
     ///
-    /// `proof` must be one of the byte encodings documented on [`ParsedSp1Groth16Proof`]; both
-    /// compressed and uncompressed raw-proof variants are accepted. Verification proceeds in
-    /// three steps:
+    /// This is the canonical verification routine. The bytes-form
+    /// [`Self::verify`] just parses its input and delegates here.
     ///
     /// 1. **Cross-checks.** If the proof carries `vk_hash_tag` or `vk_root`, each must equal the
     ///    verifier's pinned value, otherwise it is silently accepted (the algebraic check below
@@ -130,14 +129,15 @@ impl SP1Groth16Verifier {
     /// the on-wire format does not record which was used. We try SHA-256 first, then retry
     /// with Blake3 if that fails. A future format revision could embed a hash-selector byte to
     /// avoid the redundant pairing check.
-    pub fn verify(&self, proof: &[u8], public_values: &[u8]) -> Result<(), Sp1Groth16Error> {
-        // Parse the proof's optional prefix fields together with the raw proof bytes.
-        let parsed = Sp1Groth16Proof::parse(proof)?;
-
+    pub fn verify_parsed(
+        &self,
+        proof: &Sp1Groth16Proof,
+        public_values: &[u8],
+    ) -> Result<(), Sp1Groth16Error> {
         // The vk hash tag is an advisory prefix; algebraic verification still binds the proof to
         // `self.vk`. We only enforce equality when the proof actually includes the tag — proofs
         // without the tag prefix fall through to algebraic verification.
-        if let Some(tag) = parsed.vk_hash_tag
+        if let Some(tag) = proof.vk_hash_tag
             && tag != self.vk_hash_tag
         {
             return Err(Sp1Groth16Error::VkeyHashMismatch {
@@ -147,7 +147,7 @@ impl SP1Groth16Verifier {
         }
 
         // vk_root is also only enforced when the proof carries it.
-        if let Some(vk_root) = parsed.vk_root
+        if let Some(vk_root) = proof.vk_root
             && vk_root != self.vk_root
         {
             return Err(Sp1Groth16Error::VkeyRootMismatch {
@@ -158,7 +158,7 @@ impl SP1Groth16Verifier {
 
         // Decide which exit code to bind into the algebraic public inputs based on
         // `require_success` x whether the proof carried an exit code.
-        let expected_exit_code = match (self.require_success, parsed.exit_code) {
+        let expected_exit_code = match (self.require_success, proof.exit_code) {
             (true, Some(ec)) => {
                 if ec != SUCCESS_EXIT_CODE {
                     return Err(Sp1Groth16Error::ExitCodeMismatch {
@@ -173,7 +173,7 @@ impl SP1Groth16Verifier {
             (false, None) => return Err(Sp1Groth16Error::MissingExitCode),
         };
 
-        let proof_nonce = parsed.proof_nonce.unwrap_or([0u8; 32]);
+        let proof_nonce = proof.proof_nonce.unwrap_or([0u8; 32]);
 
         // Compute Fr element for hash(public_values) using SHA-256. SP1's Groth16 circuit expects
         // a program vkey hash, hash(public_values), and SP1-version-specific metadata. Since SP1
@@ -188,13 +188,24 @@ impl SP1Groth16Verifier {
         ];
 
         // Attempt algebraic verification with SHA-256 hash as the public-values input.
-        if verify_sp1_groth16_algebraic(&self.vk, &parsed.proof, &public_inputs).is_ok() {
+        if verify_sp1_groth16_algebraic(&self.vk, &proof.proof, &public_inputs).is_ok() {
             return Ok(());
         }
 
         // If SHA-256 verification fails, retry with the Blake3 hash of `public_values`.
         public_inputs[0] = blake3_to_fr(public_values)?;
-        verify_sp1_groth16_algebraic(&self.vk, &parsed.proof, &public_inputs)
+        verify_sp1_groth16_algebraic(&self.vk, &proof.proof, &public_inputs)
+    }
+
+    /// Verify an SP1 Groth16 proof in any of the accepted byte encodings.
+    ///
+    /// Parses `proof` via [`Sp1Groth16Proof::parse`] (which accepts the bare
+    /// compressed/uncompressed Groth16 proof through the full prefix-bearing form) and
+    /// delegates to [`Self::verify_parsed`] for the cross-checks, missing-field
+    /// resolution, and algebraic verification.
+    pub fn verify(&self, proof: &[u8], public_values: &[u8]) -> Result<(), Sp1Groth16Error> {
+        let parsed = Sp1Groth16Proof::parse(proof)?;
+        self.verify_parsed(&parsed, public_values)
     }
 }
 
@@ -206,7 +217,8 @@ impl SP1Groth16Verifier {
 /// algebraic verification failure should call the inherent method directly.
 impl ZkVmVerifier for SP1Groth16Verifier {
     fn verify(&self, receipt: &ProofReceipt) -> ZkVmResult<()> {
-        self.verify(
+        SP1Groth16Verifier::verify(
+            self,
             receipt.proof().as_bytes(),
             receipt.public_values().as_bytes(),
         )

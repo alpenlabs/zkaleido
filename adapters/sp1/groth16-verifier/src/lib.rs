@@ -11,8 +11,8 @@
 //! # What lives where
 //!
 //! - [`SP1Groth16Verifier`] — the public entry point and its [`zkaleido::ZkVmVerifier`] adapter.
-//! - [`ParsedSp1Groth16Proof`] — on-wire byte format and parsing of the optional prefix fields (see
-//!   its docs for the exact layout and which prefix fields may be omitted).
+//! - [`Sp1Groth16Proof`] — on-wire byte format and parsing of the optional prefix fields (see its
+//!   docs for the exact layout and which prefix fields may be omitted).
 //! - [`verify_sp1_groth16_algebraic`] — the pure algebraic pairing check, separated out so it can
 //!   be reused without the SP1-specific cross-checks.
 //! - [`crate::hashes`] — hashing `public_values` to a BN254 `Fr` element (SHA-256 and Blake3, both
