@@ -1,10 +1,13 @@
 use std::{env::var, fmt};
 
 use sp1_sdk::{
-    ProverClient, SP1ProofMode,
+    ProveRequest, Prover, ProverClient, SP1ProofMode,
     network::{
         B256, FulfillmentStrategy,
-        proto::types::{ExecutionStatus, FulfillmentStatus, GetProofRequestStatusResponse},
+        proto::{
+            GetProofRequestStatusResponse,
+            types::{ExecutionStatus, FulfillmentStatus},
+        },
     },
 };
 use zkaleido::{
@@ -51,7 +54,7 @@ impl ZkVmRemoteProver for SP1Host {
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
     ) -> ZkVmResult<Sp1ProofId> {
-        let client = ProverClient::builder().network().build();
+        let client = ProverClient::builder().network().build().await;
 
         let strategy = var("SP1_PROOF_STRATEGY")
             .ok()
@@ -65,12 +68,12 @@ impl ZkVmRemoteProver for SP1Host {
         };
 
         let pk = &self.proving_key;
-        let mut builder = client.prove(pk, &input).strategy(strategy).mode(mode);
+        let mut builder = client.prove(pk, input).strategy(strategy).mode(mode);
         if let Some(deadline) = self.deadline {
             builder = builder.timeout(deadline);
         }
         let request_id = builder
-            .request_async()
+            .request()
             .await
             .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
 
@@ -78,7 +81,7 @@ impl ZkVmRemoteProver for SP1Host {
     }
 
     async fn get_status(&self, id: &Sp1ProofId) -> ZkVmResult<RemoteProofStatus> {
-        let client = ProverClient::builder().network().build();
+        let client = ProverClient::builder().network().build().await;
         let (status, _) = client
             .get_proof_status(id.0)
             .await
@@ -88,7 +91,7 @@ impl ZkVmRemoteProver for SP1Host {
     }
 
     async fn get_proof(&self, id: &Sp1ProofId) -> ZkVmResult<ProofReceiptWithMetadata> {
-        let client = ProverClient::builder().network().build();
+        let client = ProverClient::builder().network().build().await;
         let (_, proof) = client
             .get_proof_status(id.0)
             .await
@@ -108,14 +111,14 @@ impl ZkVmRemoteProver for SP1Host {
 
 /// Converts an SP1 proof status response into a backend-agnostic [`RemoteProofStatus`].
 fn convert_proof_status(response: GetProofRequestStatusResponse) -> RemoteProofStatus {
-    let execution_status = ExecutionStatus::try_from(response.execution_status)
+    let execution_status = ExecutionStatus::try_from(response.execution_status())
         .unwrap_or(ExecutionStatus::UnspecifiedExecutionStatus);
 
     if execution_status == ExecutionStatus::Unexecutable {
         return RemoteProofStatus::Failed("unexecutable".to_string());
     }
 
-    let fulfillment_status = FulfillmentStatus::try_from(response.fulfillment_status)
+    let fulfillment_status = FulfillmentStatus::try_from(response.fulfillment_status())
         .unwrap_or(FulfillmentStatus::UnspecifiedFulfillmentStatus);
 
     match fulfillment_status {

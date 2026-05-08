@@ -10,7 +10,7 @@ fn perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {
 pub fn sp1_schnorr_sig_verify_report() -> PerformanceReport {
     use zkaleido_sp1_artifacts::SCHNORR_SIG_VERIFY_ELF;
     use zkaleido_sp1_host::SP1Host;
-    let host = SP1Host::init(SCHNORR_SIG_VERIFY_ELF);
+    let host = SP1Host::init(&SCHNORR_SIG_VERIFY_ELF);
     perf_report(&host)
 }
 

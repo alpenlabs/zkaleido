@@ -1,6 +1,9 @@
 use std::{fmt, time::Duration};
 
-use sp1_sdk::{HashableKey, ProverClient, SP1ProvingKey};
+use sp1_sdk::{
+    HashableKey, ProvingKey, SP1ProvingKey,
+    blocking::{Prover, ProverClient},
+};
 use zkaleido::{ZkVm, ZkVmHost};
 
 /// A host for the `SP1` zkVM that stores the guest program in ELF format.
@@ -27,17 +30,16 @@ impl SP1Host {
         }
     }
 
-    /// Creates a new instance of [`SP1Host`] from serialized proving key bytes.
-    pub fn new_from_pk_bytes(proving_key_bytes: &[u8]) -> Self {
-        let proving_key: SP1ProvingKey =
-            bincode::deserialize(proving_key_bytes).expect("invalid sp1 pk bytes");
-        SP1Host::new(proving_key, None)
-    }
-
     /// Initializes a new [`SP1Host`] by setting up the proving key using the provided ELF bytes.
     pub fn init(elf: &[u8]) -> Self {
         let client = ProverClient::from_env();
-        let (proving_key, _) = client.setup(elf);
+        let env_proving_key = client
+            .setup(elf.into())
+            .expect("failed to setup sp1 proving key");
+        let proving_key = SP1ProvingKey::new(
+            env_proving_key.verifying_key().clone(),
+            env_proving_key.elf().clone(),
+        );
         SP1Host::new(proving_key, None)
     }
 
@@ -62,6 +64,6 @@ impl ZkVmHost for SP1Host {
 
 impl fmt::Debug for SP1Host {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "sp1_{}", self.proving_key.vk.bytes32())
+        write!(f, "sp1_{}", self.proving_key.verifying_key().bytes32())
     }
 }

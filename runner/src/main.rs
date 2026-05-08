@@ -10,8 +10,7 @@ use format::{format_header, format_results};
 use github::{format_github_message, post_to_github_pr};
 use zkaleido::PerformanceReport;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     sp1_sdk::utils::setup_logger();
     let args = EvalArgs::parse();
 
@@ -43,7 +42,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.post_to_gh {
         // Post to GitHub PR
         let message = format_github_message(&results_text);
-        post_to_github_pr(&args, &message).await?;
+        let runtime = tokio::runtime::Runtime::new()?;
+        runtime.block_on(post_to_github_pr(&args, &message))?;
     }
 
     Ok(())

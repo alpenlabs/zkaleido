@@ -15,8 +15,12 @@ impl SP1ProofReceipt {
         Self { inner, program_id }
     }
 
-    pub fn inner(self) -> SP1ProofWithPublicValues {
+    pub fn into_inner(self) -> SP1ProofWithPublicValues {
         self.inner
+    }
+
+    pub fn inner(&self) -> &SP1ProofWithPublicValues {
+        &self.inner
     }
 
     pub fn program_id(&self) -> &ProgramId {
@@ -78,9 +82,9 @@ impl TryFrom<SP1ProofReceipt> for ProofReceiptWithMetadata {
 
         // If there's a Groth16 representation, just reuse its bytes;
         // otherwise, serialize the entire proof.
-        let proof_bytes = match sp1_receipt.proof.clone().try_as_groth_16() {
-            Some(_) => sp1_receipt.bytes(),
-            None => bincode::serialize(&sp1_receipt.proof)
+        let proof_bytes = match &sp1_receipt.proof {
+            SP1Proof::Groth16(_) => sp1_receipt.bytes(),
+            _ => bincode::serialize(&sp1_receipt.proof)
                 .map_err(|e| ZkVmProofError::DataFormat(DataFormatError::Serde(e.to_string())))?,
         };
 

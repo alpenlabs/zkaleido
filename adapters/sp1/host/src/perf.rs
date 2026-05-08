@@ -1,12 +1,11 @@
 use std::env::var;
 
-use sp1_prover::{
-    build::try_build_groth16_bn254_artifacts_dev, components::CpuProverComponents,
-    utils::get_cycles,
+use sp1_core_executor::SP1CoreOpts;
+use sp1_sdk::{
+    ProvingKey, SP1Proof, SP1ProofMode, SP1ProofWithPublicValues, SP1ProvingKey, SP1Stdin,
+    blocking::{CpuProver, ProveRequest, Prover, ProverClient},
 };
-use sp1_sdk::{SP1Context, SP1Prover, SP1Stdin};
-use sp1_stark::SP1ProverOpts;
-use zkaleido::{PerformanceReport, ProofMetrics, ZkVmExecutor, ZkVmHostPerf, time_operation};
+use zkaleido::{PerformanceReport, ProofMetrics, ZkVmHostPerf, time_operation};
 
 use crate::SP1Host;
 
@@ -15,33 +14,51 @@ impl ZkVmHostPerf for SP1Host {
         &self,
         input: <Self::Input<'a> as zkaleido::ZkVmInputBuilder<'a>>::Input,
     ) -> PerformanceReport {
-        let prover = SP1Prover::<CpuProverComponents>::new();
-        let elf = self.get_elf();
+        let execution_client = ProverClient::builder().light().build();
+        let proving_client = ProverClient::builder().cpu().build();
+        let elf = self.proving_key.elf().clone();
 
-        let opts = SP1ProverOpts::auto();
-        let context = SP1Context::default();
-        let cycles = get_cycles(elf, &input);
+        let ((_, report), execution_duration) =
+            time_operation(|| execution_client.execute(elf, input.clone()).run().unwrap());
 
-        let ((_, _, report), execution_duration) =
-            time_operation(|| prover.execute(elf, &input, context.clone()).unwrap());
+        let cycles = report.total_instruction_count();
+        let shards = estimated_shards(cycles);
 
-        // If the environment variable "ZKVM_MOCK" is set to "1" or "true" (case-insensitive),
-        // then do not generate the proof metrics
-        let (core_proof_report, compressed_proof_report, groth16_proof_report, shards) =
-            if var("ZKVM_MOCK")
-                .map(|v| v == "1" || v.to_lowercase() == "true")
-                .unwrap_or(false)
-            {
-                let shards = cycles as usize / opts.core_opts.shard_size;
-                (None, None, None, shards)
-            } else {
-                gen_proof_metrics(elf, cycles, input)
-            };
+        let (core_proof_report, compressed_proof_report, groth16_proof_report) = if var("ZKVM_MOCK")
+            .map(|v| v == "1" || v.to_lowercase() == "true")
+            .unwrap_or(false)
+        {
+            (None, None, None)
+        } else {
+            (
+                Some(gen_proof_metric(
+                    &proving_client,
+                    &self.proving_key,
+                    input.clone(),
+                    SP1ProofMode::Core,
+                    cycles,
+                )),
+                Some(gen_proof_metric(
+                    &proving_client,
+                    &self.proving_key,
+                    input.clone(),
+                    SP1ProofMode::Compressed,
+                    cycles,
+                )),
+                Some(gen_proof_metric(
+                    &proving_client,
+                    &self.proving_key,
+                    input,
+                    SP1ProofMode::Groth16,
+                    cycles,
+                )),
+            )
+        };
 
         PerformanceReport::new(
             shards,
             cycles,
-            report.gas,
+            report.gas(),
             execution_duration.as_secs_f64(),
             core_proof_report,
             compressed_proof_report,
@@ -50,94 +67,42 @@ impl ZkVmHostPerf for SP1Host {
     }
 }
 
-fn gen_proof_metrics(
-    elf: &[u8],
-    cycles: u64,
+fn gen_proof_metric(
+    client: &CpuProver,
+    proving_key: &SP1ProvingKey,
     input: SP1Stdin,
-) -> (
-    Option<ProofMetrics>,
-    Option<ProofMetrics>,
-    Option<ProofMetrics>,
-    usize,
-) {
-    let prover = SP1Prover::<CpuProverComponents>::new();
-    let context = SP1Context::default();
-    let opts = SP1ProverOpts::auto();
-
-    let (pv, _, _) = prover.execute(elf, &input, context.clone()).unwrap();
-
-    // Core Proof
-    let (_, pk_d, program, vk) = prover.setup(elf);
-    let (core_proof, core_prove_duration) = time_operation(|| {
-        prover
-            .prove_core(&pk_d, program, &input, opts, context)
-            .unwrap()
+    proof_mode: SP1ProofMode,
+    cycles: u64,
+) -> ProofMetrics {
+    let (proof, prove_duration) = time_operation(|| match proof_mode {
+        SP1ProofMode::Core => client.prove(proving_key, input).core().run().unwrap(),
+        SP1ProofMode::Compressed => client.prove(proving_key, input).compressed().run().unwrap(),
+        SP1ProofMode::Plonk => client.prove(proving_key, input).plonk().run().unwrap(),
+        SP1ProofMode::Groth16 => client.prove(proving_key, input).groth16().run().unwrap(),
     });
-    let shards = core_proof.proof.0.len();
-    let core_bytes = bincode::serialize(&core_proof).unwrap();
-    let (_, verify_core_duration) = time_operation(|| {
-        prover
-            .verify(&core_proof.proof, &vk)
+
+    let (_, verify_duration) = time_operation(|| {
+        client
+            .verify(&proof, proving_key.verifying_key(), None)
             .expect("Proof verification failed")
     });
-    let core_speed = cycles as f64 / core_prove_duration.as_secs_f64() / 1_000.0;
-    let core_proof_report = ProofMetrics {
-        prove_duration: core_prove_duration.as_secs_f64(),
-        verify_duration: verify_core_duration.as_secs_f64(),
-        proof_size: core_bytes.len(),
-        speed: core_speed,
-    };
 
-    // Compressed proof
-    let (compress_proof, compress_duration) =
-        time_operation(|| prover.compress(&vk, core_proof, vec![], opts).unwrap());
-    let compress_bytes = bincode::serialize(&compress_proof).unwrap();
-    let (_, verify_compress_duration) = time_operation(|| {
-        prover
-            .verify_compressed(&compress_proof, &vk)
-            .expect("Proof verification failed")
-    });
-    let compress_speed = cycles as f64 / compress_duration.as_secs_f64() / 1_000.0;
-    let compress_proof_report = ProofMetrics {
-        prove_duration: compress_duration.as_secs_f64(),
-        verify_duration: verify_compress_duration.as_secs_f64(),
-        proof_size: compress_bytes.len(),
-        speed: compress_speed,
-    };
+    ProofMetrics {
+        prove_duration: prove_duration.as_secs_f64(),
+        verify_duration: verify_duration.as_secs_f64(),
+        proof_size: proof_size(&proof),
+        speed: cycles as f64 / prove_duration.as_secs_f64() / 1_000.0,
+    }
+}
 
-    // Groth16 Proof
-    let (shrink_proof, shrink_prove_duration) =
-        time_operation(|| prover.shrink(compress_proof.clone(), opts).unwrap());
+fn proof_size(proof: &SP1ProofWithPublicValues) -> usize {
+    match &proof.proof {
+        SP1Proof::Groth16(_) | SP1Proof::Plonk(_) => proof.bytes().len(),
+        _ => bincode::serialize(proof).unwrap().len(),
+    }
+}
 
-    let (wrap_proof, wrap_prove_duration) =
-        time_operation(|| prover.wrap_bn254(shrink_proof.clone(), opts).unwrap());
-
-    let artifacts_dir = try_build_groth16_bn254_artifacts_dev(&wrap_proof.vk, &wrap_proof.proof);
-
-    // Warm up the prover.
-    prover.wrap_groth16_bn254(wrap_proof.clone(), &artifacts_dir);
-
-    let (groth16_proof, groth16_prove_duration) =
-        time_operation(|| prover.wrap_groth16_bn254(wrap_proof, &artifacts_dir));
-
-    let groth16_total_duration =
-        shrink_prove_duration + wrap_prove_duration + groth16_prove_duration;
-    prover
-        .verify_groth16_bn254(&groth16_proof, &vk, &pv, &artifacts_dir)
-        .expect("Proof verification failed");
-
-    let groth16_speed = cycles as f64 / groth16_total_duration.as_secs_f64() / 1_000.0;
-    let groth16_proof_report = ProofMetrics {
-        prove_duration: groth16_total_duration.as_secs_f64(),
-        verify_duration: 0.0,
-        proof_size: groth16_proof.encoded_proof.len(),
-        speed: groth16_speed,
-    };
-
-    (
-        Some(core_proof_report),
-        Some(compress_proof_report),
-        Some(groth16_proof_report),
-        shards,
-    )
+fn estimated_shards(cycles: u64) -> usize {
+    let shard_size = SP1CoreOpts::default().shard_size;
+    (cycles as usize).div_ceil(shard_size)
 }

@@ -1,7 +1,7 @@
 use bn::{AffineG2, G2};
 
 use crate::{
-    error::{BufferLengthError, Groth16Error, InvalidPointError},
+    error::{BufferLengthError, InvalidPointError, Sp1Groth16Error},
     types::{
         constant::{
             G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE, G2_COMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE,
@@ -15,14 +15,14 @@ use crate::{
 };
 
 /// G1 elements of the verification key.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Groth16G1 {
     pub(crate) alpha: SAffineG1,
     pub(crate) k: Vec<SAffineG1>,
 }
 
 /// G2 elements of the verification key.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct Groth16G2 {
     pub(crate) beta: SAffineG2,
     pub(crate) delta: SAffineG2,
@@ -30,7 +30,7 @@ pub(crate) struct Groth16G2 {
 }
 
 /// Verification key for the Groth16 proof.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Groth16VerifyingKey {
     pub(crate) g1: Groth16G1,
     pub(crate) g2: Groth16G2,
@@ -50,12 +50,12 @@ impl Groth16VerifyingKey {
     /// - [292..292+i) : `i = 32 * num_k` bytes of G1 K-points (compressed)
     ///
     /// Reference: <https://pkg.go.dev/github.com/consensys/gnark/backend/groth16/bn254#VerifyingKey>
-    pub fn from_gnark_bytes(buffer: &[u8]) -> Result<Self, Groth16Error> {
+    pub fn from_gnark_bytes(buffer: &[u8]) -> Result<Self, Sp1Groth16Error> {
         // Validate minimum buffer length for the "header" (all fixed-size fields before K points).
         // The header includes: alpha, beta, gamma, delta (with GNARK padding), and num_k field.
         // The actual VK size depends on num_k, which we read from the header.
         if buffer.len() < GNARK_VK_COMPRESSED_HEADER_SIZE {
-            return Err(Groth16Error::Serialization(
+            return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
                     context: "Compressed Gnark Groth16 VK header",
                     expected: GNARK_VK_COMPRESSED_HEADER_SIZE,
@@ -76,7 +76,7 @@ impl Groth16VerifyingKey {
         // Validate that buffer has enough bytes for all K points
         let expected_size = GNARK_VK_COMPRESSED_HEADER_SIZE + (num_k as usize * G1_COMPRESSED_SIZE);
         if buffer.len() < expected_size {
-            return Err(Groth16Error::Serialization(
+            return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
                     context: "Compressed Gnark Groth16 VK",
                     expected: expected_size,
@@ -107,7 +107,7 @@ impl Groth16VerifyingKey {
         let neg_g2_beta = SAffineG2(
             AffineG2::from_jacobian(-G2::from(g2_beta.0))
                 .ok_or(InvalidPointError)
-                .map_err(|e| Groth16Error::Serialization(e.into()))?,
+                .map_err(|e| Sp1Groth16Error::Serialization(e.into()))?,
         );
 
         let mut k = Vec::with_capacity(num_k as usize);
@@ -131,9 +131,9 @@ impl Groth16VerifyingKey {
     }
 
     /// Deserialize from uncompressed bytes.
-    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Groth16Error> {
+    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
         if bytes.len() < GROTH16_VK_UNCOMPRESSED_HEADER_SIZE {
-            return Err(Groth16Error::Serialization(
+            return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
                     context: "Uncompressed Groth16 VK Header",
                     expected: GROTH16_VK_UNCOMPRESSED_HEADER_SIZE,
@@ -156,7 +156,7 @@ impl Groth16VerifyingKey {
         let expected_size =
             GROTH16_VK_UNCOMPRESSED_HEADER_SIZE + (num_k as usize * G1_UNCOMPRESSED_SIZE);
         if bytes.len() != expected_size {
-            return Err(Groth16Error::Serialization(
+            return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
                     context: "Uncompressed Groth16 VK",
                     expected: expected_size,
@@ -186,7 +186,7 @@ impl Groth16VerifyingKey {
         let neg_g2_beta = SAffineG2(
             AffineG2::from_jacobian(-G2::from(g2_beta_point.0))
                 .ok_or(InvalidPointError)
-                .map_err(|e| Groth16Error::Serialization(e.into()))?,
+                .map_err(|e| Sp1Groth16Error::Serialization(e.into()))?,
         );
 
         let mut k = Vec::with_capacity(num_k as usize);
@@ -358,7 +358,7 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
-            Groth16Error::Serialization(_)
+            Sp1Groth16Error::Serialization(_)
         ));
 
         // Test with buffer that has valid header but not enough K points
@@ -370,7 +370,7 @@ mod tests {
         assert!(result.is_err());
         assert!(matches!(
             result.unwrap_err(),
-            Groth16Error::Serialization(_)
+            Sp1Groth16Error::Serialization(_)
         ));
     }
 }

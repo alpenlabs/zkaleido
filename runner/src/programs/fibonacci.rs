@@ -16,7 +16,7 @@ fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {
 pub fn sp1_fib_report() -> PerformanceReport {
     use zkaleido_sp1_artifacts::FIBONACCI_ELF;
     use zkaleido_sp1_host::SP1Host;
-    let host = SP1Host::init(FIBONACCI_ELF);
+    let host = SP1Host::init(&FIBONACCI_ELF);
     fib_prover_perf_report(&host)
 }
 
