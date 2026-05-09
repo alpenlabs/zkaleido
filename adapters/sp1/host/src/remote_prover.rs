@@ -1,9 +1,9 @@
 use std::{env::var, fmt};
 
 use sp1_sdk::{
-    ProveRequest, Prover, ProverClient, SP1ProofMode,
+    NetworkProver, ProveRequest, Prover, ProverClient, SP1ProofMode,
     network::{
-        B256, FulfillmentStrategy,
+        B256, Error as NetworkError, FulfillmentStrategy, NetworkMode,
         proto::{
             GetProofRequestStatusResponse,
             types::{ExecutionStatus, FulfillmentStatus},
@@ -54,12 +54,8 @@ impl ZkVmRemoteProver for SP1Host {
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
     ) -> ZkVmResult<Sp1ProofId> {
-        let client = ProverClient::builder().network().build().await;
-
-        let strategy = var("SP1_PROOF_STRATEGY")
-            .ok()
-            .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
-            .unwrap_or(FulfillmentStrategy::Auction);
+        let strategy = proof_strategy();
+        let client = build_network_client(strategy).await;
 
         let mode = match proof_type {
             ProofType::Core => SP1ProofMode::Core,
@@ -72,16 +68,22 @@ impl ZkVmRemoteProver for SP1Host {
         if let Some(deadline) = self.deadline {
             builder = builder.timeout(deadline);
         }
-        let request_id = builder
-            .request()
-            .await
-            .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
+        let request_id =
+            builder
+                .request()
+                .await
+                .map_err(|e| match e.downcast_ref::<NetworkError>() {
+                    Some(NetworkError::RpcError(status)) => {
+                        ZkVmError::NetworkRetryableError(status.to_string())
+                    }
+                    _ => ZkVmError::ProofGenerationError(e.to_string()),
+                })?;
 
         Ok(Sp1ProofId(request_id))
     }
 
     async fn get_status(&self, id: &Sp1ProofId) -> ZkVmResult<RemoteProofStatus> {
-        let client = ProverClient::builder().network().build().await;
+        let client = build_network_client(proof_strategy()).await;
         let (status, _) = client
             .get_proof_status(id.0)
             .await
@@ -91,7 +93,7 @@ impl ZkVmRemoteProver for SP1Host {
     }
 
     async fn get_proof(&self, id: &Sp1ProofId) -> ZkVmResult<ProofReceiptWithMetadata> {
-        let client = ProverClient::builder().network().build().await;
+        let client = build_network_client(proof_strategy()).await;
         let (_, proof) = client
             .get_proof_status(id.0)
             .await
@@ -106,6 +108,29 @@ impl ZkVmRemoteProver for SP1Host {
             }
             None => Err(ZkVmError::ProofNotReady),
         }
+    }
+}
+
+/// Reads the requested fulfillment strategy from `SP1_PROOF_STRATEGY`,
+/// defaulting to `Auction` when unset or unparseable.
+fn proof_strategy() -> FulfillmentStrategy {
+    var("SP1_PROOF_STRATEGY")
+        .ok()
+        .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
+        .unwrap_or(FulfillmentStrategy::Auction)
+}
+
+/// Builds a [`NetworkProver`] client for the network mode that matches
+/// `strategy`. `Reserved` strategy targets the reserved cluster; everything
+/// else uses the default public network.
+async fn build_network_client(strategy: FulfillmentStrategy) -> NetworkProver {
+    if strategy == FulfillmentStrategy::Reserved {
+        ProverClient::builder()
+            .network_for(NetworkMode::Reserved)
+            .build()
+            .await
+    } else {
+        ProverClient::builder().network().build().await
     }
 }
 
@@ -126,6 +151,8 @@ fn convert_proof_status(response: GetProofRequestStatusResponse) -> RemoteProofS
         FulfillmentStatus::Assigned => RemoteProofStatus::InProgress,
         FulfillmentStatus::Fulfilled => RemoteProofStatus::Completed,
         FulfillmentStatus::Unfulfillable => RemoteProofStatus::Failed("unfulfillable".to_string()),
+        // TODO: figure out when this is triggered
+        // Is this what happens when we request proof request for id that isn't valid?
         FulfillmentStatus::UnspecifiedFulfillmentStatus => RemoteProofStatus::Unknown,
     }
 }

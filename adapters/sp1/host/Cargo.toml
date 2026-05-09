@@ -9,14 +9,14 @@ workspace = true
 [dependencies]
 sp1-core-executor = { workspace = true, optional = true }
 sp1-sdk = { workspace = true, features = ["blocking", "network"] }
-zkaleido.workspace = true
+zkaleido = { workspace = true, features = ["remote-prover"] }
 
-async-trait = { workspace = true, optional = true }
+async-trait.workspace = true
 bincode.workspace = true
 serde.workspace = true
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "time"] }
 
 [features]
 default = []
 ssz = ["zkaleido/ssz"]
 perf = ["sp1-core-executor", "sp1-sdk/profiling"]
-remote-prover = ["async-trait", "zkaleido/remote-prover"]
