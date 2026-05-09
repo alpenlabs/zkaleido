@@ -17,6 +17,9 @@ impl ZkVmHostPerf for SP1Host {
         let execution_client = ProverClient::builder().light().build();
         let proving_client = ProverClient::builder().cpu().build();
         let elf = self.proving_key.elf().clone();
+        let proving_key = proving_client
+            .setup(elf.clone())
+            .expect("failed to setup sp1 cpu proving key for perf");
 
         let ((_, report), execution_duration) =
             time_operation(|| execution_client.execute(elf, input.clone()).run().unwrap());
@@ -33,21 +36,21 @@ impl ZkVmHostPerf for SP1Host {
             (
                 Some(gen_proof_metric(
                     &proving_client,
-                    &self.proving_key,
+                    &proving_key,
                     input.clone(),
                     SP1ProofMode::Core,
                     cycles,
                 )),
                 Some(gen_proof_metric(
                     &proving_client,
-                    &self.proving_key,
+                    &proving_key,
                     input.clone(),
                     SP1ProofMode::Compressed,
                     cycles,
                 )),
                 Some(gen_proof_metric(
                     &proving_client,
-                    &self.proving_key,
+                    &proving_key,
                     input,
                     SP1ProofMode::Groth16,
                     cycles,

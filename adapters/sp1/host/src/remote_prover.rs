@@ -1,9 +1,10 @@
-use std::{env::var, fmt};
+use std::fmt;
 
 use sp1_sdk::{
-    NetworkProver, ProveRequest, Prover, ProverClient, SP1ProofMode,
+    NetworkProver, ProveRequest, Prover,
+    env::{EnvProver, EnvProvingKey},
     network::{
-        B256, Error as NetworkError, FulfillmentStrategy, NetworkMode,
+        B256, Error as NetworkError,
         proto::{
             GetProofRequestStatusResponse,
             types::{ExecutionStatus, FulfillmentStatus},
@@ -15,7 +16,11 @@ use zkaleido::{
     ZkVmInputBuilder, ZkVmRemoteProver, ZkVmResult,
 };
 
-use crate::{SP1Host, proof::SP1ProofReceipt};
+use crate::{
+    SP1Host,
+    proof::SP1ProofReceipt,
+    prover::{proof_strategy, to_sp1_mode},
+};
 
 /// A typed proof identifier for the SP1 network prover.
 ///
@@ -55,16 +60,18 @@ impl ZkVmRemoteProver for SP1Host {
         proof_type: ProofType,
     ) -> ZkVmResult<Sp1ProofId> {
         let strategy = proof_strategy();
-        let client = build_network_client(strategy).await;
 
-        let mode = match proof_type {
-            ProofType::Core => SP1ProofMode::Core,
-            ProofType::Compressed => SP1ProofMode::Compressed,
-            ProofType::Groth16 => SP1ProofMode::Groth16,
+        let client = self.network_client()?;
+
+        let pk = match &self.proving_key {
+            EnvProvingKey::Network { pk, .. } => pk,
+            _ => unreachable!("we validate that the client is network above"),
         };
 
-        let pk = &self.proving_key;
-        let mut builder = client.prove(pk, input).strategy(strategy).mode(mode);
+        let mut builder = client
+            .prove(pk, input)
+            .strategy(strategy)
+            .mode(to_sp1_mode(proof_type));
         if let Some(deadline) = self.deadline {
             builder = builder.timeout(deadline);
         }
@@ -83,7 +90,7 @@ impl ZkVmRemoteProver for SP1Host {
     }
 
     async fn get_status(&self, id: &Sp1ProofId) -> ZkVmResult<RemoteProofStatus> {
-        let client = build_network_client(proof_strategy()).await;
+        let client = self.network_client()?;
         let (status, _) = client
             .get_proof_status(id.0)
             .await
@@ -93,7 +100,7 @@ impl ZkVmRemoteProver for SP1Host {
     }
 
     async fn get_proof(&self, id: &Sp1ProofId) -> ZkVmResult<ProofReceiptWithMetadata> {
-        let client = build_network_client(proof_strategy()).await;
+        let client = self.network_client()?;
         let (_, proof) = client
             .get_proof_status(id.0)
             .await
@@ -111,26 +118,21 @@ impl ZkVmRemoteProver for SP1Host {
     }
 }
 
-/// Reads the requested fulfillment strategy from `SP1_PROOF_STRATEGY`,
-/// defaulting to `Auction` when unset or unparseable.
-fn proof_strategy() -> FulfillmentStrategy {
-    var("SP1_PROOF_STRATEGY")
-        .ok()
-        .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
-        .unwrap_or(FulfillmentStrategy::Auction)
-}
+impl SP1Host {
+    /// Extracts the network-specific [`NetworkProver`] from the host's
+    /// [`EnvProver`]. Returns an error when the host was initialized with a
+    /// non-network backend.
+    fn network_client(&self) -> ZkVmResult<&NetworkProver> {
+        let client = match &self.client {
+            EnvProver::Network(np) => np,
+            _ => {
+                return Err(ZkVmError::ProofGenerationError(
+                    "SP1Host is not configured with the network prover".into(),
+                ));
+            }
+        };
 
-/// Builds a [`NetworkProver`] client for the network mode that matches
-/// `strategy`. `Reserved` strategy targets the reserved cluster; everything
-/// else uses the default public network.
-async fn build_network_client(strategy: FulfillmentStrategy) -> NetworkProver {
-    if strategy == FulfillmentStrategy::Reserved {
-        ProverClient::builder()
-            .network_for(NetworkMode::Reserved)
-            .build()
-            .await
-    } else {
-        ProverClient::builder().network().build().await
+        Ok(client)
     }
 }
 

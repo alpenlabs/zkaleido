@@ -1,12 +1,12 @@
 use std::{
     env::{set_var, var},
-    future::Future,
+    future::{Future, IntoFuture},
     time::Duration,
 };
 
 use sp1_sdk::{
-    HashableKey, ProvingKey, SP1ProofWithPublicValues,
-    blocking::{CpuProver, MockProver, ProveRequest, Prover, ProverClient},
+    HashableKey, ProveRequest, Prover, ProvingKey, SP1ProofMode, env::EnvProver,
+    network::FulfillmentStrategy,
 };
 use tokio::{
     runtime::{Handle, Runtime},
@@ -28,11 +28,8 @@ impl ZkVmExecutor for SP1Host {
         &self,
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
     ) -> ZkVmResult<ExecutionSummary> {
-        let client = ProverClient::builder().light().build();
         let elf = self.proving_key.elf().clone();
-        let (output, report) = client
-            .execute(elf, prover_input)
-            .run()
+        let (output, report) = block_on_async(self.client.execute(elf, prover_input).into_future())
             .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
 
         let public_values = PublicValues::new(output.to_vec());
@@ -70,25 +67,18 @@ impl ZkVmProver for SP1Host {
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
     ) -> ZkVmResult<SP1ProofReceipt> {
-        if is_network_prover() {
+        if matches!(self.client, EnvProver::Network(_)) {
             return block_on_async(self.prove_via_network(prover_input, proof_type));
         }
 
-        let proof_info = if use_mock_prover() {
-            let client = ProverClient::builder().mock().build();
-            run_prove_request::<MockProver>(
-                client.prove(&self.proving_key, prover_input),
-                proof_type,
-            )
-            .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?
-        } else {
-            let client = ProverClient::builder().cpu().build();
-            run_prove_request::<CpuProver>(
-                client.prove(&self.proving_key, prover_input),
-                proof_type,
-            )
-            .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?
-        };
+        let mode = to_sp1_mode(proof_type);
+        let proof_info = block_on_async(async {
+            self.client
+                .prove(&self.proving_key, prover_input)
+                .mode(mode)
+                .await
+        })
+        .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
 
         Ok(SP1ProofReceipt::new(proof_info, self.program_id()))
     }
@@ -126,32 +116,21 @@ impl SP1Host {
     }
 }
 
-fn run_prove_request<'a, P>(
-    request: P::ProveRequest<'a>,
-    proof_type: ProofType,
-) -> Result<SP1ProofWithPublicValues, P::Error>
-where
-    P: Prover + 'a,
-{
+pub(crate) fn to_sp1_mode(proof_type: ProofType) -> SP1ProofMode {
     match proof_type {
-        ProofType::Compressed => request.compressed().run(),
-        ProofType::Core => request.core().run(),
-        ProofType::Groth16 => request.groth16().run(),
+        ProofType::Compressed => SP1ProofMode::Compressed,
+        ProofType::Core => SP1ProofMode::Core,
+        ProofType::Groth16 => SP1ProofMode::Groth16,
     }
 }
 
-fn is_network_prover() -> bool {
-    !use_zkvm_mock() && var("SP1_PROVER").map(|v| v == "network").unwrap_or(false)
-}
-
-fn use_mock_prover() -> bool {
-    use_zkvm_mock() || var("SP1_PROVER").map(|v| v == "mock").unwrap_or(false)
-}
-
-fn use_zkvm_mock() -> bool {
-    var("ZKVM_MOCK")
-        .map(|v| v == "1" || v.to_lowercase() == "true")
-        .unwrap_or(false)
+/// Reads the requested fulfillment strategy from `SP1_PROOF_STRATEGY`,
+/// defaulting to `Auction` when unset or unparseable.
+pub(crate) fn proof_strategy() -> FulfillmentStrategy {
+    var("SP1_PROOF_STRATEGY")
+        .ok()
+        .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
+        .unwrap_or(FulfillmentStrategy::Auction)
 }
 
 /// Drives `future` to completion from a synchronous context, regardless of
@@ -166,7 +145,7 @@ fn use_zkvm_mock() -> bool {
 /// running `current_thread` tokio runtimes should invoke the
 /// [`ZkVmRemoteProver`] methods directly instead of going through sync
 /// [`ZkVmProver::prove`].
-fn block_on_async<F>(future: F) -> F::Output
+pub(crate) fn block_on_async<F>(future: F) -> F::Output
 where
     F: Future,
 {
