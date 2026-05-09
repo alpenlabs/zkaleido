@@ -12,6 +12,7 @@
 //! proving measurements, not timings for converting a previously generated core proof into a
 //! compressed proof or a previously generated compressed proof into a Groth16 proof.
 
+mod config;
 mod host;
 mod input;
 mod proof;
@@ -19,6 +20,7 @@ mod prover;
 mod remote_prover;
 mod verifier;
 
+pub use config::SP1HostConfig;
 pub use host::SP1Host;
 
 #[cfg(feature = "perf")]

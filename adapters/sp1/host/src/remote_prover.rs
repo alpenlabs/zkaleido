@@ -16,11 +16,7 @@ use zkaleido::{
     ZkVmInputBuilder, ZkVmRemoteProver, ZkVmResult,
 };
 
-use crate::{
-    SP1Host,
-    proof::SP1ProofReceipt,
-    prover::{proof_strategy, to_sp1_mode},
-};
+use crate::{SP1Host, proof::SP1ProofReceipt, prover::to_sp1_mode};
 
 /// A typed proof identifier for the SP1 network prover.
 ///
@@ -59,8 +55,6 @@ impl ZkVmRemoteProver for SP1Host {
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
     ) -> ZkVmResult<Sp1ProofId> {
-        let strategy = proof_strategy();
-
         let client = self.network_client()?;
 
         let pk = match &self.proving_key {
@@ -70,9 +64,9 @@ impl ZkVmRemoteProver for SP1Host {
 
         let mut builder = client
             .prove(pk, input)
-            .strategy(strategy)
+            .strategy(self.config.proof_strategy)
             .mode(to_sp1_mode(proof_type));
-        if let Some(deadline) = self.deadline {
+        if let Some(deadline) = self.config.deadline {
             builder = builder.timeout(deadline);
         }
         let request_id =

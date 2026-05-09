@@ -1,13 +1,9 @@
 use std::{
-    env::{set_var, var},
+    env::set_var,
     future::{Future, IntoFuture},
-    time::Duration,
 };
 
-use sp1_sdk::{
-    HashableKey, ProveRequest, Prover, ProvingKey, SP1ProofMode, env::EnvProver,
-    network::FulfillmentStrategy,
-};
+use sp1_sdk::{HashableKey, ProveRequest, Prover, ProvingKey, SP1ProofMode, env::EnvProver};
 use tokio::{
     runtime::{Handle, Runtime},
     task::block_in_place,
@@ -19,8 +15,6 @@ use zkaleido::{
 };
 
 use crate::{SP1Host, input::SP1ProofInputBuilder, proof::SP1ProofReceipt};
-
-const NETWORK_POLL_INTERVAL: Duration = Duration::from_secs(10);
 
 impl ZkVmExecutor for SP1Host {
     type Input<'a> = SP1ProofInputBuilder;
@@ -104,10 +98,13 @@ impl SP1Host {
                 RemoteProofStatus::Failed(reason) => {
                     return Err(ZkVmError::ProofGenerationError(reason));
                 }
-                RemoteProofStatus::Requested
-                | RemoteProofStatus::InProgress
-                | RemoteProofStatus::Unknown => {
-                    sleep(NETWORK_POLL_INTERVAL).await;
+                RemoteProofStatus::Unknown => {
+                    return Err(ZkVmError::ProofGenerationError(
+                        "network returned unknown proof status".to_string(),
+                    ));
+                }
+                RemoteProofStatus::Requested | RemoteProofStatus::InProgress => {
+                    sleep(self.config.network_poll_interval).await;
                 }
             }
         }
@@ -122,15 +119,6 @@ pub(crate) fn to_sp1_mode(proof_type: ProofType) -> SP1ProofMode {
         ProofType::Core => SP1ProofMode::Core,
         ProofType::Groth16 => SP1ProofMode::Groth16,
     }
-}
-
-/// Reads the requested fulfillment strategy from `SP1_PROOF_STRATEGY`,
-/// defaulting to `Auction` when unset or unparseable.
-pub(crate) fn proof_strategy() -> FulfillmentStrategy {
-    var("SP1_PROOF_STRATEGY")
-        .ok()
-        .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
-        .unwrap_or(FulfillmentStrategy::Auction)
 }
 
 /// Drives `future` to completion from a synchronous context, regardless of
