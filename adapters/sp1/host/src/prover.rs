@@ -108,8 +108,10 @@ impl SP1Host {
                 }
             }
         }
-        let receipt_with_metadata = self.get_proof(&id).await?;
-        SP1ProofReceipt::try_from(receipt_with_metadata).map_err(ZkVmError::InvalidProofReceipt)
+        self.get_proof(&id)
+            .await?
+            .try_into()
+            .map_err(ZkVmError::InvalidProofReceipt)
     }
 }
 

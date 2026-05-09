@@ -100,15 +100,10 @@ impl ZkVmRemoteProver for SP1Host {
             .await
             .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
 
-        match proof {
-            Some(proof) => {
-                let sp1_receipt = SP1ProofReceipt::new(proof, self.program_id());
-                sp1_receipt
-                    .try_into()
-                    .map_err(ZkVmError::InvalidProofReceipt)
-            }
-            None => Err(ZkVmError::ProofNotReady),
-        }
+        let proof = proof.ok_or(ZkVmError::ProofNotReady)?;
+        SP1ProofReceipt::new(proof, self.program_id())
+            .try_into()
+            .map_err(ZkVmError::InvalidProofReceipt)
     }
 }
 
