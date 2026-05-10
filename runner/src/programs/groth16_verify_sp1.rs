@@ -8,15 +8,15 @@ fn execution_report(host: &impl ZkVmHost) -> (String, ExecutionSummary) {
 }
 
 #[cfg(feature = "sp1")]
-pub fn sp1_groth16_verify() -> (String, ExecutionSummary) {
+pub async fn sp1_groth16_verify() -> (String, ExecutionSummary) {
     use zkaleido_sp1_artifacts::GROTH16_VERIFY_SP1_ELF;
     use zkaleido_sp1_host::SP1Host;
-    let host = SP1Host::init(&GROTH16_VERIFY_SP1_ELF);
+    let host = SP1Host::init(&GROTH16_VERIFY_SP1_ELF).await;
     execution_report(&host)
 }
 
 #[cfg(feature = "risc0")]
-pub fn risc0_groth16_verify() -> (String, ExecutionSummary) {
+pub async fn risc0_groth16_verify() -> (String, ExecutionSummary) {
     use zkaleido_risc0_artifacts::GUEST_RISC0_GROTH16_VERIFY_SP1_ELF;
     use zkaleido_risc0_host::Risc0Host;
     let host = Risc0Host::init(GUEST_RISC0_GROTH16_VERIFY_SP1_ELF);

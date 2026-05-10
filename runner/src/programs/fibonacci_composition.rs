@@ -20,16 +20,16 @@ fn fib_composition_execution_report(
 }
 
 #[cfg(feature = "sp1")]
-pub fn sp1_fib_composition_report() -> (String, ExecutionSummary) {
+pub async fn sp1_fib_composition_report() -> (String, ExecutionSummary) {
     use zkaleido_sp1_artifacts::{FIBONACCI_COMPOSITION_ELF, FIBONACCI_ELF};
     use zkaleido_sp1_host::SP1Host;
-    let fib_host = SP1Host::init(&FIBONACCI_ELF);
-    let fib_composition_host = SP1Host::init(&FIBONACCI_COMPOSITION_ELF);
+    let fib_host = SP1Host::init(&FIBONACCI_ELF).await;
+    let fib_composition_host = SP1Host::init(&FIBONACCI_COMPOSITION_ELF).await;
     fib_composition_execution_report(&fib_host, &fib_composition_host)
 }
 
 #[cfg(feature = "risc0")]
-pub fn risc0_fib_composition_report() -> (String, ExecutionSummary) {
+pub async fn risc0_fib_composition_report() -> (String, ExecutionSummary) {
     use zkaleido_risc0_artifacts::{
         GUEST_RISC0_FIBONACCI_COMPOSITION_ELF, GUEST_RISC0_FIBONACCI_ELF,
     };

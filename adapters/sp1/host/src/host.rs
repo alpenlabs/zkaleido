@@ -7,7 +7,7 @@ use sp1_sdk::{
 };
 use zkaleido::{ZkVm, ZkVmHost};
 
-use crate::{SP1HostConfig, prover::block_on_async};
+use crate::SP1HostConfig;
 
 /// Host for the SP1 zkVM. Bundles a proving key (which embeds the guest ELF
 /// and verifying key), a long-lived prover client and a configuration.  Implements [`ZkVmHost`],
@@ -31,15 +31,17 @@ pub struct SP1Host {
 
 impl SP1Host {
     /// Initializes a new [`SP1Host`] with [`SP1HostConfig::default`],
-    pub fn init(elf: &[u8]) -> Self {
-        Self::init_with_config(elf, SP1HostConfig::default())
+    pub async fn init(elf: &[u8]) -> Self {
+        Self::init_with_config(elf, SP1HostConfig::default()).await
     }
 
     /// Initializes a new [`SP1Host`] with an explicit [`SP1HostConfig`].
-    pub fn init_with_config(elf: &[u8], config: SP1HostConfig) -> Self {
-        let client = block_on_async(build_env_prover(&config));
-        let proving_key =
-            block_on_async(client.setup(elf.into())).expect("failed to setup sp1 proving key");
+    pub async fn init_with_config(elf: &[u8], config: SP1HostConfig) -> Self {
+        let client = build_env_prover(&config).await;
+        let proving_key = client
+            .setup(elf.into())
+            .await
+            .expect("failed to setup sp1 proving key");
         Self {
             proving_key,
             client,

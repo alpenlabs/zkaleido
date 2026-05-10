@@ -39,36 +39,40 @@ impl FromStr for GuestProgram {
 ///
 /// Pairs each program's [`ZkVmProgram::name`] with its [`ExecutionSummary`].
 #[cfg(feature = "sp1")]
-pub fn run_sp1_programs(programs: &[GuestProgram]) -> Vec<(String, ExecutionSummary)> {
-    programs
-        .iter()
-        .map(|program| match program {
-            GuestProgram::Fibonacci => fibonacci::sp1_fib_report(),
+pub async fn run_sp1_programs(programs: &[GuestProgram]) -> Vec<(String, ExecutionSummary)> {
+    let mut reports = Vec::with_capacity(programs.len());
+    for program in programs {
+        let report = match program {
+            GuestProgram::Fibonacci => fibonacci::sp1_fib_report().await,
             GuestProgram::FibonacciComposition => {
-                fibonacci_composition::sp1_fib_composition_report()
+                fibonacci_composition::sp1_fib_composition_report().await
             }
-            GuestProgram::Sha2Chain => sha2::sp1_sha_report(),
-            GuestProgram::SchnorrSigVerify => schnorr::sp1_schnorr_sig_verify_report(),
-            GuestProgram::Groth16VerifySP1 => groth16_verify_sp1::sp1_groth16_verify(),
-        })
-        .collect()
+            GuestProgram::Sha2Chain => sha2::sp1_sha_report().await,
+            GuestProgram::SchnorrSigVerify => schnorr::sp1_schnorr_sig_verify_report().await,
+            GuestProgram::Groth16VerifySP1 => groth16_verify_sp1::sp1_groth16_verify().await,
+        };
+        reports.push(report);
+    }
+    reports
 }
 
 /// Runs Risc0 programs to generate reports.
 ///
 /// Pairs each program's [`ZkVmProgram::name`] with its [`ExecutionSummary`].
 #[cfg(feature = "risc0")]
-pub fn run_risc0_programs(programs: &[GuestProgram]) -> Vec<(String, ExecutionSummary)> {
-    programs
-        .iter()
-        .map(|program| match program {
-            GuestProgram::Fibonacci => fibonacci::risc0_fib_report(),
+pub async fn run_risc0_programs(programs: &[GuestProgram]) -> Vec<(String, ExecutionSummary)> {
+    let mut reports = Vec::with_capacity(programs.len());
+    for program in programs {
+        let report = match program {
+            GuestProgram::Fibonacci => fibonacci::risc0_fib_report().await,
             GuestProgram::FibonacciComposition => {
-                fibonacci_composition::risc0_fib_composition_report()
+                fibonacci_composition::risc0_fib_composition_report().await
             }
-            GuestProgram::Sha2Chain => sha2::risc0_sha_report(),
-            GuestProgram::SchnorrSigVerify => schnorr::risc0_schnorr_sig_verify_report(),
-            GuestProgram::Groth16VerifySP1 => groth16_verify_sp1::risc0_groth16_verify(),
-        })
-        .collect()
+            GuestProgram::Sha2Chain => sha2::risc0_sha_report().await,
+            GuestProgram::SchnorrSigVerify => schnorr::risc0_schnorr_sig_verify_report().await,
+            GuestProgram::Groth16VerifySP1 => groth16_verify_sp1::risc0_groth16_verify().await,
+        };
+        reports.push(report);
+    }
+    reports
 }

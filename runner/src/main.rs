@@ -9,7 +9,8 @@ use clap::Parser;
 use format::{format_header, format_results};
 use github::{format_github_message, post_to_github_pr};
 
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sp1_sdk::utils::setup_logger();
     let args = EvalArgs::parse();
 
@@ -17,13 +18,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     #[cfg(feature = "sp1")]
     {
-        let sp1_reports = programs::run_sp1_programs(&args.programs);
+        let sp1_reports = programs::run_sp1_programs(&args.programs).await;
         results_text.push(format_results(&sp1_reports, "SP1".to_owned()));
     }
 
     #[cfg(feature = "risc0")]
     {
-        let risc0_reports = programs::run_risc0_programs(&args.programs);
+        let risc0_reports = programs::run_risc0_programs(&args.programs).await;
         results_text.push(format_results(&risc0_reports, "RISC0".to_owned()));
     }
 
@@ -33,8 +34,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     if args.post_to_gh {
         // Post to GitHub PR
         let message = format_github_message(&results_text);
-        let runtime = tokio::runtime::Runtime::new()?;
-        runtime.block_on(post_to_github_pr(&args, &message))?;
+        post_to_github_pr(&args, &message).await?;
     }
 
     Ok(())

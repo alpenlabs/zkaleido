@@ -199,7 +199,7 @@ mod tests {
     use zkaleido::ZkVmTypedVerifier;
 
     use super::*;
-    use crate::SP1Host;
+    use crate::{SP1Host, prover::block_on_async};
 
     #[test]
     fn groth16_round_trips_through_sp1_proof_receipt() {
@@ -236,7 +236,7 @@ mod tests {
             .join("../../../artifacts/sp1/fibonacci/target/elf-compilation/riscv64im-succinct-zkvm-elf/release/guest-sp1-fibonacci");
         let elf_bytes = fs::read(&elf_path).unwrap();
 
-        let host = SP1Host::init(&elf_bytes);
+        let host = block_on_async(SP1Host::init(&elf_bytes));
         host.verify_inner(&sp1_receipt).unwrap();
     }
 }
