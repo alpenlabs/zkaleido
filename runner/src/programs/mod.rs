@@ -1,14 +1,13 @@
 use std::str::FromStr;
 
 use clap::ValueEnum;
+use zkaleido::ExecutionSummary;
 
 mod fibonacci;
 mod fibonacci_composition;
 mod groth16_verify_sp1;
 mod schnorr;
 mod sha2;
-
-use crate::PerformanceReport;
 
 #[derive(Debug, Clone, ValueEnum)]
 #[non_exhaustive]
@@ -38,9 +37,9 @@ impl FromStr for GuestProgram {
 
 /// Runs SP1 programs to generate reports.
 ///
-/// Generates [`PerformanceReport`] for each invocation.
+/// Pairs each program's [`ZkVmProgram::name`] with its [`ExecutionSummary`].
 #[cfg(feature = "sp1")]
-pub fn run_sp1_programs(programs: &[GuestProgram]) -> Vec<PerformanceReport> {
+pub fn run_sp1_programs(programs: &[GuestProgram]) -> Vec<(String, ExecutionSummary)> {
     programs
         .iter()
         .map(|program| match program {
@@ -57,9 +56,9 @@ pub fn run_sp1_programs(programs: &[GuestProgram]) -> Vec<PerformanceReport> {
 
 /// Runs Risc0 programs to generate reports.
 ///
-/// Generates [`PerformanceReport`] for each invocation.
+/// Pairs each program's [`ZkVmProgram::name`] with its [`ExecutionSummary`].
 #[cfg(feature = "risc0")]
-pub fn run_risc0_programs(programs: &[GuestProgram]) -> Vec<PerformanceReport> {
+pub fn run_risc0_programs(programs: &[GuestProgram]) -> Vec<(String, ExecutionSummary)> {
     programs
         .iter()
         .map(|program| match program {
