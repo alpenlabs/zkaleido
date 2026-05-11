@@ -1,29 +1,24 @@
 use fibonacci::program::FibProgram;
-use zkaleido::{PerformanceReport, ZkVmHostPerf, ZkVmProgram, ZkVmProgramPerf};
+use zkaleido::{ExecutionSummary, ZkVmHost, ZkVmProgram};
 
-fn fib_prover_perf_report(host: &impl ZkVmHostPerf) -> PerformanceReport {
+fn fib_execution_report(host: &impl ZkVmHost) -> (String, ExecutionSummary) {
     let input = 5;
-    FibProgram::prove(&input, host).unwrap();
-    // SAFETY: this runner configures mock mode in a single-threaded setup
-    // before requesting the performance report.
-    unsafe {
-        std::env::set_var("ZKVM_MOCK", "1");
-    }
-    FibProgram::perf_report(&input, host).unwrap()
+    let summary = FibProgram::execute(&input, host).unwrap();
+    (FibProgram::name(), summary)
 }
 
 #[cfg(feature = "sp1")]
-pub fn sp1_fib_report() -> PerformanceReport {
+pub async fn sp1_fib_report() -> (String, ExecutionSummary) {
     use zkaleido_sp1_artifacts::FIBONACCI_ELF;
     use zkaleido_sp1_host::SP1Host;
-    let host = SP1Host::init(&FIBONACCI_ELF);
-    fib_prover_perf_report(&host)
+    let host = SP1Host::init(&FIBONACCI_ELF).await;
+    fib_execution_report(&host)
 }
 
 #[cfg(feature = "risc0")]
-pub fn risc0_fib_report() -> PerformanceReport {
+pub async fn risc0_fib_report() -> (String, ExecutionSummary) {
     use zkaleido_risc0_artifacts::GUEST_RISC0_FIBONACCI_ELF;
     use zkaleido_risc0_host::Risc0Host;
     let host = Risc0Host::init(GUEST_RISC0_FIBONACCI_ELF);
-    fib_prover_perf_report(&host)
+    fib_execution_report(&host)
 }

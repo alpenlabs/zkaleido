@@ -1,7 +1,7 @@
 use risc0_zkvm::{InnerReceipt, Receipt, VERSION};
 use zkaleido::{
     DataFormatError, Mismatched, ProgramId, Proof, ProofMetadata, ProofReceipt,
-    ProofReceiptWithMetadata, PublicValues, ZkVm, ZkVmProofError,
+    ProofReceiptWithMetadata, ProofType, PublicValues, ZkVm, ZkVmProofError,
 };
 
 #[derive(Debug, Clone)]
@@ -52,6 +52,7 @@ impl TryFrom<&ProofReceiptWithMetadata> for Risc0ProofReceipt {
             })?
         }
 
+        // TODO(STR-3415): Fix Risc0 Groth16 proof round-trip with ../groth16-verifier crate
         let journal = value.receipt().public_values().as_bytes().to_vec();
         let inner: InnerReceipt = bincode::deserialize(value.receipt().proof().as_bytes())
             .map_err(|e| ZkVmProofError::DataFormat(DataFormatError::Serde(e.to_string())))?;
@@ -62,19 +63,19 @@ impl TryFrom<&ProofReceiptWithMetadata> for Risc0ProofReceipt {
 impl TryFrom<Risc0ProofReceipt> for ProofReceiptWithMetadata {
     type Error = ZkVmProofError;
     fn try_from(value: Risc0ProofReceipt) -> Result<Self, Self::Error> {
-        // If there's a Groth16 representation, directly use its bytes;
-        // otherwise, serialize the entire proof.
-        let proof_bytes = match value.0.inner.groth16() {
-            Ok(receipt) => receipt.clone().seal,
-            Err(_) => bincode::serialize(&value.0.inner)
-                .map_err(|e| ZkVmProofError::DataFormat(DataFormatError::Serde(e.to_string())))?,
+        let proof_type = match &value.0.inner {
+            InnerReceipt::Succinct(_) => ProofType::Compressed,
+            InnerReceipt::Groth16(_) => ProofType::Groth16,
+            _ => ProofType::Core,
         };
+        let proof_bytes = bincode::serialize(&value.0.inner)
+            .map_err(|e| ZkVmProofError::DataFormat(DataFormatError::Serde(e.to_string())))?;
         let proof = Proof::new(proof_bytes);
         let public_values = PublicValues::new(value.0.journal.bytes.to_vec());
         let receipt = ProofReceipt::new(proof, public_values);
 
         let program_id = ProgramId(value.0.metadata.verifier_parameters.into());
-        let metadata = ProofMetadata::new(ZkVm::Risc0, program_id, risc0_zkvm::VERSION);
+        let metadata = ProofMetadata::new(ZkVm::Risc0, program_id, risc0_zkvm::VERSION, proof_type);
         Ok(ProofReceiptWithMetadata::new(receipt, metadata))
     }
 }

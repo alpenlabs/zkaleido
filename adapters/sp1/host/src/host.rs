@@ -1,58 +1,70 @@
-use std::{fmt, time::Duration};
+use std::{env::var, fmt};
 
 use sp1_sdk::{
-    HashableKey, ProvingKey, SP1ProvingKey,
-    blocking::{Prover, ProverClient},
+    HashableKey, Prover, ProverClient, ProvingKey,
+    env::{EnvProver, EnvProvingKey},
+    network::{FulfillmentStrategy, NetworkMode},
 };
 use zkaleido::{ZkVm, ZkVmHost};
 
-/// A host for the `SP1` zkVM that stores the guest program in ELF format.
-/// The `SP1Host` is responsible for program execution and proving
+use crate::SP1HostConfig;
+
+/// Host for the SP1 zkVM. Bundles a proving key (which embeds the guest ELF
+/// and verifying key), a long-lived prover client and a configuration.  Implements [`ZkVmHost`],
+/// [`zkaleido::ZkVmExecutor`], [`zkaleido::ZkVmProver`], and [`zkaleido::ZkVmRemoteProver`] across
+/// the sibling modules in this crate.
 #[derive(Clone)]
 pub struct SP1Host {
-    /// Proving Key
-    pub proving_key: SP1ProvingKey,
-    /// Optional deadline passed to the SP1 prover network. When unset, the SP1
-    /// SDK falls back to its own default (auto-calculated from the gas limit).
-    pub(crate) deadline: Option<Duration>,
+    /// Proving key set up from the guest ELF in [`SP1Host::init_with_config`].
+    /// Carries both the ELF (re-exposed via `elf()`) and the verifying key
+    /// used for the program id and on-chain/local verification.
+    pub(crate) proving_key: EnvProvingKey,
+    /// Prover client built once in [`SP1Host::init_with_config`] from
+    /// `SP1_PROVER` (and [`SP1HostConfig::proof_strategy`] for the network
+    /// mode). Reused across execute, prove, verify, and remote prove.
+    pub(crate) client: EnvProver,
+    /// Per-instance behavioral knobs read at prove time: deadline and
+    /// fulfillment strategy in [`crate::remote_prover`], poll cadence in the
+    /// sync network path in [`crate::prover`].
+    pub(crate) config: SP1HostConfig,
 }
 
 impl SP1Host {
-    /// Creates a new instance of [`SP1Host`] using the provided [`SP1ProvingKey`] and
-    /// an optional deadline for remote proof requests.
-    ///
-    /// Pass `None` for `deadline` to let the SP1 SDK fall back to its own default
-    /// (auto-calculated from the gas limit).
-    pub fn new(proving_key: SP1ProvingKey, deadline: Option<Duration>) -> Self {
+    /// Initializes a new [`SP1Host`] with [`SP1HostConfig::default`],
+    pub async fn init(elf: &[u8]) -> Self {
+        Self::init_with_config(elf, SP1HostConfig::default()).await
+    }
+
+    /// Initializes a new [`SP1Host`] with an explicit [`SP1HostConfig`].
+    pub async fn init_with_config(elf: &[u8], config: SP1HostConfig) -> Self {
+        let client = build_env_prover(&config).await;
+        let proving_key = client
+            .setup(elf.into())
+            .await
+            .expect("failed to setup sp1 proving key");
         Self {
             proving_key,
-            deadline,
+            client,
+            config,
         }
     }
+}
 
-    /// Initializes a new [`SP1Host`] by setting up the proving key using the provided ELF bytes.
-    pub fn init(elf: &[u8]) -> Self {
-        let client = ProverClient::from_env();
-        let env_proving_key = client
-            .setup(elf.into())
-            .expect("failed to setup sp1 proving key");
-        let proving_key = SP1ProvingKey::new(
-            env_proving_key.verifying_key().clone(),
-            env_proving_key.elf().clone(),
-        );
-        SP1Host::new(proving_key, None)
-    }
-
-    /// Sets the deadline for remote proof requests submitted through this host.
-    ///
-    /// The deadline is passed to the SP1 prover network on every request; the
-    /// network rejects the proof once the deadline elapses. Affects both the
-    /// synchronous network path in [`ZkVmProver::prove_inner`] (when
-    /// `SP1_PROVER=network`) and the async [`ZkVmRemoteProver::start_proving`] path.
-    #[must_use]
-    pub fn with_deadline(mut self, deadline: Duration) -> Self {
-        self.deadline = Some(deadline);
-        self
+/// Builds the [`EnvProver`] for `SP1_PROVER`. Mostly defers to
+/// [`EnvProver::new`], but for `SP1_PROVER=network` we construct the
+/// [`sp1_sdk::NetworkProver`] ourselves so that the configured fulfillment
+/// strategy can route to the reserved cluster — `EnvProver::new` always picks
+/// the default network mode.
+async fn build_env_prover(config: &SP1HostConfig) -> EnvProver {
+    let is_network = matches!(var("SP1_PROVER").as_deref(), Ok("network"));
+    if is_network && config.proof_strategy == FulfillmentStrategy::Reserved {
+        let np = ProverClient::builder()
+            .network_for(NetworkMode::Reserved)
+            .build()
+            .await;
+        EnvProver::Network(np)
+    } else {
+        EnvProver::new().await
     }
 }
 
@@ -64,6 +76,11 @@ impl ZkVmHost for SP1Host {
 
 impl fmt::Debug for SP1Host {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "sp1_{}", self.proving_key.verifying_key().bytes32())
+        write!(
+            f,
+            "{}_{}",
+            self.zkvm(),
+            self.proving_key.verifying_key().bytes32()
+        )
     }
 }

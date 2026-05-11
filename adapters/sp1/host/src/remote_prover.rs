@@ -1,9 +1,10 @@
-use std::{env::var, fmt};
+use std::fmt;
 
 use sp1_sdk::{
-    ProveRequest, Prover, ProverClient, SP1ProofMode,
+    NetworkProver, ProveRequest, Prover,
+    env::{EnvProver, EnvProvingKey},
     network::{
-        B256, FulfillmentStrategy,
+        B256, Error as NetworkError,
         proto::{
             GetProofRequestStatusResponse,
             types::{ExecutionStatus, FulfillmentStatus},
@@ -15,7 +16,7 @@ use zkaleido::{
     ZkVmInputBuilder, ZkVmRemoteProver, ZkVmResult,
 };
 
-use crate::{SP1Host, proof::SP1ProofReceipt};
+use crate::{SP1Host, proof::SP1ProofReceipt, prover::to_sp1_mode};
 
 /// A typed proof identifier for the SP1 network prover.
 ///
@@ -54,34 +55,36 @@ impl ZkVmRemoteProver for SP1Host {
         input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
     ) -> ZkVmResult<Sp1ProofId> {
-        let client = ProverClient::builder().network().build().await;
+        let client = self.network_client()?;
 
-        let strategy = var("SP1_PROOF_STRATEGY")
-            .ok()
-            .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
-            .unwrap_or(FulfillmentStrategy::Auction);
-
-        let mode = match proof_type {
-            ProofType::Core => SP1ProofMode::Core,
-            ProofType::Compressed => SP1ProofMode::Compressed,
-            ProofType::Groth16 => SP1ProofMode::Groth16,
+        let pk = match &self.proving_key {
+            EnvProvingKey::Network { pk, .. } => pk,
+            _ => unreachable!("we validate that the client is network above"),
         };
 
-        let pk = &self.proving_key;
-        let mut builder = client.prove(pk, input).strategy(strategy).mode(mode);
-        if let Some(deadline) = self.deadline {
+        let mut builder = client
+            .prove(pk, input)
+            .strategy(self.config.proof_strategy)
+            .mode(to_sp1_mode(proof_type));
+        if let Some(deadline) = self.config.deadline {
             builder = builder.timeout(deadline);
         }
-        let request_id = builder
-            .request()
-            .await
-            .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
+        let request_id =
+            builder
+                .request()
+                .await
+                .map_err(|e| match e.downcast_ref::<NetworkError>() {
+                    Some(NetworkError::RpcError(status)) => {
+                        ZkVmError::NetworkRetryableError(status.to_string())
+                    }
+                    _ => ZkVmError::ProofGenerationError(e.to_string()),
+                })?;
 
         Ok(Sp1ProofId(request_id))
     }
 
     async fn get_status(&self, id: &Sp1ProofId) -> ZkVmResult<RemoteProofStatus> {
-        let client = ProverClient::builder().network().build().await;
+        let client = self.network_client()?;
         let (status, _) = client
             .get_proof_status(id.0)
             .await
@@ -91,21 +94,34 @@ impl ZkVmRemoteProver for SP1Host {
     }
 
     async fn get_proof(&self, id: &Sp1ProofId) -> ZkVmResult<ProofReceiptWithMetadata> {
-        let client = ProverClient::builder().network().build().await;
+        let client = self.network_client()?;
         let (_, proof) = client
             .get_proof_status(id.0)
             .await
             .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
 
-        match proof {
-            Some(proof) => {
-                let sp1_receipt = SP1ProofReceipt::new(proof, self.program_id());
-                sp1_receipt
-                    .try_into()
-                    .map_err(ZkVmError::InvalidProofReceipt)
+        let proof = proof.ok_or(ZkVmError::ProofNotReady)?;
+        SP1ProofReceipt::new(proof, self.program_id())
+            .try_into()
+            .map_err(ZkVmError::InvalidProofReceipt)
+    }
+}
+
+impl SP1Host {
+    /// Extracts the network-specific [`NetworkProver`] from the host's
+    /// [`EnvProver`]. Returns an error when the host was initialized with a
+    /// non-network backend.
+    fn network_client(&self) -> ZkVmResult<&NetworkProver> {
+        let client = match &self.client {
+            EnvProver::Network(np) => np,
+            _ => {
+                return Err(ZkVmError::ProofGenerationError(
+                    "SP1Host is not configured with the network prover".into(),
+                ));
             }
-            None => Err(ZkVmError::ProofNotReady),
-        }
+        };
+
+        Ok(client)
     }
 }
 
@@ -126,6 +142,8 @@ fn convert_proof_status(response: GetProofRequestStatusResponse) -> RemoteProofS
         FulfillmentStatus::Assigned => RemoteProofStatus::InProgress,
         FulfillmentStatus::Fulfilled => RemoteProofStatus::Completed,
         FulfillmentStatus::Unfulfillable => RemoteProofStatus::Failed("unfulfillable".to_string()),
+        // TODO: figure out when this is triggered
+        // Is this what happens when we request proof request for id that isn't valid?
         FulfillmentStatus::UnspecifiedFulfillmentStatus => RemoteProofStatus::Unknown,
     }
 }

@@ -92,6 +92,16 @@ jobs:
         with:
           version: "v0.10.0" # sccache version
 
+      # `sp1-core-executor-runner`'s build.rs builds a helper binary and embeds
+      # it via `include_bytes!(env!("SP1_CORE_RUNNER_BINARY"))`. When pulled from
+      # crates.io, the binary is written *inside* the registry source dir
+      # (`~/.cargo/registry/src/.../sp1-core-executor-runner-X.Y.Z/target/`),
+      # which `Swatinem/rust-cache` does not preserve — but it does cache the
+      # build-script output that records the path. On a cache hit cargo skips
+      # rerunning the build script, then `include_bytes!` fails with "couldn't
+      # read ..." because the binary is gone. Clean these crates so build.rs
+      # always re-runs and re-creates the binary.
+      - run: cargo clean -p sp1-core-executor-runner -p sp1-core-executor-runner-binary
       - run: cargo hack check --locked
 
   fmt:

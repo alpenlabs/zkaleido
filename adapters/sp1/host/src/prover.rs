@@ -1,13 +1,17 @@
-use std::env::{set_var, var};
+use std::{
+    env::set_var,
+    future::{Future, IntoFuture},
+};
 
-use sp1_sdk::{
-    HashableKey, ProvingKey, SP1ProofWithPublicValues,
-    blocking::{CpuProver, MockProver, NetworkProver, ProveRequest, Prover, ProverClient},
-    network::{Error as NetworkError, FulfillmentStrategy, NetworkMode},
+use sp1_sdk::{HashableKey, ProveRequest, Prover, ProvingKey, SP1ProofMode, env::EnvProver};
+use tokio::{
+    runtime::{Handle, Runtime},
+    task::block_in_place,
+    time::sleep,
 };
 use zkaleido::{
-    ExecutionSummary, ProgramId, ProofType, PublicValues, ZkVmError, ZkVmExecutor,
-    ZkVmInputBuilder, ZkVmProver, ZkVmResult,
+    ExecutionSummary, ProgramId, ProofType, PublicValues, RemoteProofStatus, ZkVmError,
+    ZkVmExecutor, ZkVmInputBuilder, ZkVmProver, ZkVmRemoteProver, ZkVmResult,
 };
 
 use crate::{SP1Host, input::SP1ProofInputBuilder, proof::SP1ProofReceipt};
@@ -18,11 +22,8 @@ impl ZkVmExecutor for SP1Host {
         &self,
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
     ) -> ZkVmResult<ExecutionSummary> {
-        let client = ProverClient::builder().light().build();
         let elf = self.proving_key.elf().clone();
-        let (output, report) = client
-            .execute(elf, prover_input)
-            .run()
+        let (output, report) = block_on_async(self.client.execute(elf, prover_input).into_future())
             .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
 
         let public_values = PublicValues::new(output.to_vec());
@@ -60,90 +61,89 @@ impl ZkVmProver for SP1Host {
         prover_input: <Self::Input<'a> as ZkVmInputBuilder<'a>>::Input,
         proof_type: ProofType,
     ) -> ZkVmResult<SP1ProofReceipt> {
-        let is_network_prover =
-            !use_zkvm_mock() && var("SP1_PROVER").map(|v| v == "network").unwrap_or(false);
-
-        if is_network_prover {
-            print!("using network");
-            let strategy = var("SP1_PROOF_STRATEGY")
-                .ok()
-                .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
-                .unwrap_or(FulfillmentStrategy::Auction);
-
-            let builder = if strategy == FulfillmentStrategy::Reserved {
-                ProverClient::builder().network_for(NetworkMode::Reserved)
-            } else {
-                ProverClient::builder().network()
-            };
-            let prover_client = builder.build();
-
-            let mut network_prover_builder = prover_client
-                .prove(&self.proving_key, prover_input)
-                .strategy(strategy);
-            if let Some(deadline) = self.deadline {
-                network_prover_builder = network_prover_builder.timeout(deadline);
-            }
-
-            let proof_result =
-                run_prove_request::<NetworkProver>(network_prover_builder, proof_type);
-
-            // Some error handling.
-            // If SP1 network prover returned Network RPC error - transform it to zkaleido
-            // network error, so the users can handle it gracefully.
-            // Otherwise, return a general error message wrapped in ProofGeneratedError.
-            let proof = match proof_result {
-                Ok(proof) => proof,
-                Err(e) => match e.downcast_ref::<NetworkError>() {
-                    Some(NetworkError::RpcError(status)) => {
-                        return Err(ZkVmError::NetworkRetryableError(status.to_string()));
-                    }
-                    _ => return Err(ZkVmError::ProofGenerationError(e.to_string())),
-                },
-            };
-
-            return Ok(SP1ProofReceipt::new(proof, self.program_id()));
+        if matches!(self.client, EnvProver::Network(_)) {
+            return block_on_async(self.prove_via_network(prover_input, proof_type));
         }
 
-        let proof_info = if use_mock_prover() {
-            let client = ProverClient::builder().mock().build();
-            run_prove_request::<MockProver>(
-                client.prove(&self.proving_key, prover_input),
-                proof_type,
-            )
-            .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?
-        } else {
-            let client = ProverClient::builder().cpu().build();
-            run_prove_request::<CpuProver>(
-                client.prove(&self.proving_key, prover_input),
-                proof_type,
-            )
-            .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?
-        };
+        let mode = to_sp1_mode(proof_type);
+        let proof_info = block_on_async(async {
+            self.client
+                .prove(&self.proving_key, prover_input)
+                .mode(mode)
+                .await
+        })
+        .map_err(|e| ZkVmError::ProofGenerationError(e.to_string()))?;
 
         Ok(SP1ProofReceipt::new(proof_info, self.program_id()))
     }
 }
 
-fn run_prove_request<'a, P>(
-    request: P::ProveRequest<'a>,
-    proof_type: ProofType,
-) -> Result<SP1ProofWithPublicValues, P::Error>
-where
-    P: Prover + 'a,
-{
-    match proof_type {
-        ProofType::Compressed => request.compressed().run(),
-        ProofType::Core => request.core().run(),
-        ProofType::Groth16 => request.groth16().run(),
+impl SP1Host {
+    /// Drives the async [`ZkVmRemoteProver`] methods (`start_proving` →
+    /// poll `get_status` → `get_proof`) to produce an [`SP1ProofReceipt`].
+    ///
+    /// Used as the synchronous network proving path so that callers can invoke
+    /// [`ZkVmProver::prove`] without choosing between the SP1 SDK's `blocking`
+    /// API (which panics inside an existing tokio runtime) and the async API
+    /// (which requires propagating `async` through every caller).
+    async fn prove_via_network<'a>(
+        &self,
+        input: <<Self as ZkVmExecutor>::Input<'a> as ZkVmInputBuilder<'a>>::Input,
+        proof_type: ProofType,
+    ) -> ZkVmResult<SP1ProofReceipt> {
+        let id = self.start_proving(input, proof_type).await?;
+        loop {
+            match self.get_status(&id).await? {
+                RemoteProofStatus::Completed => break,
+                RemoteProofStatus::Failed(reason) => {
+                    return Err(ZkVmError::ProofGenerationError(reason));
+                }
+                RemoteProofStatus::Unknown => {
+                    return Err(ZkVmError::ProofGenerationError(
+                        "network returned unknown proof status".to_string(),
+                    ));
+                }
+                RemoteProofStatus::Requested | RemoteProofStatus::InProgress => {
+                    sleep(self.config.network_poll_interval).await;
+                }
+            }
+        }
+        self.get_proof(&id)
+            .await?
+            .try_into()
+            .map_err(ZkVmError::InvalidProofReceipt)
     }
 }
 
-fn use_mock_prover() -> bool {
-    use_zkvm_mock() || var("SP1_PROVER").map(|v| v == "mock").unwrap_or(false)
+pub(crate) fn to_sp1_mode(proof_type: ProofType) -> SP1ProofMode {
+    match proof_type {
+        ProofType::Compressed => SP1ProofMode::Compressed,
+        ProofType::Core => SP1ProofMode::Core,
+        ProofType::Groth16 => SP1ProofMode::Groth16,
+    }
 }
 
-fn use_zkvm_mock() -> bool {
-    var("ZKVM_MOCK")
-        .map(|v| v == "1" || v.to_lowercase() == "true")
-        .unwrap_or(false)
+/// Drives `future` to completion from a synchronous context, regardless of
+/// whether the caller is already inside a tokio runtime.
+///
+/// Inside an existing multi-thread runtime, uses
+/// [`tokio::task::block_in_place`] + [`Handle::block_on`] to avoid the nested
+/// runtime panic produced by the SP1 SDK's `blocking` feature. Outside any
+/// runtime, builds a fresh [`Runtime`] for this call.
+///
+/// **Caveat:** `block_in_place` requires a multi-thread runtime. Callers
+/// running `current_thread` tokio runtimes should invoke the
+/// [`ZkVmRemoteProver`] methods directly instead of going through sync
+/// [`ZkVmProver::prove`].
+pub(crate) fn block_on_async<F>(future: F) -> F::Output
+where
+    F: Future,
+{
+    match Handle::try_current() {
+        Ok(handle) => block_in_place(|| handle.block_on(future)),
+        Err(_) => {
+            let rt = Runtime::new().expect("failed to build tokio runtime for sp1 prove");
+            rt.block_on(future)
+        }
+    }
 }

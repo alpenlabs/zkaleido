@@ -50,7 +50,7 @@ report: prover-clean
 # Generate SP1 proof report for given programs
 [group('prover')]
 report-sp1: prover-clean
-    ZKVM_MOCK=1 cargo run -p zkaleido-runner --release --no-default-features -F sp1 -- --programs "{{ programs }}"
+    SP1_PROVER=light cargo run -p zkaleido-runner --release --no-default-features -F sp1 -- --programs "{{ programs }}"
 
 # Generate Risc0 proof report for given programs
 [group('prover')]

@@ -184,15 +184,26 @@ pub struct ProofMetadata {
     program_id: ProgramId,
     /// Version string of the ZKVM
     version: String,
+    /// The proof variant produced by the prover.
+    ///
+    /// Adapters use this on the decode path to dispatch between encodings (e.g. on-chain raw
+    /// bytes for Groth16 vs. bincode-serialized inner proofs for Core/Compressed).
+    proof_type: ProofType,
 }
 
 impl ProofMetadata {
     /// Creates new proof metadata.
-    pub fn new(zkvm: ZkVm, program_id: ProgramId, version: impl Into<String>) -> Self {
+    pub fn new(
+        zkvm: ZkVm,
+        program_id: ProgramId,
+        version: impl Into<String>,
+        proof_type: ProofType,
+    ) -> Self {
         Self {
             zkvm,
             program_id,
             version: version.into(),
+            proof_type,
         }
     }
 
@@ -209,6 +220,11 @@ impl ProofMetadata {
     /// Returns the version string of the proving system.
     pub fn version(&self) -> &str {
         &self.version
+    }
+
+    /// Returns the proof variant produced by the prover.
+    pub fn proof_type(&self) -> ProofType {
+        self.proof_type
     }
 }
 
@@ -243,15 +259,16 @@ impl ProofReceiptWithMetadata {
     /// Encodes the receipt into a binary format.
     ///
     /// Layout: `[proof_len: u64 LE][proof][pv_len: u64 LE][public_values][zkvm: u8][ver_len: u64
-    /// LE][version][program_id: 32 bytes]`
+    /// LE][version][program_id: 32 bytes][proof_type: u8]`
     pub fn encode(&self) -> Vec<u8> {
         let proof = self.receipt.proof.as_bytes();
         let pv = self.receipt.public_values.as_bytes();
         let zkvm_tag = self.metadata.zkvm as u8;
         let version = self.metadata.version().as_bytes();
         let program_id = &self.metadata.program_id.0;
+        let proof_type_tag = self.metadata.proof_type as u8;
 
-        let capacity = 8 + proof.len() + 8 + pv.len() + 1 + 8 + version.len() + 32;
+        let capacity = 8 + proof.len() + 8 + pv.len() + 1 + 8 + version.len() + 32 + 1;
         let mut buf = Vec::with_capacity(capacity);
 
         buf.extend_from_slice(&(proof.len() as u64).to_le_bytes());
@@ -262,6 +279,7 @@ impl ProofReceiptWithMetadata {
         buf.extend_from_slice(&(version.len() as u64).to_le_bytes());
         buf.extend_from_slice(version);
         buf.extend_from_slice(program_id);
+        buf.push(proof_type_tag);
 
         buf
     }
@@ -284,13 +302,12 @@ impl ProofReceiptWithMetadata {
         data = rest;
         let version_bytes = read_bytes(&mut data)?;
 
-        let program_id = if data.len() >= 32 {
-            let (pid_bytes, rest) = data.split_at(32);
-            data = rest;
-            ProgramId(pid_bytes.try_into().unwrap())
-        } else {
-            ProgramId::default()
-        };
+        let (pid_bytes, rest) = data.split_at_checked(32).ok_or_else(err)?;
+        let program_id = ProgramId(pid_bytes.try_into().unwrap());
+        data = rest;
+
+        let (&proof_type_tag, rest) = data.split_first().ok_or_else(err)?;
+        data = rest;
 
         // Silence unused-variable warning; all data should be consumed.
         let _ = data;
@@ -305,6 +322,7 @@ impl ProofReceiptWithMetadata {
                 program_id,
                 version: String::from_utf8(version_bytes)
                     .map_err(|e| ZkVmError::Other(format!("invalid utf-8 in version: {e}")))?,
+                proof_type: ProofType::try_from(proof_type_tag)?,
             },
         })
     }
@@ -363,17 +381,33 @@ impl AggregationInput {
 }
 
 /// Enumeration of proof types supported by the system.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
+#[cfg_attr(feature = "borsh", borsh(use_discriminant = true))]
 #[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
+#[repr(u8)]
 pub enum ProofType {
-    /// Represents a Groth16 proof.
-    Groth16,
     /// Represents a core proof.
-    Core,
+    #[default]
+    Core = 0,
     /// Represents a compressed proof.
-    Compressed,
+    Compressed = 1,
+    /// Represents a Groth16 proof.
+    Groth16 = 2,
+}
+
+impl TryFrom<u8> for ProofType {
+    type Error = ZkVmError;
+
+    fn try_from(tag: u8) -> ZkVmResult<Self> {
+        match tag {
+            0 => Ok(ProofType::Core),
+            1 => Ok(ProofType::Compressed),
+            2 => Ok(ProofType::Groth16),
+            _ => Err(ZkVmError::Other(format!("unknown proof type tag: {tag}"))),
+        }
+    }
 }
 
 #[cfg(test)]
@@ -386,6 +420,14 @@ mod tests {
         prop_oneof![Just(ZkVm::Native), Just(ZkVm::SP1), Just(ZkVm::Risc0),]
     }
 
+    fn arb_proof_type() -> impl Strategy<Value = ProofType> {
+        prop_oneof![
+            Just(ProofType::Core),
+            Just(ProofType::Compressed),
+            Just(ProofType::Groth16),
+        ]
+    }
+
     fn arb_proof_receipt_with_metadata() -> impl Strategy<Value = ProofReceiptWithMetadata> {
         (
             any::<Vec<u8>>(),
@@ -393,11 +435,12 @@ mod tests {
             arb_zkvm(),
             "[a-zA-Z0-9.]{1,20}",
             any::<[u8; 32]>(),
+            arb_proof_type(),
         )
-            .prop_map(|(proof, pv, zkvm, version, pid)| {
+            .prop_map(|(proof, pv, zkvm, version, pid, proof_type)| {
                 ProofReceiptWithMetadata::new(
                     ProofReceipt::new(Proof::new(proof), PublicValues::new(pv)),
-                    ProofMetadata::new(zkvm, ProgramId(pid), version),
+                    ProofMetadata::new(zkvm, ProgramId(pid), version, proof_type),
                 )
             })
     }

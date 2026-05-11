@@ -5,12 +5,12 @@ use async_trait::async_trait;
 
 #[cfg(feature = "remote-prover")]
 use crate::ZkVmRemoteHost;
+use crate::{
+    ExecutionSummary, ProofReceiptWithMetadata, ProofType, PublicValues, ZkVmInputResult,
+    ZkVmResult, host::ZkVmHost, input::ZkVmInputBuilder,
+};
 #[cfg(feature = "perf")]
 use crate::{PerformanceReport, ZkVmHostPerf};
-use crate::{
-    ProofReceiptWithMetadata, ProofType, PublicValues, ZkVmInputResult, ZkVmResult, host::ZkVmHost,
-    input::ZkVmInputBuilder,
-};
 
 /// A trait representing a "program" whose zero-knowledge proofs can be produced using a ZkVM.
 ///
@@ -79,8 +79,11 @@ pub trait ZkVmProgram {
         Self::prepare_input::<H::Input<'a>>(input)
     }
 
-    /// Executes the computation using any zkVM host to get the output.
-    fn execute<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<Self::Output>
+    /// Executes the computation using any zkVM host and returns the [`ExecutionSummary`].
+    ///
+    /// The summary contains the public values, cycle count, and optional gas usage. The output
+    /// is validated against [`Self::Output`] before returning.
+    fn execute<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<ExecutionSummary>
     where
         H: ZkVmHost,
         H::Input<'a>: ZkVmInputBuilder<'a>,
@@ -91,8 +94,10 @@ pub trait ZkVmProgram {
         // Use the host to execute.
         let execution_result = host.execute(zkvm_input)?;
 
-        // Process output to see if we are getting the expected type.
-        Self::process_output::<H>(execution_result.public_values())
+        // Validate that the public values parse as the expected output type.
+        Self::process_output::<H>(execution_result.public_values())?;
+
+        Ok(execution_result)
     }
 
     /// Proves the computation using any zkVM host.

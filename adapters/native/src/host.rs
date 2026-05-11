@@ -136,7 +136,7 @@ impl ZkVmProver for NativeHost {
     fn prove_inner<'a>(
         &self,
         native_machine: NativeMachine,
-        _proof_type: ProofType,
+        proof_type: ProofType,
     ) -> ZkVmResult<NativeProofReceipt> {
         let execution_result = self.execute(native_machine)?;
         let public_values = execution_result.into_public_values();
@@ -147,7 +147,12 @@ impl ZkVmProver for NativeHost {
         let receipt = ProofReceipt::new(proof, public_values);
 
         let version: &str = env!("CARGO_PKG_VERSION");
-        let metadata = ProofMetadata::new(ZkVm::Native, ProgramId([0u8; 32]), version.to_string());
+        let metadata = ProofMetadata::new(
+            ZkVm::Native,
+            ProgramId([0u8; 32]),
+            version.to_string(),
+            proof_type,
+        );
 
         let receipt = ProofReceiptWithMetadata::new(receipt, metadata);
         Ok(receipt.try_into()?)
