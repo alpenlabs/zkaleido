@@ -46,7 +46,7 @@ mod tests {
     use crate::process_schnorr_sig_verify;
 
     fn get_native_host() -> NativeHost {
-        NativeHost::new(process_schnorr_sig_verify)
+        NativeHost::new_with_random_key(process_schnorr_sig_verify)
     }
 
     #[test]

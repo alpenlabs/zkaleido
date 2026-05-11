@@ -44,7 +44,7 @@ pub mod tests {
     use crate::{process_fibonacci, program::FibProgram};
 
     pub fn get_native_host() -> NativeHost {
-        NativeHost::new(process_fibonacci)
+        NativeHost::new_with_random_key(process_fibonacci)
     }
 
     #[test]

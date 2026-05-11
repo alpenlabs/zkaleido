@@ -39,7 +39,7 @@ mod tests {
     use crate::{process_sha2_chain, program::ShaChainProgram};
 
     fn get_native_host() -> NativeHost {
-        NativeHost::new(process_sha2_chain)
+        NativeHost::new_with_random_key(process_sha2_chain)
     }
 
     #[test]
