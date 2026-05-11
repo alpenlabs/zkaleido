@@ -43,7 +43,7 @@ mod tests {
     };
 
     fn get_native_host() -> NativeHost {
-        NativeHost::new(process_groth16_verify_sp1)
+        NativeHost::new_with_random_key(process_groth16_verify_sp1)
     }
 
     #[test]

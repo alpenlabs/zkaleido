@@ -42,40 +42,63 @@ pub struct NativeHost {
 }
 
 impl NativeHost {
-    /// Creates a new [`NativeHost`] with the given proof processing function.
+    /// Creates a new [`NativeHost`] from the given signing key and an infallible processing
+    /// function.
     ///
-    /// Generates a fresh Schnorr signing key pair to sign and verify proof outputs,
-    /// providing authenticity guarantees for native execution.
-    ///
-    /// This method accepts infallible functions that return `()`. For functions that
-    /// may fail and return `ZkVmResult<()>`, use [`new_fallible`](Self::new_fallible) instead.
-    pub fn new<F>(process_fn: F) -> Self
+    /// Pass the signing key when you need the verifying key to stay stable across restarts.
+    /// For a fallible processing function, use [`new_fallible`](Self::new_fallible); to let the
+    /// host pick a key for you, use [`new_with_random_key`](Self::new_with_random_key).
+    pub fn new<F>(signing_key: SigningKey, process_fn: F) -> Self
     where
         F: Fn(&NativeMachine) + Send + Sync + 'static,
     {
-        let schnorr_key = SigningKey::random(&mut OsRng);
-        Self {
-            process_fn: Arc::new(Box::new(move |zkvm: &NativeMachine| -> ZkVmResult<()> {
-                process_fn(zkvm);
-                Ok(())
-            })),
-            schnorr_key,
-        }
+        Self::new_fallible(signing_key, move |zkvm: &NativeMachine| -> ZkVmResult<()> {
+            process_fn(zkvm);
+            Ok(())
+        })
     }
 
-    /// Creates a new [`NativeHost`] with a fallible proof processing function.
+    /// Creates a new [`NativeHost`] from the given signing key and a fallible processing
+    /// function.
     ///
-    /// Use this method when your processing function may fail and returns `ZkVmResult<()>`.
-    /// For infallible functions that return `()`, use [`new`](Self::new) instead.
-    pub fn new_fallible<F>(process_fn: F) -> Self
+    /// Pass the signing key when you need the verifying key to stay stable across restarts.
+    /// For an infallible processing function, use [`new`](Self::new); to let the host pick a
+    /// key for you, use [`new_fallible_with_random_key`](Self::new_fallible_with_random_key).
+    pub fn new_fallible<F>(signing_key: SigningKey, process_fn: F) -> Self
     where
         F: Fn(&NativeMachine) -> ZkVmResult<()> + Send + Sync + 'static,
     {
-        let schnorr_key = SigningKey::random(&mut OsRng);
         Self {
             process_fn: Arc::new(Box::new(process_fn)),
-            schnorr_key,
+            schnorr_key: signing_key,
         }
+    }
+
+    /// Creates a new [`NativeHost`] with a freshly generated Schnorr signing key.
+    ///
+    /// Handy for tests or short-lived hosts where a stable verifying key is not required.
+    /// For a fallible processing function, use
+    /// [`new_fallible_with_random_key`](Self::new_fallible_with_random_key); to supply your own
+    /// key, use [`new`](Self::new).
+    pub fn new_with_random_key<F>(process_fn: F) -> Self
+    where
+        F: Fn(&NativeMachine) + Send + Sync + 'static,
+    {
+        Self::new(SigningKey::random(&mut OsRng), process_fn)
+    }
+
+    /// Creates a new [`NativeHost`] with a freshly generated Schnorr signing key and a fallible
+    /// processing function.
+    ///
+    /// Handy for tests or short-lived hosts where a stable verifying key is not required.
+    /// For an infallible processing function, use
+    /// [`new_with_random_key`](Self::new_with_random_key); to supply your own key, use
+    /// [`new_fallible`](Self::new_fallible).
+    pub fn new_fallible_with_random_key<F>(process_fn: F) -> Self
+    where
+        F: Fn(&NativeMachine) -> ZkVmResult<()> + Send + Sync + 'static,
+    {
+        Self::new_fallible(SigningKey::random(&mut OsRng), process_fn)
     }
 }
 
