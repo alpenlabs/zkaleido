@@ -14,7 +14,8 @@ const DEFAULT_NETWORK_POLL_INTERVAL: Duration = Duration::from_secs(1);
 pub struct SP1HostConfig {
     /// Fulfillment strategy used for the network prover. Falls back to
     /// `SP1_PROOF_STRATEGY` in [`from_env`](Self::from_env), defaulting to
-    /// [`FulfillmentStrategy::Auction`].
+    /// [`FulfillmentStrategy::Auction`] when unset. An unparsable value
+    /// panics — silently routing to the wrong cluster would be worse.
     pub proof_strategy: FulfillmentStrategy,
     /// Deadline forwarded to network proof requests. `None` defers to the SP1
     /// SDK's own default (auto-derived from the gas limit). Falls back to
@@ -31,12 +32,20 @@ impl SP1HostConfig {
     /// Builds a config with env-driven fallbacks: `SP1_PROOF_STRATEGY`
     /// (defaults to `Auction`), `SP1_NETWORK_POLL_ENV_MS` (milliseconds,
     /// defaults to 1 second), and `SP1_DEADLINE_ENV_MS` (milliseconds,
-    /// defaults to `None`). Unparsable values fall back to the defaults.
+    /// defaults to `None`). Unparsable numeric values fall back to the
+    /// defaults; an unparsable `SP1_PROOF_STRATEGY` panics.
     pub fn from_env() -> Self {
-        let proof_strategy = var("SP1_PROOF_STRATEGY")
-            .ok()
-            .and_then(|s| FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()))
-            .unwrap_or(FulfillmentStrategy::Auction);
+        let proof_strategy = match var("SP1_PROOF_STRATEGY") {
+            Ok(s) => {
+                FulfillmentStrategy::from_str_name(&s.to_ascii_uppercase()).unwrap_or_else(|| {
+                    panic!(
+                        "SP1_PROOF_STRATEGY={s:?} is not a valid FulfillmentStrategy \
+                         (expected one of: auction, hosted, reserved)"
+                    )
+                })
+            }
+            Err(_) => FulfillmentStrategy::Auction,
+        };
 
         let deadline = var("SP1_DEADLINE_ENV_MS")
             .ok()
