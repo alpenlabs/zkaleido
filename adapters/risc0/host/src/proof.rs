@@ -52,6 +52,7 @@ impl TryFrom<&ProofReceiptWithMetadata> for Risc0ProofReceipt {
             })?
         }
 
+        // TODO(STR-3415): Fix Risc0 Groth16 proof round-trip with ../groth16-verifier crate
         let journal = value.receipt().public_values().as_bytes().to_vec();
         let inner: InnerReceipt = bincode::deserialize(value.receipt().proof().as_bytes())
             .map_err(|e| ZkVmProofError::DataFormat(DataFormatError::Serde(e.to_string())))?;
