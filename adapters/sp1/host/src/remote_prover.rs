@@ -12,8 +12,8 @@ use sp1_sdk::{
     },
 };
 use zkaleido::{
-    ProofReceiptWithMetadata, ProofType, RemoteProofStatus, ZkVmError, ZkVmExecutor,
-    ZkVmInputBuilder, ZkVmRemoteProver, ZkVmResult,
+    ProofReceiptWithMetadata, ProofType, RemoteProofFailureReason, RemoteProofStatus, ZkVmError,
+    ZkVmExecutor, ZkVmInputBuilder, ZkVmRemoteProver, ZkVmResult,
 };
 
 use crate::{SP1Host, proof::SP1ProofReceipt, prover::to_sp1_mode};
@@ -131,7 +131,7 @@ fn convert_proof_status(response: GetProofRequestStatusResponse) -> RemoteProofS
         .unwrap_or(ExecutionStatus::UnspecifiedExecutionStatus);
 
     if execution_status == ExecutionStatus::Unexecutable {
-        return RemoteProofStatus::Failed("unexecutable".to_string());
+        return RemoteProofStatus::Failed(RemoteProofFailureReason::Unexecutable);
     }
 
     let fulfillment_status = FulfillmentStatus::try_from(response.fulfillment_status())
@@ -141,11 +141,15 @@ fn convert_proof_status(response: GetProofRequestStatusResponse) -> RemoteProofS
         FulfillmentStatus::Requested => RemoteProofStatus::Requested,
         FulfillmentStatus::Assigned => RemoteProofStatus::InProgress,
         FulfillmentStatus::Fulfilled => RemoteProofStatus::Completed,
-        FulfillmentStatus::Unfulfillable => RemoteProofStatus::Failed("unfulfillable".to_string()),
-        FulfillmentStatus::Reverted => RemoteProofStatus::Failed("reverted".to_string()),
-        FulfillmentStatus::Expired => RemoteProofStatus::Failed("expired".to_string()),
-        // TODO: figure out when this is triggered
-        // Is this what happens when we request proof request for id that isn't valid?
-        FulfillmentStatus::UnspecifiedFulfillmentStatus => RemoteProofStatus::Unknown,
+        FulfillmentStatus::Unfulfillable => {
+            RemoteProofStatus::Failed(RemoteProofFailureReason::Unfulfillable)
+        }
+        FulfillmentStatus::Reverted => {
+            RemoteProofStatus::Failed(RemoteProofFailureReason::Reverted)
+        }
+        FulfillmentStatus::Expired => RemoteProofStatus::Failed(RemoteProofFailureReason::Expired),
+        FulfillmentStatus::UnspecifiedFulfillmentStatus => RemoteProofStatus::Failed(
+            RemoteProofFailureReason::Other("unspecified fulfillment status".to_string()),
+        ),
     }
 }

@@ -96,12 +96,7 @@ impl SP1Host {
             match self.get_status(&id).await? {
                 RemoteProofStatus::Completed => break,
                 RemoteProofStatus::Failed(reason) => {
-                    return Err(ZkVmError::ProofGenerationError(reason));
-                }
-                RemoteProofStatus::Unknown => {
-                    return Err(ZkVmError::ProofGenerationError(
-                        "network returned unknown proof status".to_string(),
-                    ));
+                    return Err(ZkVmError::ProofGenerationError(reason.to_string()));
                 }
                 RemoteProofStatus::Requested | RemoteProofStatus::InProgress => {
                     sleep(self.config.network_poll_interval).await;

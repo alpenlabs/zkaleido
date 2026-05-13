@@ -25,9 +25,45 @@ pub enum RemoteProofStatus {
     /// The proof has been generated and is ready for retrieval.
     Completed,
     /// The proof generation failed.
-    Failed(String),
-    /// The status could not be determined.
-    Unknown,
+    Failed(RemoteProofFailureReason),
+}
+
+/// Categorized reason a remote proof request failed.
+///
+/// Backends may surface failures with finer-grained semantics than a single
+/// "failed" state. Callers can branch on these variants to decide whether a
+/// failure is worth retrying (e.g. [`Expired`](Self::Expired)) versus terminal
+/// (e.g. [`Unexecutable`](Self::Unexecutable)).
+#[derive(Debug, Clone, PartialEq, Eq)]
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
+#[cfg_attr(feature = "arbitrary", derive(Arbitrary))]
+pub enum RemoteProofFailureReason {
+    /// The program could not be executed (e.g. it panicked or hit an
+    /// unreachable state). Not retryable — the program itself is at fault.
+    Unexecutable,
+    /// The backend declined to fulfill the request (no available prover,
+    /// policy rejection, insufficient capacity, etc.).
+    Unfulfillable,
+    /// The request was reverted by the backend after acceptance.
+    Reverted,
+    /// The request expired before a prover fulfilled it. Typically retryable
+    /// by resubmitting.
+    Expired,
+    /// An uncategorized failure with a backend-provided description.
+    Other(String),
+}
+
+impl Display for RemoteProofFailureReason {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Unexecutable => f.write_str("unexecutable"),
+            Self::Unfulfillable => f.write_str("unfulfillable"),
+            Self::Reverted => f.write_str("reverted"),
+            Self::Expired => f.write_str("expired"),
+            Self::Other(msg) => f.write_str(msg),
+        }
+    }
 }
 
 /// A trait implemented by the prover of a zkVM program.
