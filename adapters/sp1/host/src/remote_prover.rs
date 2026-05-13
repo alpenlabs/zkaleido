@@ -142,6 +142,8 @@ fn convert_proof_status(response: GetProofRequestStatusResponse) -> RemoteProofS
         FulfillmentStatus::Assigned => RemoteProofStatus::InProgress,
         FulfillmentStatus::Fulfilled => RemoteProofStatus::Completed,
         FulfillmentStatus::Unfulfillable => RemoteProofStatus::Failed("unfulfillable".to_string()),
+        FulfillmentStatus::Reverted => RemoteProofStatus::Failed("reverted".to_string()),
+        FulfillmentStatus::Expired => RemoteProofStatus::Failed("expired".to_string()),
         // TODO: figure out when this is triggered
         // Is this what happens when we request proof request for id that isn't valid?
         FulfillmentStatus::UnspecifiedFulfillmentStatus => RemoteProofStatus::Unknown,
