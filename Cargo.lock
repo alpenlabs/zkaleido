@@ -10015,7 +10015,7 @@ dependencies = [
  "proptest",
  "serde",
  "ssz",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
 ]
 
 [[package]]
@@ -10058,7 +10058,7 @@ dependencies = [
  "risc0-zkvm",
  "serde",
  "sha2",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "zkaleido",
 ]
 
@@ -10132,7 +10132,7 @@ dependencies = [
  "sha2",
  "sp1-verifier",
  "substrate-bn",
- "thiserror 1.0.69",
+ "thiserror 2.0.18",
  "zkaleido",
 ]
 

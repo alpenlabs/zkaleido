@@ -71,6 +71,6 @@ proptest = "1"
 rand_core = "0.6"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.10"
-thiserror = "1.0"
+thiserror = "2.0"
 tokio = { version = "1", default-features = false }
 tracing = "0.1"
