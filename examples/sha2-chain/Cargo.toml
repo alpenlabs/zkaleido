@@ -6,4 +6,4 @@ edition = "2024"
 [dependencies]
 zkaleido = { path = "../../zkaleido" }
 zkaleido-native-adapter = { path = "../../adapters/native" }
-sha2 = "0.10"
+sha2 = "0.11"
