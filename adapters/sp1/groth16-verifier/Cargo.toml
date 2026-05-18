@@ -12,7 +12,7 @@ serde = ["dep:hex", "dep:serde"]
 borsh = ["dep:borsh"]
 
 [dependencies]
-blake3 = { version = "1.6.1", default-features = false }
+blake3 = { version = "1.8.5", default-features = false }
 bn = { version = "0.6.0", package = "substrate-bn" }
 borsh = { workspace = true, optional = true }
 hex = { workspace = true, optional = true }
@@ -22,7 +22,7 @@ thiserror.workspace = true
 zkaleido.workspace = true
 
 [dev-dependencies]
-serde_json = "1.0.140"
+serde_json = "1.0.149"
 bincode.workspace = true
 rand = "0.8.3"
 sp1-verifier.workspace = true
