@@ -68,7 +68,7 @@ hex = { version = "0.4", features = ["serde"] }
 k256 = { version = "0.13.4", features = ["schnorr"] }
 num-bigint = { version = "0.4", default-features = false }
 proptest = "1"
-rand_core = "0.6"
+rand_core = "0.9"
 serde = { version = "1.0", features = ["derive"] }
 sha2 = "0.10"
 thiserror = "1.0"
