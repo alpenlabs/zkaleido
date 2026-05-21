@@ -3,6 +3,7 @@ use std::{
     future::{Future, IntoFuture},
 };
 
+use sp1_core_executor::ExecutionReport;
 use sp1_sdk::{HashableKey, ProveRequest, Prover, ProvingKey, SP1ProofMode, env::EnvProver};
 use tokio::{
     runtime::{Handle, Runtime},
@@ -25,6 +26,8 @@ impl ZkVmExecutor for SP1Host {
         let elf = self.proving_key.elf().clone();
         let (output, report) = block_on_async(self.client.execute(elf, prover_input).into_future())
             .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
+
+        ensure_clean_exit(&report)?;
 
         let public_values = PublicValues::new(output.to_vec());
 
@@ -64,6 +67,12 @@ impl ZkVmProver for SP1Host {
         if matches!(self.client, EnvProver::Network(_)) {
             return block_on_async(self.prove_via_network(prover_input, proof_type));
         }
+
+        // Pre-flight: the local CPU prover would happily produce a proof
+        // whose public values carry exit_code=1 (verifiable as panicked
+        // by a downstream verifier). Fail fast with the same honest
+        // ExecutionError the network path produces.
+        <Self as ZkVmExecutor>::execute(self, prover_input.clone())?;
 
         let mode = to_sp1_mode(proof_type);
         let proof_info = block_on_async(async {
@@ -140,5 +149,56 @@ where
             let rt = Runtime::new().expect("failed to build tokio runtime for sp1 prove");
             rt.block_on(future)
         }
+    }
+}
+
+/// Converts an [`ExecutionReport`] with a non-zero `exit_code` into
+/// [`ZkVmError::ExecutionError`].
+///
+/// The SP1 executor returns `Ok((pv, report))` even when the guest halted
+/// with a non-zero exit code (panic). Without this check, a panicking
+/// guest looks like a successful simulation — and the SDK's network
+/// simulation path makes the same mistake, which is how a request the
+/// guest will panic on can reach the network. SP1's
+/// `SP1Context::expected_exit_code` does not help: that field is only
+/// consulted by the verifier, never by the executor.
+///
+/// The cycle count is included in the message so operators can correlate
+/// against the `panicked at ...` line the guest's panic handler prints
+/// to stderr — the panic string itself isn't carried in
+/// [`ExecutionReport`] (no panic-message field exists in SP1 6.2).
+fn ensure_clean_exit(report: &ExecutionReport) -> ZkVmResult<()> {
+    if report.exit_code != 0 {
+        return Err(ZkVmError::ExecutionError(format!(
+            "guest exited with non-zero exit code {} after {} instructions",
+            report.exit_code,
+            report.total_instruction_count(),
+        )));
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn ensure_clean_exit_rejects_non_zero_exit_code() {
+        let mut report = ExecutionReport::default();
+        report.exit_code = 1;
+        let err = ensure_clean_exit(&report).expect_err("non-zero exit must error");
+        match err {
+            ZkVmError::ExecutionError(msg) => {
+                assert!(msg.contains("exit code 1"), "got: {msg}");
+                assert!(msg.contains("instructions"), "got: {msg}");
+            }
+            other => panic!("expected ExecutionError, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn ensure_clean_exit_accepts_success() {
+        // Default ExecutionReport has exit_code = 0.
+        assert!(ensure_clean_exit(&ExecutionReport::default()).is_ok());
     }
 }

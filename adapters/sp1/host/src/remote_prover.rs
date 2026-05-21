@@ -62,10 +62,28 @@ impl ZkVmRemoteProver for SP1Host {
             _ => unreachable!("we validate that the client is network above"),
         };
 
+        // Pre-flight: run an honest local execute. Without this, the SDK's
+        // simulation inside `.request().await` would happily submit a
+        // request whose guest panics — the SDK's simulation doesn't
+        // enforce exit_code. We then pass the resulting cycle/gas to the
+        // network builder with `.skip_simulation(true)` so the SDK does
+        // not re-run the executor on the same input. Net cost: one
+        // simulation per submission, ours, which fails fast on panic.
+        let summary = <Self as ZkVmExecutor>::execute(self, input.clone())?;
+        // Mirrors `sp1_sdk::network::DEFAULT_GAS_LIMIT` (pub(crate) so we
+        // cannot import it). The SDK uses the same fallback when its own
+        // simulation returns a report with `gas = None`.
+        const DEFAULT_GAS_LIMIT: u64 = 1_000_000_000;
+        let cycle_limit = summary.cycles();
+        let gas_limit = summary.gas().unwrap_or(DEFAULT_GAS_LIMIT);
+
         let mut builder = client
             .prove(pk, input)
             .strategy(self.config.proof_strategy)
-            .mode(to_sp1_mode(proof_type));
+            .mode(to_sp1_mode(proof_type))
+            .skip_simulation(true)
+            .cycle_limit(cycle_limit)
+            .gas_limit(gas_limit);
         if let Some(deadline) = self.config.deadline {
             builder = builder.timeout(deadline);
         }
