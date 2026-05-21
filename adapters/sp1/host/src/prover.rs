@@ -167,7 +167,7 @@ where
 /// against the `panicked at ...` line the guest's panic handler prints
 /// to stderr — the panic string itself isn't carried in
 /// [`ExecutionReport`] (no panic-message field exists in SP1 6.2).
-fn ensure_clean_exit(report: &ExecutionReport) -> ZkVmResult<()> {
+pub(crate) fn ensure_clean_exit(report: &ExecutionReport) -> ZkVmResult<()> {
     if report.exit_code != 0 {
         return Err(ZkVmError::ExecutionError(format!(
             "guest exited with non-zero exit code {} after {} instructions",
