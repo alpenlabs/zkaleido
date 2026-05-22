@@ -1,7 +1,7 @@
-use std::fmt;
+use std::{fmt, future::IntoFuture};
 
 use sp1_sdk::{
-    NetworkProver, ProveRequest, Prover,
+    NetworkProver, ProveRequest, Prover, ProvingKey,
     env::{EnvProver, EnvProvingKey},
     network::{
         B256, Error as NetworkError,
@@ -16,7 +16,11 @@ use zkaleido::{
     ZkVmExecutor, ZkVmInputBuilder, ZkVmRemoteProver, ZkVmResult,
 };
 
-use crate::{SP1Host, proof::SP1ProofReceipt, prover::to_sp1_mode};
+use crate::{
+    SP1Host,
+    proof::SP1ProofReceipt,
+    prover::{ensure_clean_exit, to_sp1_mode},
+};
 
 /// A typed proof identifier for the SP1 network prover.
 ///
@@ -62,10 +66,44 @@ impl ZkVmRemoteProver for SP1Host {
             _ => unreachable!("we validate that the client is network above"),
         };
 
+        // Pre-flight: run an honest local execute. Without this, the SDK's
+        // simulation inside `.request().await` would happily submit a
+        // request whose guest panics — the SDK's simulation doesn't
+        // enforce exit_code. We then pass the resulting cycle/gas to the
+        // network builder with `.skip_simulation(true)` so the SDK does
+        // not re-run the executor on the same input. Net cost: one
+        // simulation per submission, ours, which fails fast on panic.
+        //
+        // We drive SP1's async executor directly with `.await` instead of
+        // calling [`ZkVmExecutor::execute`] (the sync trait method).
+        // The sync path routes through [`crate::prover::block_on_async`],
+        // which uses [`tokio::task::block_in_place`] (thus making its
+        // usage in async context here error-prone and tokio runtime
+        // dependent).
+        let elf = self.proving_key.elf().clone();
+        let (_, report) = self
+            .client
+            .execute(elf, input.clone())
+            .into_future()
+            .await
+            .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
+        if self.config.require_success {
+            ensure_clean_exit(&report)?;
+        }
+        // Mirrors `sp1_sdk::network::DEFAULT_GAS_LIMIT` (pub(crate) so we
+        // cannot import it). The SDK uses the same fallback when its own
+        // simulation returns a report with `gas = None`.
+        const DEFAULT_GAS_LIMIT: u64 = 1_000_000_000;
+        let cycle_limit = report.total_instruction_count();
+        let gas_limit = report.gas().unwrap_or(DEFAULT_GAS_LIMIT);
+
         let mut builder = client
             .prove(pk, input)
             .strategy(self.config.proof_strategy)
-            .mode(to_sp1_mode(proof_type));
+            .mode(to_sp1_mode(proof_type))
+            .skip_simulation(true)
+            .cycle_limit(cycle_limit)
+            .gas_limit(gas_limit);
         if let Some(deadline) = self.config.deadline {
             builder = builder.timeout(deadline);
         }

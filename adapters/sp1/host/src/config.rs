@@ -26,6 +26,22 @@ pub struct SP1HostConfig {
     /// Falls back to `SP1_NETWORK_POLL_ENV_MS` (milliseconds) in
     /// [`from_env`](Self::from_env), defaulting to 1 second.
     pub network_poll_interval: Duration,
+    /// When `true`, [`crate::SP1Host`]'s execute path and the pre-flight
+    /// inside its start_proving / prove_inner paths reject guests that
+    /// halted with a non-zero `report.exit_code` (panicked), returning
+    /// [`zkaleido::ZkVmError::ExecutionError`]. Mirrors `require_success`
+    /// on `SP1Groth16Verifier` in the `zkaleido-sp1-groth16-verifier`
+    /// crate.
+    ///
+    /// The SP1 executor and the SDK's network simulation both accept a
+    /// non-zero exit code as a successful run, so without this gate the
+    /// host would silently submit network requests the guest is going to
+    /// panic on. Defaults to `true`; set to `false` to opt back into the
+    /// permissive behavior (e.g. testing a guest's panic path end-to-end).
+    /// Falls back to `SP1_REQUIRE_SUCCESS` (`true` / `false`,
+    /// case-insensitive) in [`from_env`](Self::from_env); unparsable
+    /// values default to `true`.
+    pub require_success: bool,
 }
 
 impl SP1HostConfig {
@@ -58,10 +74,16 @@ impl SP1HostConfig {
             .map(Duration::from_millis)
             .unwrap_or(DEFAULT_NETWORK_POLL_INTERVAL);
 
+        let require_success = var("SP1_REQUIRE_SUCCESS")
+            .ok()
+            .and_then(|s| s.to_ascii_lowercase().parse::<bool>().ok())
+            .unwrap_or(true);
+
         Self {
             deadline,
             proof_strategy,
             network_poll_interval,
+            require_success,
         }
     }
 
@@ -80,6 +102,12 @@ impl SP1HostConfig {
     #[must_use]
     pub fn with_network_poll_interval(mut self, interval: Duration) -> Self {
         self.network_poll_interval = interval;
+        self
+    }
+
+    #[must_use]
+    pub fn with_require_success(mut self, require_success: bool) -> Self {
+        self.require_success = require_success;
         self
     }
 }
