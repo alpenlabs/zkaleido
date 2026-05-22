@@ -76,7 +76,7 @@ impl SP1HostConfig {
 
         let require_success = var("SP1_REQUIRE_SUCCESS")
             .ok()
-            .and_then(|s| s.parse::<bool>().ok())
+            .and_then(|s| s.to_ascii_lowercase().parse::<bool>().ok())
             .unwrap_or(true);
 
         Self {
