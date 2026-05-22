@@ -19,6 +19,10 @@
 //!   or unparsable defers to the SP1 SDK default (auto-derived from the gas limit).
 //! - `SP1_NETWORK_POLL_ENV_MS` — poll cadence for `get_status` on the synchronous network proving
 //!   path, in milliseconds. Defaults to `1000` (1 second) when unset or unparsable.
+//! - `SP1_REQUIRE_SUCCESS` — when `true` (default), the host's execute path and the pre-flight
+//!   inside its start_proving / prove_inner paths reject guests that halt with a non-zero
+//!   `report.exit_code` (panicked). Set to `false` to opt back into the SDK's permissive behavior
+//!   (e.g. testing a panic path end-to-end). Unparsable values default to `true`.
 //!
 //! Upstream SP1 envs such as `SP1_PROVER` (prover backend) and `ZKVM_MOCK`
 //! (mock mode) are read by the SP1 SDK itself and continue to apply; see

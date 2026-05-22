@@ -27,7 +27,9 @@ impl ZkVmExecutor for SP1Host {
         let (output, report) = block_on_async(self.client.execute(elf, prover_input).into_future())
             .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
 
-        ensure_clean_exit(&report)?;
+        if self.config.require_success {
+            ensure_clean_exit(&report)?;
+        }
 
         let public_values = PublicValues::new(output.to_vec());
 

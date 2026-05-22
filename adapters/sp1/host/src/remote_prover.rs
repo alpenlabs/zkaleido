@@ -87,7 +87,9 @@ impl ZkVmRemoteProver for SP1Host {
             .into_future()
             .await
             .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
-        ensure_clean_exit(&report)?;
+        if self.config.require_success {
+            ensure_clean_exit(&report)?;
+        }
         // Mirrors `sp1_sdk::network::DEFAULT_GAS_LIMIT` (pub(crate) so we
         // cannot import it). The SDK uses the same fallback when its own
         // simulation returns a report with `gas = None`.
