@@ -165,7 +165,7 @@ impl SP1Groth16Verifier {
     ///    `SUCCESS_EXIT_CODE` when set, a `Groth16Error::MissingExitCode` when not. A missing
     ///    `proof_nonce` defaults to zero. `vk_root` is sourced from `self.vk_root` regardless of
     ///    whether the proof carried it.
-    /// 3. **Algebraic verification** via [`verify_sp1_groth16_algebraic`].
+    /// 3. **Algebraic verification** via the bare Groth16 pairing check.
     ///
     /// # HACK: SHA-256 / Blake3 retry
     /// SP1's Groth16 circuit accepts either SHA-256 or Blake3 for `hash(public_values)`, and
@@ -254,9 +254,8 @@ impl SP1Groth16Verifier {
     /// Serialize the verifier to its canonical, self-describing byte representation.
     ///
     /// Layout:
-    /// - bytes `0..V`:       uncompressed Groth16 verifying key (see
-    ///   [`Groth16VerifyingKey::to_uncompressed_bytes`]; `V` is determined by the `num_k` field
-    ///   embedded in the VK header)
+    /// - bytes `0..V`:       uncompressed Groth16 verifying key (`V` is determined by the `num_k`
+    ///   field embedded in the VK header)
     /// - bytes `V..V+4`:     `vk_hash_tag`
     /// - bytes `V+4..V+36`:  `vk_root`
     /// - byte  `V+36`:       `require_success` (`0x00` for `false`, `0x01` for `true`)
@@ -317,9 +316,9 @@ impl SP1Groth16Verifier {
     /// compressed VK encoding.
     ///
     /// Same layout as [`Self::to_uncompressed_bytes`], but the verifying key segment uses
-    /// [`Groth16VerifyingKey::to_gnark_bytes`] (with `num_k` embedded in the header at offset
-    /// [`GNARK_VK_COMPRESSED_NUM_K_OFFSET`]) so the trailer offset is still unambiguous without
-    /// an outer length prefix. The round-trip pair is [`Self::from_compressed_bytes`].
+    /// GNARK's compressed VK encoding (with `num_k` embedded in the header at the GNARK
+    /// `num_k` offset) so the trailer offset is still unambiguous without an outer length
+    /// prefix. The round-trip pair is [`Self::from_compressed_bytes`].
     pub fn to_compressed_bytes(&self) -> Vec<u8> {
         let vk_bytes = self.vk.to_gnark_bytes();
         let mut bytes = Vec::with_capacity(vk_bytes.len() + VERIFIER_TRAILER_SIZE);
@@ -390,8 +389,9 @@ impl SP1Groth16Verifier {
         match (compressed_matches, uncompressed_matches) {
             (true, false) => Self::from_compressed_bytes(bytes),
             (false, true) => Self::from_uncompressed_bytes(bytes),
-            (true, true) => Self::from_uncompressed_bytes(bytes)
-                .or_else(|_| Self::from_compressed_bytes(bytes)),
+            (true, true) => {
+                Self::from_uncompressed_bytes(bytes).or_else(|_| Self::from_compressed_bytes(bytes))
+            }
             (false, false) => Err(Sp1Groth16Error::Serialization(
                 InvalidProofFormatError {
                     actual: bytes.len(),

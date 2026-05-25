@@ -10,8 +10,8 @@
 //!
 //! # Public surface
 //!
-//! - [`SP1Groth16Verifier`] — the verifier itself, with `load` / `verify` / canonical
-//!   byte serialization (`to_compressed_bytes`, `to_uncompressed_bytes`, `parse`).
+//! - [`SP1Groth16Verifier`] — the verifier itself, with `load` / `verify` / canonical byte
+//!   serialization (`to_compressed_bytes`, `to_uncompressed_bytes`, `parse`).
 //! - [`Sp1Groth16Proof`] — parses the on-wire byte format into the optional prefix fields.
 //! - [`Sp1Groth16Error`] — error type returned by the inherent methods on the two types above.
 //!
