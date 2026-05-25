@@ -37,8 +37,11 @@ use crate::{
 /// [`SP1Groth16Verifier::verify`] only supply statement-specific inputs.
 #[derive(Clone, Debug)]
 pub struct SP1Groth16Verifier {
-    /// The (uncompressed) Groth16 verifying key for the SP1 circuit.
-    pub vk: Groth16VerifyingKey,
+    /// The (uncompressed) Groth16 verifying key for the SP1 circuit. Crate-private because
+    /// [`Groth16VerifyingKey`] is not part of this crate's public surface; downstream callers
+    /// interact with the verifier through [`Self::load`], [`Self::verify`], and the canonical
+    /// byte (de)serialization methods.
+    pub(crate) vk: Groth16VerifyingKey,
     /// First `VK_HASH_PREFIX_LENGTH` bytes of `Sha256(groth16_vk)`. SP1 prepends this as an
     /// advisory tag on emitted proofs; when the proof carries the tag, it must match.
     pub vk_hash_tag: [u8; VK_HASH_PREFIX_LENGTH],
@@ -462,11 +465,14 @@ mod tests {
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
     use crate::{
-        Groth16VerifyingKey, Sp1Groth16Proof,
+        Sp1Groth16Proof,
         error::{SerializationError, Sp1Groth16Error},
-        types::constant::{
-            GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE, SUCCESS_EXIT_CODE,
-            VK_HASH_PREFIX_LENGTH,
+        types::{
+            constant::{
+                GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE, SUCCESS_EXIT_CODE,
+                VK_HASH_PREFIX_LENGTH,
+            },
+            vk::Groth16VerifyingKey,
         },
         verifier::SP1Groth16Verifier,
     };
@@ -876,7 +882,7 @@ mod tests {
 mod v5_tests {
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
-    use crate::{SP1Groth16Verifier, VK_HASH_PREFIX_LENGTH};
+    use crate::{SP1Groth16Verifier, types::constant::VK_HASH_PREFIX_LENGTH};
 
     fn load_v5_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
         const SP1_V5_GROTH16_VK_BYTES: &[u8] =
