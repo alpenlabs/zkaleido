@@ -52,7 +52,7 @@ sha2-chain = { path = "examples/sha2-chain" }
 schnorr-sig-verify = { path = "examples/schnorr-sig-verify" }
 groth16-verify-sp1 = { path = "examples/groth16-verify-sp1" }
 
-ssz = { git = "https://github.com/alpenlabs/ssz-gen", tag = "v0.15.0" }
+ssz = { git = "https://github.com/alpenlabs/ssz-gen", tag = "v0.16.0" }
 
 sp1-core-executor = "6.2.0"
 sp1-sdk = "6.2.0"
