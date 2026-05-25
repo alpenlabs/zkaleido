@@ -376,16 +376,22 @@ impl SP1Groth16Verifier {
     /// length, and dispatches to the parser whose computed length matches the input buffer.
     /// If neither matches, an `InvalidProofFormatError` is returned without invoking either
     /// parser; if exactly one matches, that parser's error (if any) is the one surfaced — so
-    /// callers don't see a misleading "wrong format" error from the fallback. In the unlikely
-    /// event both candidate lengths match (only possible for atypical `num_k` values), the
-    /// compressed form is preferred.
+    /// callers don't see a misleading "wrong format" error from the fallback.
+    ///
+    /// In the rare case both candidate lengths happen to coincide (possible when the bytes
+    /// at one format's `num_k` offset accidentally satisfy the other format's length
+    /// equation), the uncompressed parser is tried first; if it fails, the compressed parser
+    /// is tried as a fallback so a buffer that is a valid encoding in *either* form always
+    /// parses.
     pub fn parse(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
         let compressed_matches = compressed_candidate_len(bytes) == Some(bytes.len());
         let uncompressed_matches = uncompressed_candidate_len(bytes) == Some(bytes.len());
 
         match (compressed_matches, uncompressed_matches) {
-            (true, _) => Self::from_compressed_bytes(bytes),
+            (true, false) => Self::from_compressed_bytes(bytes),
             (false, true) => Self::from_uncompressed_bytes(bytes),
+            (true, true) => Self::from_uncompressed_bytes(bytes)
+                .or_else(|_| Self::from_compressed_bytes(bytes)),
             (false, false) => Err(Sp1Groth16Error::Serialization(
                 InvalidProofFormatError {
                     actual: bytes.len(),
