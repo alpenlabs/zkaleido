@@ -406,6 +406,13 @@ impl SP1Groth16Verifier {
     /// Returns a `BufferLengthError` if `trailer` is not exactly [`VERIFIER_TRAILER_SIZE`]
     /// bytes. The two encoding parsers always pass a correctly-sized slice, but the check
     /// is kept rather than asserted so this routine cannot panic from a future caller bug.
+    ///
+    /// Also rejects a VK with zero K points: the algebraic verifier indexes `vk.g1.k[0]`
+    /// unconditionally, so an empty K basis would turn a malformed serialized verifier
+    /// into a runtime panic at `verify` time. `load` produces a folded VK whose K length
+    /// equals `raw_num_k - 1` and enforces `raw_num_k >= 2`, so any verifier obtained
+    /// through the supported constructors has at least one K point; we re-check it here
+    /// because the deserialization path accepts an arbitrary `num_k` from the encoding.
     fn assemble_with_trailer(
         vk: Groth16VerifyingKey,
         trailer: &[u8],
@@ -416,6 +423,17 @@ impl SP1Groth16Verifier {
                     context: "SP1 Groth16 verifier trailer",
                     expected: VERIFIER_TRAILER_SIZE,
                     actual: trailer.len(),
+                }
+                .into(),
+            ));
+        }
+
+        if vk.g1.k.is_empty() {
+            return Err(Sp1Groth16Error::Serialization(
+                BufferLengthError {
+                    context: "SP1 Groth16 verifier K points",
+                    expected: 1,
+                    actual: 0,
                 }
                 .into(),
             ));
@@ -470,13 +488,15 @@ mod tests {
     use sp1_verifier::{GROTH16_VK_BYTES, VK_ROOT_BYTES};
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
+    use super::{GROTH16_VK_UNCOMPRESSED_NUM_K_OFFSET, VERIFIER_TRAILER_SIZE};
     use crate::{
         Sp1Groth16Proof,
-        error::{SerializationError, Sp1Groth16Error},
+        error::{BufferLengthError, SerializationError, Sp1Groth16Error},
         types::{
             constant::{
-                GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE, SUCCESS_EXIT_CODE,
-                VK_HASH_PREFIX_LENGTH,
+                GNARK_VK_COMPRESSED_HEADER_SIZE, GNARK_VK_COMPRESSED_NUM_K_OFFSET,
+                GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE,
+                GROTH16_VK_UNCOMPRESSED_HEADER_SIZE, SUCCESS_EXIT_CODE, VK_HASH_PREFIX_LENGTH,
             },
             vk::Groth16VerifyingKey,
         },
@@ -829,6 +849,50 @@ mod tests {
         let mut tampered = bytes.clone();
         *tampered.last_mut().unwrap() = 2;
         assert!(SP1Groth16Verifier::from_compressed_bytes(&tampered).is_err());
+    }
+
+    /// A malicious payload with `num_k = 0` parses into a `Groth16VerifyingKey` with an empty
+    /// K basis. The algebraic verifier indexes `vk.g1.k[0]` unconditionally, so without an
+    /// explicit reject the malformed bytes would silently produce a verifier whose `verify`
+    /// call later panics.
+    ///
+    /// The payload is built from a valid serialized verifier (so the G1/G2 coordinates
+    /// decode) with only the `num_k` field overwritten and the K bytes dropped, ensuring
+    /// the failure must come from the empty-K check rather than from upstream length or
+    /// point validation.
+    #[test]
+    fn test_verifier_rejects_zero_k_num_k() {
+        let (verifier, _) = load_verifier_and_proof();
+
+        let uncompressed = verifier.to_uncompressed_bytes();
+        let mut tampered = uncompressed[..GROTH16_VK_UNCOMPRESSED_HEADER_SIZE].to_vec();
+        tampered[GROTH16_VK_UNCOMPRESSED_NUM_K_OFFSET..GROTH16_VK_UNCOMPRESSED_NUM_K_OFFSET + 4]
+            .copy_from_slice(&0u32.to_be_bytes());
+        tampered.extend_from_slice(&uncompressed[uncompressed.len() - VERIFIER_TRAILER_SIZE..]);
+        let err = SP1Groth16Verifier::from_uncompressed_bytes(&tampered).unwrap_err();
+        assert!(matches!(
+            err,
+            Sp1Groth16Error::Serialization(SerializationError::BufferLength(BufferLengthError {
+                context: "SP1 Groth16 verifier K points",
+                expected: 1,
+                actual: 0,
+            }))
+        ));
+
+        let compressed = verifier.to_compressed_bytes();
+        let mut tampered = compressed[..GNARK_VK_COMPRESSED_HEADER_SIZE].to_vec();
+        tampered[GNARK_VK_COMPRESSED_NUM_K_OFFSET..GNARK_VK_COMPRESSED_NUM_K_OFFSET + 4]
+            .copy_from_slice(&0u32.to_be_bytes());
+        tampered.extend_from_slice(&compressed[compressed.len() - VERIFIER_TRAILER_SIZE..]);
+        let err = SP1Groth16Verifier::from_compressed_bytes(&tampered).unwrap_err();
+        assert!(matches!(
+            err,
+            Sp1Groth16Error::Serialization(SerializationError::BufferLength(BufferLengthError {
+                context: "SP1 Groth16 verifier K points",
+                expected: 1,
+                actual: 0,
+            }))
+        ));
     }
 
     #[test]
