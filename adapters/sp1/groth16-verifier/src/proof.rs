@@ -47,8 +47,10 @@ pub struct Sp1Groth16Proof {
     pub vk_root: Option<[u8; 32]>,
     /// SP1 proof nonce (SP1 v6+).
     pub proof_nonce: Option<[u8; 32]>,
-    /// The underlying Groth16 proof.
-    pub proof: Groth16Proof,
+    /// The underlying Groth16 proof. Crate-private because [`Groth16Proof`] is not part of
+    /// this crate's public surface; downstream callers verify via
+    /// [`SP1Groth16Verifier::verify_parsed`](crate::SP1Groth16Verifier::verify_parsed).
+    pub(crate) proof: Groth16Proof,
 }
 
 impl From<Groth16Proof> for Sp1Groth16Proof {

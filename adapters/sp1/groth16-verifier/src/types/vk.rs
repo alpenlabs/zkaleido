@@ -31,7 +31,7 @@ pub(crate) struct Groth16G2 {
 
 /// Verification key for the Groth16 proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Groth16VerifyingKey {
+pub(crate) struct Groth16VerifyingKey {
     pub(crate) g1: Groth16G1,
     pub(crate) g2: Groth16G2,
 }
@@ -50,7 +50,7 @@ impl Groth16VerifyingKey {
     /// - [292..292+i) : `i = 32 * num_k` bytes of G1 K-points (compressed)
     ///
     /// Reference: <https://pkg.go.dev/github.com/consensys/gnark/backend/groth16/bn254#VerifyingKey>
-    pub fn from_gnark_bytes(buffer: &[u8]) -> Result<Self, Sp1Groth16Error> {
+    pub(crate) fn from_gnark_bytes(buffer: &[u8]) -> Result<Self, Sp1Groth16Error> {
         // Validate minimum buffer length for the "header" (all fixed-size fields before K points).
         // The header includes: alpha, beta, gamma, delta (with GNARK padding), and num_k field.
         // The actual VK size depends on num_k, which we read from the header.
@@ -131,7 +131,7 @@ impl Groth16VerifyingKey {
     }
 
     /// Deserialize from uncompressed bytes.
-    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
+    pub(crate) fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
         if bytes.len() < GROTH16_VK_UNCOMPRESSED_HEADER_SIZE {
             return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
@@ -221,7 +221,7 @@ impl Groth16VerifyingKey {
     /// - bytes 224..288:  G2 δ (GNARK-compressed)
     /// - bytes 288..292:  `num_k` (u32 BE)
     /// - bytes 292..:     `32 * num_k` bytes of G1 K-points (GNARK-compressed)
-    pub fn to_gnark_bytes(&self) -> Vec<u8> {
+    pub(crate) fn to_gnark_bytes(&self) -> Vec<u8> {
         let num_k = self.g1.k.len() as u32;
         let total_size = GNARK_VK_COMPRESSED_HEADER_SIZE + (num_k as usize * G1_COMPRESSED_SIZE);
         let mut bytes = vec![0u8; total_size];
@@ -275,7 +275,7 @@ impl Groth16VerifyingKey {
     /// - bytes 320..448:   G2 δ (uncompressed)
     /// - bytes 448..452:   `num_k` (u32 BE)
     /// - bytes 452..:      `64 * num_k` bytes of G1 K-points (uncompressed)
-    pub fn to_uncompressed_bytes(&self) -> Vec<u8> {
+    pub(crate) fn to_uncompressed_bytes(&self) -> Vec<u8> {
         let num_k = self.g1.k.len() as u32;
         let total_size =
             GROTH16_VK_UNCOMPRESSED_HEADER_SIZE + (num_k as usize * G1_UNCOMPRESSED_SIZE);
