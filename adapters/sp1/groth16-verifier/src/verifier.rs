@@ -35,7 +35,7 @@ use crate::{
 /// Construction (see [`SP1Groth16Verifier::load`]) pre-loads the Groth16 verifying key and
 /// bakes the fixed `program_vk_hash` public input into the K basis, so callers of
 /// [`SP1Groth16Verifier::verify`] only supply statement-specific inputs.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SP1Groth16Verifier {
     /// The (uncompressed) Groth16 verifying key for the SP1 circuit. Crate-private because
     /// [`Groth16VerifyingKey`] is not part of this crate's public surface; downstream callers
@@ -777,10 +777,7 @@ mod tests {
         let bytes = verifier.to_uncompressed_bytes();
         let recovered = SP1Groth16Verifier::from_uncompressed_bytes(&bytes).unwrap();
 
-        assert_eq!(recovered.vk, verifier.vk);
-        assert_eq!(recovered.vk_hash_tag, verifier.vk_hash_tag);
-        assert_eq!(recovered.vk_root, verifier.vk_root);
-        assert_eq!(recovered.require_success, verifier.require_success);
+        assert_eq!(recovered, verifier);
 
         // The recovered verifier should still verify the original proof.
         recovered
@@ -824,10 +821,7 @@ mod tests {
         assert!(bytes.len() < verifier.to_uncompressed_bytes().len());
 
         let recovered = SP1Groth16Verifier::from_compressed_bytes(&bytes).unwrap();
-        assert_eq!(recovered.vk, verifier.vk);
-        assert_eq!(recovered.vk_hash_tag, verifier.vk_hash_tag);
-        assert_eq!(recovered.vk_root, verifier.vk_root);
-        assert_eq!(recovered.require_success, verifier.require_success);
+        assert_eq!(recovered, verifier);
 
         recovered
             .verify(
@@ -906,8 +900,8 @@ mod tests {
         let from_compressed = SP1Groth16Verifier::parse(&compressed).unwrap();
         let from_uncompressed = SP1Groth16Verifier::parse(&uncompressed).unwrap();
 
-        assert_eq!(from_compressed.vk, verifier.vk);
-        assert_eq!(from_uncompressed.vk, verifier.vk);
+        assert_eq!(from_compressed, verifier);
+        assert_eq!(from_uncompressed, verifier);
     }
 
     #[test]
