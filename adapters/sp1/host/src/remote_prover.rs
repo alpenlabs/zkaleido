@@ -50,7 +50,7 @@ impl TryFrom<Vec<u8>> for Sp1ProofId {
     }
 }
 
-#[async_trait::async_trait(?Send)]
+#[async_trait::async_trait]
 impl ZkVmRemoteProver for SP1Host {
     type ProofId = Sp1ProofId;
 
