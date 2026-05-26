@@ -4,7 +4,7 @@ use sp1_sdk::{
     NetworkProver, ProveRequest, Prover, ProvingKey,
     env::{EnvProver, EnvProvingKey},
     network::{
-        B256, Error as NetworkError,
+        B256,
         proto::{
             GetProofRequestStatusResponse,
             types::{ExecutionStatus, FulfillmentStatus},
@@ -107,16 +107,19 @@ impl ZkVmRemoteProver for SP1Host {
         if let Some(deadline) = self.config.deadline {
             builder = builder.timeout(deadline);
         }
-        let request_id =
-            builder
-                .request()
-                .await
-                .map_err(|e| match e.downcast_ref::<NetworkError>() {
-                    Some(NetworkError::RpcError(status)) => {
-                        ZkVmError::NetworkRetryableError(status.to_string())
-                    }
-                    _ => ZkVmError::ProofGenerationError(e.to_string()),
-                })?;
+        // The SDK has already exhausted its internal transient-error retry
+        // budget by the time an error escapes `.request()` (see
+        // `network::retry::retry_operation`), so the precise gRPC code
+        // doesn't tell us much here. We also can't usefully downcast to
+        // `network::Error` — the gRPC failures are propagated as bare
+        // `tonic::Status` wrapped in `anyhow::Error`, never converted
+        // into `network::Error::RpcError`. Treat all submission failures
+        // uniformly and let the caller decide whether to retry the whole
+        // operation, matching the polling calls below.
+        let request_id = builder
+            .request()
+            .await
+            .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
 
         Ok(Sp1ProofId(request_id))
     }
