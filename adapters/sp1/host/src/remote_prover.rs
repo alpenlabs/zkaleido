@@ -119,7 +119,7 @@ impl ZkVmRemoteProver for SP1Host {
         let request_id = builder
             .request()
             .await
-            .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
+            .map_err(|e| ZkVmError::RemoteProverError(e.to_string()))?;
 
         Ok(Sp1ProofId(request_id))
     }
@@ -129,7 +129,7 @@ impl ZkVmRemoteProver for SP1Host {
         let (status, _) = client
             .get_proof_status(id.0)
             .await
-            .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
+            .map_err(|e| ZkVmError::RemoteProverError(e.to_string()))?;
 
         Ok(convert_proof_status(status))
     }
@@ -139,7 +139,7 @@ impl ZkVmRemoteProver for SP1Host {
         let (_, proof) = client
             .get_proof_status(id.0)
             .await
-            .map_err(|e| ZkVmError::NetworkRetryableError(e.to_string()))?;
+            .map_err(|e| ZkVmError::RemoteProverError(e.to_string()))?;
 
         let proof = proof.ok_or(ZkVmError::ProofNotReady)?;
         SP1ProofReceipt::new(proof, self.program_id())
