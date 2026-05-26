@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display};
+use std::fmt::{self, Debug, Display, Formatter};
 
 #[cfg(feature = "arbitrary")]
 use arbitrary::Arbitrary;
@@ -55,7 +55,7 @@ pub enum RemoteProofFailureReason {
 }
 
 impl Display for RemoteProofFailureReason {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         match self {
             Self::Unexecutable => f.write_str("unexecutable"),
             Self::Unfulfillable => f.write_str("unfulfillable"),
