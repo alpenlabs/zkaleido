@@ -24,3 +24,4 @@ tokio = { workspace = true, features = ["rt", "rt-multi-thread", "time"] }
 default = []
 ssz = ["zkaleido/ssz"]
 perf = ["sp1-sdk/profiling"]
+cuda = ["sp1-sdk/cuda"]
