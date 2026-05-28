@@ -249,7 +249,7 @@ impl From<Vec<u8>> for NativeProofId {
 /// this automatically gives `NativeHost` the `ZkVmRemoteHost` trait, allowing it to work
 /// seamlessly with async/remote proving interfaces.
 #[cfg(feature = "remote-prover")]
-#[async_trait(?Send)]
+#[async_trait]
 impl ZkVmRemoteProver for NativeHost {
     type ProofId = NativeProofId;
 

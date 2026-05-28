@@ -72,7 +72,7 @@ impl Display for RemoteProofFailureReason {
 /// It provides methods to start the proving process, check its status, and retrieve
 /// the proof once it becomes available. Implementers of this trait typically handle
 /// the remote communication required to generate and fetch proofs.
-#[async_trait(?Send)]
+#[async_trait]
 pub trait ZkVmRemoteProver: ZkVmProver {
     /// A typed proof identifier returned by [`start_proving`](Self::start_proving).
     ///
