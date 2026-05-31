@@ -16,6 +16,7 @@ async-trait.workspace = true
 bincode.workspace = true
 hex.workspace = true
 num-bigint.workspace = true
+p3-field = "0.3.3-succinct"
 serde.workspace = true
 sha2.workspace = true
 tokio = { workspace = true, features = ["rt", "rt-multi-thread", "time"] }

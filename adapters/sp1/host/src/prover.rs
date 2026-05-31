@@ -3,7 +3,8 @@ use std::{
     future::{Future, IntoFuture},
 };
 
-use hex::FromHex;
+use num_bigint::BigUint;
+use p3_field::PrimeField;
 use sp1_core_executor::ExecutionReport;
 use sp1_sdk::{HashableKey, ProveRequest, Prover, ProvingKey, SP1ProofMode, env::EnvProver};
 use tokio::{
@@ -56,7 +57,7 @@ impl ZkVmExecutor for SP1Host {
     }
 
     fn program_id(&self) -> ProgramId {
-        ProgramId(program_id_from_vk_hex(&self.proving_key.verifying_key().bytes32()))
+        ProgramId(program_id_from_vk(&self.proving_key))
     }
 }
 
@@ -130,11 +131,26 @@ pub(crate) fn to_sp1_mode(proof_type: ProofType) -> SP1ProofMode {
     }
 }
 
-fn program_id_from_vk_hex(bytes32: &str) -> [u8; 32] {
-    let hex = bytes32
-        .strip_prefix("0x")
-        .expect("SP1 bytes32 hash should be 0x-prefixed");
-    <[u8; 32]>::from_hex(hex).expect("SP1 bytes32 hash should decode into 32 raw bytes")
+fn program_id_from_vk(proving_key: &impl ProvingKey) -> [u8; 32] {
+    biguint_to_program_id(
+        proving_key
+            .verifying_key()
+            .hash_bn254()
+            .as_canonical_biguint(),
+    )
+}
+
+fn biguint_to_program_id(digest: BigUint) -> [u8; 32] {
+    let vkey_bytes = digest.to_bytes_be();
+    assert!(
+        vkey_bytes.len() <= 32,
+        "SP1 verifying key hash should fit in 32 bytes"
+    );
+
+    let mut result = [0u8; 32];
+    let start = result.len() - vkey_bytes.len();
+    result[start..].copy_from_slice(&vkey_bytes);
+    result
 }
 
 /// Drives `future` to completion from a synchronous context, regardless of
@@ -213,16 +229,60 @@ mod tests {
     }
 
     #[test]
-    fn program_id_from_vk_hex_decodes_32_bytes() {
-        let program_id = program_id_from_vk_hex(
-            "0x000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+    fn biguint_to_program_id_right_aligns_30_byte_value() {
+        let digest = BigUint::parse_bytes(
+            b"0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e",
+            16,
+        )
+        .expect("valid hex");
+        let program_id = biguint_to_program_id(digest);
+
+        assert_eq!(program_id[..2], [0, 0]);
+        assert_eq!(
+            &program_id[2..],
+            &[
+                0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+                0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
+                0x1d, 0x1e,
+            ]
         );
+    }
+
+    #[test]
+    fn biguint_to_program_id_right_aligns_31_byte_value() {
+        let digest = BigUint::parse_bytes(
+            b"0102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            16,
+        )
+        .expect("valid hex");
+        let program_id = biguint_to_program_id(digest);
+
+        assert_eq!(program_id[0], 0);
+        assert_eq!(
+            &program_id[1..],
+            &[
+                0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e,
+                0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b, 0x1c,
+                0x1d, 0x1e, 0x1f,
+            ]
+        );
+    }
+
+    #[test]
+    fn biguint_to_program_id_preserves_32_byte_value() {
+        let digest = BigUint::parse_bytes(
+            b"000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+            16,
+        )
+        .expect("valid hex");
+        let program_id = biguint_to_program_id(digest);
+
         assert_eq!(
             program_id,
             [
-                0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b,
-                0x0c, 0x0d, 0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17,
-                0x18, 0x19, 0x1a, 0x1b, 0x1c, 0x1d, 0x1e, 0x1f,
+                0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d,
+                0x0e, 0x0f, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1a, 0x1b,
+                0x1c, 0x1d, 0x1e, 0x1f,
             ]
         );
     }
