@@ -1,7 +1,7 @@
 use bn::{AffineG2, G2};
 
 use crate::{
-    error::{BufferLengthError, InvalidPointError, Sp1Groth16Error},
+    error::{BufferLengthError, InvalidDataFormatError, InvalidPointError, Sp1Groth16Error},
     types::{
         constant::{
             G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE, G2_COMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE,
@@ -88,8 +88,14 @@ impl Groth16VerifyingKey {
 
         // Validate that the buffer has enough bytes for all K points. Anything past them is
         // GNARK's (ignored) Pedersen-commitment tail, so this is a `<` check, not `==`: see the
-        // "Pedersen commitments" note above.
-        let expected_size = GNARK_VK_COMPRESSED_HEADER_SIZE + (num_k as usize * G1_COMPRESSED_SIZE);
+        // "Pedersen commitments" note above. `num_k` comes from untrusted input, so size it
+        // with checked arithmetic: on 32-bit targets an unchecked `num_k * G1_COMPRESSED_SIZE`
+        // could wrap to a tiny value, pass this check against a small buffer, and then drive the
+        // `Vec::with_capacity(num_k)` below into an OOM abort.
+        let expected_size = (num_k as usize)
+            .checked_mul(G1_COMPRESSED_SIZE)
+            .and_then(|k_bytes| GNARK_VK_COMPRESSED_HEADER_SIZE.checked_add(k_bytes))
+            .ok_or_else(|| Sp1Groth16Error::Serialization(InvalidDataFormatError.into()))?;
         if buffer.len() < expected_size {
             return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
@@ -167,9 +173,14 @@ impl Groth16VerifyingKey {
             bytes[num_k_offset + 3],
         ]);
 
-        // Validate buffer size
-        let expected_size =
-            GROTH16_VK_UNCOMPRESSED_HEADER_SIZE + (num_k as usize * G1_UNCOMPRESSED_SIZE);
+        // Validate buffer size. `num_k` comes from untrusted input, so size it with checked
+        // arithmetic: on 32-bit targets an unchecked `num_k * G1_UNCOMPRESSED_SIZE` could wrap
+        // to a tiny value, match a small buffer, and then drive the `Vec::with_capacity(num_k)`
+        // below into an OOM abort.
+        let expected_size = (num_k as usize)
+            .checked_mul(G1_UNCOMPRESSED_SIZE)
+            .and_then(|k_bytes| GROTH16_VK_UNCOMPRESSED_HEADER_SIZE.checked_add(k_bytes))
+            .ok_or_else(|| Sp1Groth16Error::Serialization(InvalidDataFormatError.into()))?;
         if bytes.len() != expected_size {
             return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
@@ -393,6 +404,30 @@ mod tests {
         assert!(matches!(
             result.unwrap_err(),
             Sp1Groth16Error::Serialization(_)
+        ));
+    }
+
+    /// A header declaring a `num_k` large enough to overflow `num_k * G1_*_SIZE` on 32-bit
+    /// targets must be rejected — not allowed to wrap to a tiny `expected_size`, pass the
+    /// length check against a small buffer, and then drive `Vec::with_capacity(num_k)` into an
+    /// OOM abort. On 64-bit the multiply doesn't overflow, so the oversized length is caught by
+    /// the length check instead; either way the result is a serialization error, never a panic.
+    #[test]
+    fn test_vk_rejects_overflowing_num_k() {
+        let mut compressed = vec![0u8; GNARK_VK_COMPRESSED_HEADER_SIZE];
+        compressed[GNARK_VK_COMPRESSED_NUM_K_OFFSET..GNARK_VK_COMPRESSED_NUM_K_OFFSET + 4]
+            .copy_from_slice(&u32::MAX.to_be_bytes());
+        assert!(matches!(
+            Groth16VerifyingKey::from_gnark_bytes(&compressed),
+            Err(Sp1Groth16Error::Serialization(_))
+        ));
+
+        let num_k_offset = G1_UNCOMPRESSED_SIZE + 3 * G2_UNCOMPRESSED_SIZE;
+        let mut uncompressed = vec![0u8; GROTH16_VK_UNCOMPRESSED_HEADER_SIZE];
+        uncompressed[num_k_offset..num_k_offset + 4].copy_from_slice(&u32::MAX.to_be_bytes());
+        assert!(matches!(
+            Groth16VerifyingKey::from_uncompressed_bytes(&uncompressed),
+            Err(Sp1Groth16Error::Serialization(_))
         ));
     }
 }
