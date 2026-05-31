@@ -47,8 +47,10 @@ pub struct Sp1Groth16Proof {
     pub vk_root: Option<[u8; 32]>,
     /// SP1 proof nonce (SP1 v6+).
     pub proof_nonce: Option<[u8; 32]>,
-    /// The underlying Groth16 proof.
-    pub proof: Groth16Proof,
+    /// The underlying Groth16 proof. Crate-private because [`Groth16Proof`] is not part of
+    /// this crate's public surface; downstream callers verify via
+    /// [`SP1Groth16Verifier::verify_parsed`](crate::SP1Groth16Verifier::verify_parsed).
+    pub(crate) proof: Groth16Proof,
 }
 
 impl From<Groth16Proof> for Sp1Groth16Proof {
@@ -70,9 +72,8 @@ impl Sp1Groth16Proof {
     /// Detection is purely by length: `raw_bytes.len()` must equal exactly one of the ten
     /// valid combinations (five prefix shapes × {compressed, uncompressed} raw proof). Any
     /// other length yields `Sp1Groth16Error::Serialization` wrapping an `InvalidProofFormatError`;
-    /// a length match followed by a malformed raw proof yields the parse error from
-    /// [`Groth16Proof::from_gnark_compressed_bytes`] /
-    /// [`Groth16Proof::from_uncompressed_bytes`].
+    /// a length match followed by a malformed raw proof yields the parse error from the
+    /// underlying compressed/uncompressed Groth16 proof parser.
     ///
     /// This function does no semantic validation — see [`Sp1Groth16Proof`] for what
     /// recovered fields mean.

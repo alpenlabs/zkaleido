@@ -6,7 +6,7 @@ use crate::{
 };
 
 /// Verify an SP1 Groth16 proof using algebraic public inputs.
-pub fn verify_sp1_groth16_algebraic(
+pub(crate) fn verify_sp1_groth16_algebraic(
     vk: &Groth16VerifyingKey,
     proof: &Groth16Proof,
     public_inputs: &[Fr],

@@ -8,15 +8,15 @@
 //! the VK so that each subsequent [`SP1Groth16Verifier::verify`] call only handles the
 //! statement-specific public inputs.
 //!
-//! # What lives where
+//! # Public surface
 //!
-//! - [`SP1Groth16Verifier`] — the public entry point and its [`zkaleido::ZkVmVerifier`] adapter.
-//! - [`Sp1Groth16Proof`] — on-wire byte format and parsing of the optional prefix fields (see its
-//!   docs for the exact layout and which prefix fields may be omitted).
-//! - [`verify_sp1_groth16_algebraic`] — the pure algebraic pairing check, separated out so it can
-//!   be reused without the SP1-specific cross-checks.
-//! - [`crate::hashes`] — hashing `public_values` to a BN254 `Fr` element (SHA-256 and Blake3, both
-//!   accepted by SP1's circuit).
+//! - [`SP1Groth16Verifier`] — the verifier itself, with `load` / `verify` / canonical byte
+//!   serialization (`to_compressed_bytes`, `to_uncompressed_bytes`, `parse`).
+//! - [`Sp1Groth16Proof`] — parses the on-wire byte format into the optional prefix fields.
+//! - [`Sp1Groth16Error`] — error type returned by the inherent methods on the two types above.
+//!
+//! Everything else (the inner Groth16 types, the algebraic pairing routine, size constants)
+//! is an implementation detail and not part of the stable surface.
 //!
 //! # The "fold fixed inputs into K0" optimisation
 //!
@@ -43,7 +43,7 @@
 //! under that vector when the v6 additions all default to zero on the v5 path:
 //! `require_success` resolves a missing `exit_code` to `SUCCESS_EXIT_CODE` (`0`), the
 //! verifier is loaded with the all-zero v5 `vk_root`, and a missing `proof_nonce` defaults
-//! to zero. [`verify_sp1_groth16_algebraic`] short-circuits zero public inputs, so the
+//! to zero. The internal algebraic-verify routine short-circuits zero public inputs, so the
 //! trailing K-basis terms drop out of the prepared point and the pairing reduces to
 //! exactly the v5 check.
 
@@ -63,15 +63,6 @@ mod types;
 mod verification;
 mod verifier;
 
+pub use error::Sp1Groth16Error;
 pub use proof::Sp1Groth16Proof;
-pub use types::{
-    constant::{
-        GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE,
-        SP1_GROTH16_VK_COMPRESSED_SIZE_MERGED, SP1_GROTH16_VK_UNCOMPRESSED_SIZE_MERGED,
-        VK_HASH_PREFIX_LENGTH,
-    },
-    proof::Groth16Proof,
-    vk::Groth16VerifyingKey,
-};
-pub use verification::verify_sp1_groth16_algebraic;
 pub use verifier::SP1Groth16Verifier;

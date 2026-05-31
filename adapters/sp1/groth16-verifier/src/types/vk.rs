@@ -1,7 +1,7 @@
 use bn::{AffineG2, G2};
 
 use crate::{
-    error::{BufferLengthError, InvalidPointError, Sp1Groth16Error},
+    error::{BufferLengthError, InvalidDataFormatError, InvalidPointError, Sp1Groth16Error},
     types::{
         constant::{
             G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE, G2_COMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE,
@@ -31,7 +31,7 @@ pub(crate) struct Groth16G2 {
 
 /// Verification key for the Groth16 proof.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Groth16VerifyingKey {
+pub(crate) struct Groth16VerifyingKey {
     pub(crate) g1: Groth16G1,
     pub(crate) g2: Groth16G2,
 }
@@ -48,9 +48,22 @@ impl Groth16VerifyingKey {
     /// - [224..288)   : G2 δ (compressed)
     /// - [288..292)   : `num_k` (u32 BE)
     /// - [292..292+i) : `i = 32 * num_k` bytes of G1 K-points (compressed)
+    /// - [292+i..)    : Pedersen-commitment metadata (parsed by GNARK, ignored here)
+    ///
+    /// # Pedersen commitments
+    ///
+    /// After the K-points GNARK serializes its commitment-proving data: the
+    /// `PublicAndCommitmentCommitted` index lists and the per-commitment Pedersen verifying
+    /// keys, each written as a `u32`-length-prefixed array. SP1's circuit uses no Pedersen
+    /// commitments, so both arrays are empty and the tail is exactly two zero `u32`s — the 8
+    /// trailing `0x00` bytes you see on SP1's `GROTH16_VK_BYTES` (492 = 292 header + 192 K +
+    /// 8). This verifier does not support Pedersen commitments and ignores that tail entirely:
+    /// parsing stops once the K-points are read. Consequently the length check below is `<`
+    /// (enough bytes for header + K-points) rather than `==`, so a buffer is accepted whether
+    /// or not it carries the trailing 8 bytes, even though GNARK always emits them.
     ///
     /// Reference: <https://pkg.go.dev/github.com/consensys/gnark/backend/groth16/bn254#VerifyingKey>
-    pub fn from_gnark_bytes(buffer: &[u8]) -> Result<Self, Sp1Groth16Error> {
+    pub(crate) fn from_gnark_bytes(buffer: &[u8]) -> Result<Self, Sp1Groth16Error> {
         // Validate minimum buffer length for the "header" (all fixed-size fields before K points).
         // The header includes: alpha, beta, gamma, delta (with GNARK padding), and num_k field.
         // The actual VK size depends on num_k, which we read from the header.
@@ -73,8 +86,16 @@ impl Groth16VerifyingKey {
             buffer[GNARK_VK_COMPRESSED_NUM_K_OFFSET + 3],
         ]);
 
-        // Validate that buffer has enough bytes for all K points
-        let expected_size = GNARK_VK_COMPRESSED_HEADER_SIZE + (num_k as usize * G1_COMPRESSED_SIZE);
+        // Validate that the buffer has enough bytes for all K points. Anything past them is
+        // GNARK's (ignored) Pedersen-commitment tail, so this is a `<` check, not `==`: see the
+        // "Pedersen commitments" note above. `num_k` comes from untrusted input, so size it
+        // with checked arithmetic: on 32-bit targets an unchecked `num_k * G1_COMPRESSED_SIZE`
+        // could wrap to a tiny value, pass this check against a small buffer, and then drive the
+        // `Vec::with_capacity(num_k)` below into an OOM abort.
+        let expected_size = (num_k as usize)
+            .checked_mul(G1_COMPRESSED_SIZE)
+            .and_then(|k_bytes| GNARK_VK_COMPRESSED_HEADER_SIZE.checked_add(k_bytes))
+            .ok_or_else(|| Sp1Groth16Error::Serialization(InvalidDataFormatError.into()))?;
         if buffer.len() < expected_size {
             return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
@@ -131,7 +152,7 @@ impl Groth16VerifyingKey {
     }
 
     /// Deserialize from uncompressed bytes.
-    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
+    pub(crate) fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
         if bytes.len() < GROTH16_VK_UNCOMPRESSED_HEADER_SIZE {
             return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
@@ -152,9 +173,14 @@ impl Groth16VerifyingKey {
             bytes[num_k_offset + 3],
         ]);
 
-        // Validate buffer size
-        let expected_size =
-            GROTH16_VK_UNCOMPRESSED_HEADER_SIZE + (num_k as usize * G1_UNCOMPRESSED_SIZE);
+        // Validate buffer size. `num_k` comes from untrusted input, so size it with checked
+        // arithmetic: on 32-bit targets an unchecked `num_k * G1_UNCOMPRESSED_SIZE` could wrap
+        // to a tiny value, match a small buffer, and then drive the `Vec::with_capacity(num_k)`
+        // below into an OOM abort.
+        let expected_size = (num_k as usize)
+            .checked_mul(G1_UNCOMPRESSED_SIZE)
+            .and_then(|k_bytes| GROTH16_VK_UNCOMPRESSED_HEADER_SIZE.checked_add(k_bytes))
+            .ok_or_else(|| Sp1Groth16Error::Serialization(InvalidDataFormatError.into()))?;
         if bytes.len() != expected_size {
             return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
@@ -221,7 +247,14 @@ impl Groth16VerifyingKey {
     /// - bytes 224..288:  G2 δ (GNARK-compressed)
     /// - bytes 288..292:  `num_k` (u32 BE)
     /// - bytes 292..:     `32 * num_k` bytes of G1 K-points (GNARK-compressed)
-    pub fn to_gnark_bytes(&self) -> Vec<u8> {
+    ///
+    /// The output stops after the K-points and omits the trailing Pedersen-commitment
+    /// metadata that GNARK appends (see the "Pedersen commitments" note on
+    /// [`Self::from_gnark_bytes`]). This verifier does not support Pedersen commitments, and
+    /// SP1's circuit uses none, so there is nothing to emit; the result is 8 bytes shorter
+    /// than GNARK's own output but round-trips through `from_gnark_bytes`, which ignores that
+    /// tail. Re-deriving the empty arrays would only reproduce two zero `u32`s.
+    pub(crate) fn to_gnark_bytes(&self) -> Vec<u8> {
         let num_k = self.g1.k.len() as u32;
         let total_size = GNARK_VK_COMPRESSED_HEADER_SIZE + (num_k as usize * G1_COMPRESSED_SIZE);
         let mut bytes = vec![0u8; total_size];
@@ -275,7 +308,7 @@ impl Groth16VerifyingKey {
     /// - bytes 320..448:   G2 δ (uncompressed)
     /// - bytes 448..452:   `num_k` (u32 BE)
     /// - bytes 452..:      `64 * num_k` bytes of G1 K-points (uncompressed)
-    pub fn to_uncompressed_bytes(&self) -> Vec<u8> {
+    pub(crate) fn to_uncompressed_bytes(&self) -> Vec<u8> {
         let num_k = self.g1.k.len() as u32;
         let total_size =
             GROTH16_VK_UNCOMPRESSED_HEADER_SIZE + (num_k as usize * G1_UNCOMPRESSED_SIZE);
@@ -371,6 +404,30 @@ mod tests {
         assert!(matches!(
             result.unwrap_err(),
             Sp1Groth16Error::Serialization(_)
+        ));
+    }
+
+    /// A header declaring a `num_k` large enough to overflow `num_k * G1_*_SIZE` on 32-bit
+    /// targets must be rejected — not allowed to wrap to a tiny `expected_size`, pass the
+    /// length check against a small buffer, and then drive `Vec::with_capacity(num_k)` into an
+    /// OOM abort. On 64-bit the multiply doesn't overflow, so the oversized length is caught by
+    /// the length check instead; either way the result is a serialization error, never a panic.
+    #[test]
+    fn test_vk_rejects_overflowing_num_k() {
+        let mut compressed = vec![0u8; GNARK_VK_COMPRESSED_HEADER_SIZE];
+        compressed[GNARK_VK_COMPRESSED_NUM_K_OFFSET..GNARK_VK_COMPRESSED_NUM_K_OFFSET + 4]
+            .copy_from_slice(&u32::MAX.to_be_bytes());
+        assert!(matches!(
+            Groth16VerifyingKey::from_gnark_bytes(&compressed),
+            Err(Sp1Groth16Error::Serialization(_))
+        ));
+
+        let num_k_offset = G1_UNCOMPRESSED_SIZE + 3 * G2_UNCOMPRESSED_SIZE;
+        let mut uncompressed = vec![0u8; GROTH16_VK_UNCOMPRESSED_HEADER_SIZE];
+        uncompressed[num_k_offset..num_k_offset + 4].copy_from_slice(&u32::MAX.to_be_bytes());
+        assert!(matches!(
+            Groth16VerifyingKey::from_uncompressed_bytes(&uncompressed),
+            Err(Sp1Groth16Error::Serialization(_))
         ));
     }
 }

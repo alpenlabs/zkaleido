@@ -14,10 +14,17 @@ use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 
 use crate::{
     Sp1Groth16Proof,
-    error::{BufferLengthError, SerializationError, Sp1Groth16Error},
+    error::{
+        BufferLengthError, InvalidDataFormatError, InvalidProofFormatError, SerializationError,
+        Sp1Groth16Error,
+    },
     hashes::{blake3_to_fr, sha256_to_fr},
     types::{
-        constant::{SUCCESS_EXIT_CODE, VK_HASH_PREFIX_LENGTH},
+        constant::{
+            G1_COMPRESSED_SIZE, G1_UNCOMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE,
+            GNARK_VK_COMPRESSED_HEADER_SIZE, GNARK_VK_COMPRESSED_NUM_K_OFFSET,
+            GROTH16_VK_UNCOMPRESSED_HEADER_SIZE, SUCCESS_EXIT_CODE, VK_HASH_PREFIX_LENGTH,
+        },
         vk::Groth16VerifyingKey,
     },
     verification::verify_sp1_groth16_algebraic,
@@ -28,10 +35,8 @@ use crate::{
 /// Construction (see [`SP1Groth16Verifier::load`]) pre-loads the Groth16 verifying key and
 /// bakes the fixed `program_vk_hash` public input into the K basis, so callers of
 /// [`SP1Groth16Verifier::verify`] only supply statement-specific inputs.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct SP1Groth16Verifier {
-    /// The (uncompressed) Groth16 verifying key for the SP1 circuit.
-    pub vk: Groth16VerifyingKey,
     /// First `VK_HASH_PREFIX_LENGTH` bytes of `Sha256(groth16_vk)`. SP1 prepends this as an
     /// advisory tag on emitted proofs; when the proof carries the tag, it must match.
     pub vk_hash_tag: [u8; VK_HASH_PREFIX_LENGTH],
@@ -43,6 +48,45 @@ pub struct SP1Groth16Verifier {
     /// (`SUCCESS_EXIT_CODE`); when `false`, the verifier accepts whatever exit code the proof
     /// commits to but errors if the proof carries no exit code at all.
     pub require_success: bool,
+    /// The (uncompressed) Groth16 verifying key for the SP1 circuit. Crate-private because
+    /// [`Groth16VerifyingKey`] is not part of this crate's public surface; downstream callers
+    /// interact with the verifier through [`Self::load`], [`Self::verify`], and the canonical
+    /// byte (de)serialization methods.
+    pub(crate) vk: Groth16VerifyingKey,
+}
+
+/// Size of the fixed-width header prepended before the Groth16 verifying key in the canonical
+/// [`SP1Groth16Verifier`] encodings: `vk_hash_tag` (4 bytes), `vk_root` (32 bytes), and
+/// `require_success` (1 byte).
+const VERIFIER_HEADER_SIZE: usize = VK_HASH_PREFIX_LENGTH + 32 + 1;
+
+/// Offset of the `num_k` field within the uncompressed VK header (relative to the start of the
+/// verifying key, not the start of the canonical encoding).
+const GROTH16_VK_UNCOMPRESSED_NUM_K_OFFSET: usize = G1_UNCOMPRESSED_SIZE + 3 * G2_UNCOMPRESSED_SIZE;
+
+/// Computes the total length a compressed [`SP1Groth16Verifier`] encoding would have if
+/// `bytes` were a valid compressed encoding. Returns `None` if `bytes` is too short to even
+/// hold the fixed header plus the compressed VK header.
+///
+/// Used by [`SP1Groth16Verifier::parse`] to dispatch between formats without invoking the
+/// (expensive) point-decoding parsers speculatively.
+fn compressed_candidate_len(bytes: &[u8]) -> Option<usize> {
+    let nk_off = VERIFIER_HEADER_SIZE + GNARK_VK_COMPRESSED_NUM_K_OFFSET;
+    let nk_slot: [u8; 4] = bytes.get(nk_off..nk_off + 4)?.try_into().ok()?;
+    let num_k = u32::from_be_bytes(nk_slot) as usize;
+    let vk_len =
+        GNARK_VK_COMPRESSED_HEADER_SIZE.checked_add(num_k.checked_mul(G1_COMPRESSED_SIZE)?)?;
+    VERIFIER_HEADER_SIZE.checked_add(vk_len)
+}
+
+/// Same as [`compressed_candidate_len`] but for the uncompressed encoding.
+fn uncompressed_candidate_len(bytes: &[u8]) -> Option<usize> {
+    let nk_off = VERIFIER_HEADER_SIZE + GROTH16_VK_UNCOMPRESSED_NUM_K_OFFSET;
+    let nk_slot: [u8; 4] = bytes.get(nk_off..nk_off + 4)?.try_into().ok()?;
+    let num_k = u32::from_be_bytes(nk_slot) as usize;
+    let vk_len = GROTH16_VK_UNCOMPRESSED_HEADER_SIZE
+        .checked_add(num_k.checked_mul(G1_UNCOMPRESSED_SIZE)?)?;
+    VERIFIER_HEADER_SIZE.checked_add(vk_len)
 }
 
 impl SP1Groth16Verifier {
@@ -122,7 +166,7 @@ impl SP1Groth16Verifier {
     ///    `SUCCESS_EXIT_CODE` when set, a `Groth16Error::MissingExitCode` when not. A missing
     ///    `proof_nonce` defaults to zero. `vk_root` is sourced from `self.vk_root` regardless of
     ///    whether the proof carried it.
-    /// 3. **Algebraic verification** via [`verify_sp1_groth16_algebraic`].
+    /// 3. **Algebraic verification** via the bare Groth16 pairing check.
     ///
     /// # HACK: SHA-256 / Blake3 retry
     /// SP1's Groth16 circuit accepts either SHA-256 or Blake3 for `hash(public_values)`, and
@@ -207,6 +251,180 @@ impl SP1Groth16Verifier {
         let parsed = Sp1Groth16Proof::parse(proof)?;
         self.verify_parsed(&parsed, public_values)
     }
+
+    /// Serialize the verifier to its canonical, self-describing byte representation.
+    ///
+    /// Layout:
+    /// - bytes `0..4`:    `vk_hash_tag`
+    /// - bytes `4..36`:   `vk_root`
+    /// - byte  `36`:      `require_success` (`0x00` for `false`, `0x01` for `true`)
+    /// - bytes `37..`:    uncompressed Groth16 verifying key (length determined by the `num_k`
+    ///   field embedded in the VK header)
+    ///
+    /// The fixed-size header precedes the verifying key, whose embedded `num_k` makes its
+    /// length unambiguous, so the encoding needs no outer length prefix. The round-trip pair
+    /// is [`Self::from_uncompressed_bytes`].
+    pub fn to_uncompressed_bytes(&self) -> Vec<u8> {
+        let vk_bytes = self.vk.to_uncompressed_bytes();
+        let mut bytes = Vec::with_capacity(VERIFIER_HEADER_SIZE + vk_bytes.len());
+        bytes.extend_from_slice(&self.vk_hash_tag);
+        bytes.extend_from_slice(&self.vk_root);
+        bytes.push(u8::from(self.require_success));
+        bytes.extend_from_slice(&vk_bytes);
+        bytes
+    }
+
+    /// Deserialize a verifier from the canonical encoding produced by
+    /// [`Self::to_uncompressed_bytes`].
+    pub fn from_uncompressed_bytes(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
+        let (header, vk_bytes) = Self::split_header(bytes)?;
+        // The uncompressed VK parser validates its length exactly, so it rejects a buffer with
+        // missing or extra K-point bytes on its own — no length arithmetic needed here.
+        let vk = Groth16VerifyingKey::from_uncompressed_bytes(vk_bytes)?;
+        Self::assemble_with_header(vk, header)
+    }
+
+    /// Serialize the verifier to a self-contained byte representation that uses GNARK's
+    /// compressed VK encoding.
+    ///
+    /// Same layout as [`Self::to_uncompressed_bytes`], but the verifying-key segment uses
+    /// GNARK's compressed VK encoding (with `num_k` embedded in its header) so its length is
+    /// still unambiguous without an outer length prefix. The round-trip pair is
+    /// [`Self::from_compressed_bytes`].
+    pub fn to_compressed_bytes(&self) -> Vec<u8> {
+        let vk_bytes = self.vk.to_gnark_bytes();
+        let mut bytes = Vec::with_capacity(VERIFIER_HEADER_SIZE + vk_bytes.len());
+        bytes.extend_from_slice(&self.vk_hash_tag);
+        bytes.extend_from_slice(&self.vk_root);
+        bytes.push(u8::from(self.require_success));
+        bytes.extend_from_slice(&vk_bytes);
+        bytes
+    }
+
+    /// Deserialize a verifier from the compressed encoding produced by
+    /// [`Self::to_compressed_bytes`].
+    pub fn from_compressed_bytes(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
+        let (header, vk_bytes) = Self::split_header(bytes)?;
+        let vk = Groth16VerifyingKey::from_gnark_bytes(vk_bytes)?;
+
+        // `from_gnark_bytes` tolerates a buffer longer than the VK; the canonical encoding has
+        // nothing after the VK, so reject trailing bytes to keep the representation unique.
+        let vk_len = GNARK_VK_COMPRESSED_HEADER_SIZE + vk.g1.k.len() * G1_COMPRESSED_SIZE;
+        if vk_bytes.len() != vk_len {
+            return Err(Sp1Groth16Error::Serialization(
+                BufferLengthError {
+                    context: "SP1 Groth16 verifier (compressed)",
+                    expected: vk_len,
+                    actual: vk_bytes.len(),
+                }
+                .into(),
+            ));
+        }
+
+        Self::assemble_with_header(vk, header)
+    }
+
+    /// Parse a verifier from either the compressed ([`Self::to_compressed_bytes`]) or the
+    /// uncompressed ([`Self::to_uncompressed_bytes`]) canonical encoding.
+    ///
+    /// Detection is structural: both encodings store `num_k` at a known offset within the VK
+    /// header, so this function peeks at each candidate offset, computes the implied total
+    /// length, and dispatches to the parser whose computed length matches the input buffer.
+    /// If neither matches, an `InvalidProofFormatError` is returned without invoking either
+    /// parser; if exactly one matches, that parser's error (if any) is the one surfaced — so
+    /// callers don't see a misleading "wrong format" error from the fallback.
+    ///
+    /// In the rare case both candidate lengths happen to coincide (possible when the bytes
+    /// at one format's `num_k` offset accidentally satisfy the other format's length
+    /// equation), the uncompressed parser is tried first; if it fails, the compressed parser
+    /// is tried as a fallback so a buffer that is a valid encoding in *either* form always
+    /// parses.
+    pub fn parse(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
+        let compressed_matches = compressed_candidate_len(bytes) == Some(bytes.len());
+        let uncompressed_matches = uncompressed_candidate_len(bytes) == Some(bytes.len());
+
+        match (compressed_matches, uncompressed_matches) {
+            (true, false) => Self::from_compressed_bytes(bytes),
+            (false, true) => Self::from_uncompressed_bytes(bytes),
+            (true, true) => {
+                Self::from_uncompressed_bytes(bytes).or_else(|_| Self::from_compressed_bytes(bytes))
+            }
+            (false, false) => Err(Sp1Groth16Error::Serialization(
+                InvalidProofFormatError {
+                    actual: bytes.len(),
+                }
+                .into(),
+            )),
+        }
+    }
+
+    /// Split a canonical verifier encoding into its fixed-size header and the trailing
+    /// verifying-key bytes.
+    ///
+    /// Returns a `BufferLengthError` if `bytes` is shorter than [`VERIFIER_HEADER_SIZE`].
+    /// Returning the header as a fixed-size array lets [`Self::assemble_with_header`] index
+    /// it without a length check, so that routine cannot panic from a future caller bug.
+    fn split_header(bytes: &[u8]) -> Result<(&[u8; VERIFIER_HEADER_SIZE], &[u8]), Sp1Groth16Error> {
+        let header = bytes.first_chunk::<VERIFIER_HEADER_SIZE>().ok_or_else(|| {
+            Sp1Groth16Error::Serialization(
+                BufferLengthError {
+                    context: "SP1 Groth16 verifier header",
+                    expected: VERIFIER_HEADER_SIZE,
+                    actual: bytes.len(),
+                }
+                .into(),
+            )
+        })?;
+        Ok((header, &bytes[VERIFIER_HEADER_SIZE..]))
+    }
+
+    /// Assemble a verifier from a parsed verifying key and the fixed-size header that preceded
+    /// it in the canonical encodings.
+    ///
+    /// Rejects a VK with zero K points: the algebraic verifier indexes `vk.g1.k[0]`
+    /// unconditionally, so an empty K basis would turn a malformed serialized verifier
+    /// into a runtime panic at `verify` time. `load` produces a folded VK whose K length
+    /// equals `raw_num_k - 1` and enforces `raw_num_k >= 2`, so any verifier obtained
+    /// through the supported constructors has at least one K point; we re-check it here
+    /// because the deserialization path accepts an arbitrary `num_k` from the encoding.
+    fn assemble_with_header(
+        vk: Groth16VerifyingKey,
+        header: &[u8; VERIFIER_HEADER_SIZE],
+    ) -> Result<Self, Sp1Groth16Error> {
+        if vk.g1.k.is_empty() {
+            return Err(Sp1Groth16Error::Serialization(
+                BufferLengthError {
+                    context: "SP1 Groth16 verifier K points",
+                    expected: 1,
+                    actual: 0,
+                }
+                .into(),
+            ));
+        }
+
+        let mut vk_hash_tag = [0u8; VK_HASH_PREFIX_LENGTH];
+        vk_hash_tag.copy_from_slice(&header[..VK_HASH_PREFIX_LENGTH]);
+
+        let mut vk_root = [0u8; 32];
+        vk_root.copy_from_slice(&header[VK_HASH_PREFIX_LENGTH..VK_HASH_PREFIX_LENGTH + 32]);
+
+        let require_success = match header[VK_HASH_PREFIX_LENGTH + 32] {
+            0 => false,
+            1 => true,
+            _ => {
+                return Err(Sp1Groth16Error::Serialization(
+                    InvalidDataFormatError.into(),
+                ));
+            }
+        };
+
+        Ok(SP1Groth16Verifier {
+            vk,
+            vk_hash_tag,
+            vk_root,
+            require_success,
+        })
+    }
 }
 
 /// Adapts [`SP1Groth16Verifier`] to the generic [`ZkVmVerifier`] trait.
@@ -233,12 +451,17 @@ mod tests {
     use sp1_verifier::{GROTH16_VK_BYTES, VK_ROOT_BYTES};
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
+    use super::{GROTH16_VK_UNCOMPRESSED_NUM_K_OFFSET, VERIFIER_HEADER_SIZE};
     use crate::{
-        Groth16VerifyingKey, Sp1Groth16Proof,
-        error::Sp1Groth16Error,
-        types::constant::{
-            GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE, SUCCESS_EXIT_CODE,
-            VK_HASH_PREFIX_LENGTH,
+        Sp1Groth16Proof,
+        error::{BufferLengthError, SerializationError, Sp1Groth16Error},
+        types::{
+            constant::{
+                GNARK_VK_COMPRESSED_HEADER_SIZE, GNARK_VK_COMPRESSED_NUM_K_OFFSET,
+                GROTH16_PROOF_COMPRESSED_SIZE, GROTH16_PROOF_UNCOMPRESSED_SIZE,
+                GROTH16_VK_UNCOMPRESSED_HEADER_SIZE, SUCCESS_EXIT_CODE, VK_HASH_PREFIX_LENGTH,
+            },
+            vk::Groth16VerifyingKey,
         },
         verifier::SP1Groth16Verifier,
     };
@@ -509,6 +732,176 @@ mod tests {
         let vk = Groth16VerifyingKey::from_uncompressed_bytes(&uncompressed_vk_bytes).unwrap();
         assert_eq!(vk, verifier.vk);
     }
+
+    #[test]
+    fn test_verifier_uncompressed_roundtrip() {
+        let (verifier, receipt) = load_verifier_and_proof();
+
+        let bytes = verifier.to_uncompressed_bytes();
+        let recovered = SP1Groth16Verifier::from_uncompressed_bytes(&bytes).unwrap();
+
+        assert_eq!(recovered, verifier);
+
+        // The recovered verifier should still verify the original proof.
+        recovered
+            .verify(
+                receipt.proof().as_bytes(),
+                receipt.public_values().as_bytes(),
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn test_verifier_uncompressed_require_success_false_roundtrip() {
+        let (mut verifier, _) = load_verifier_and_proof();
+        verifier.require_success = false;
+
+        let bytes = verifier.to_uncompressed_bytes();
+        let recovered = SP1Groth16Verifier::from_uncompressed_bytes(&bytes).unwrap();
+        assert!(!recovered.require_success);
+    }
+
+    #[test]
+    fn test_verifier_from_uncompressed_bytes_invalid() {
+        let (verifier, _) = load_verifier_and_proof();
+        let bytes = verifier.to_uncompressed_bytes();
+
+        // Truncated buffer.
+        assert!(SP1Groth16Verifier::from_uncompressed_bytes(&bytes[..bytes.len() - 1]).is_err());
+
+        // The `require_success` byte in the header must be 0 or 1.
+        let mut tampered = bytes.clone();
+        tampered[VK_HASH_PREFIX_LENGTH + 32] = 2;
+        assert!(SP1Groth16Verifier::from_uncompressed_bytes(&tampered).is_err());
+    }
+
+    #[test]
+    fn test_verifier_compressed_roundtrip() {
+        let (verifier, receipt) = load_verifier_and_proof();
+
+        let bytes = verifier.to_compressed_bytes();
+        // Compressed form should be smaller than the uncompressed form.
+        assert!(bytes.len() < verifier.to_uncompressed_bytes().len());
+
+        let recovered = SP1Groth16Verifier::from_compressed_bytes(&bytes).unwrap();
+        assert_eq!(recovered, verifier);
+
+        recovered
+            .verify(
+                receipt.proof().as_bytes(),
+                receipt.public_values().as_bytes(),
+            )
+            .unwrap();
+    }
+
+    #[test]
+    fn test_verifier_from_compressed_bytes_invalid() {
+        let (verifier, _) = load_verifier_and_proof();
+        let bytes = verifier.to_compressed_bytes();
+
+        // Truncated buffer.
+        assert!(SP1Groth16Verifier::from_compressed_bytes(&bytes[..bytes.len() - 1]).is_err());
+
+        // The `require_success` byte in the header must be 0 or 1.
+        let mut tampered = bytes.clone();
+        tampered[VK_HASH_PREFIX_LENGTH + 32] = 2;
+        assert!(SP1Groth16Verifier::from_compressed_bytes(&tampered).is_err());
+    }
+
+    /// A malicious payload with `num_k = 0` parses into a `Groth16VerifyingKey` with an empty
+    /// K basis. The algebraic verifier indexes `vk.g1.k[0]` unconditionally, so without an
+    /// explicit reject the malformed bytes would silently produce a verifier whose `verify`
+    /// call later panics.
+    ///
+    /// The payload is built from a valid serialized verifier (so the G1/G2 coordinates
+    /// decode) with only the `num_k` field overwritten and the K bytes dropped, ensuring
+    /// the failure must come from the empty-K check rather than from upstream length or
+    /// point validation.
+    #[test]
+    fn test_verifier_rejects_zero_k_num_k() {
+        let (verifier, _) = load_verifier_and_proof();
+
+        // Keep the fixed header plus the VK header, drop all K bytes, and zero `num_k`.
+        let uncompressed = verifier.to_uncompressed_bytes();
+        let mut tampered =
+            uncompressed[..VERIFIER_HEADER_SIZE + GROTH16_VK_UNCOMPRESSED_HEADER_SIZE].to_vec();
+        let num_k_offset = VERIFIER_HEADER_SIZE + GROTH16_VK_UNCOMPRESSED_NUM_K_OFFSET;
+        tampered[num_k_offset..num_k_offset + 4].copy_from_slice(&0u32.to_be_bytes());
+        let err = SP1Groth16Verifier::from_uncompressed_bytes(&tampered).unwrap_err();
+        assert!(matches!(
+            err,
+            Sp1Groth16Error::Serialization(SerializationError::BufferLength(BufferLengthError {
+                context: "SP1 Groth16 verifier K points",
+                expected: 1,
+                actual: 0,
+            }))
+        ));
+
+        let compressed = verifier.to_compressed_bytes();
+        let mut tampered =
+            compressed[..VERIFIER_HEADER_SIZE + GNARK_VK_COMPRESSED_HEADER_SIZE].to_vec();
+        let num_k_offset = VERIFIER_HEADER_SIZE + GNARK_VK_COMPRESSED_NUM_K_OFFSET;
+        tampered[num_k_offset..num_k_offset + 4].copy_from_slice(&0u32.to_be_bytes());
+        let err = SP1Groth16Verifier::from_compressed_bytes(&tampered).unwrap_err();
+        assert!(matches!(
+            err,
+            Sp1Groth16Error::Serialization(SerializationError::BufferLength(BufferLengthError {
+                context: "SP1 Groth16 verifier K points",
+                expected: 1,
+                actual: 0,
+            }))
+        ));
+    }
+
+    #[test]
+    fn test_verifier_parse_accepts_both_forms() {
+        let (verifier, _) = load_verifier_and_proof();
+
+        let compressed = verifier.to_compressed_bytes();
+        let uncompressed = verifier.to_uncompressed_bytes();
+        assert_ne!(compressed.len(), uncompressed.len());
+
+        let from_compressed = SP1Groth16Verifier::parse(&compressed).unwrap();
+        let from_uncompressed = SP1Groth16Verifier::parse(&uncompressed).unwrap();
+
+        assert_eq!(from_compressed, verifier);
+        assert_eq!(from_uncompressed, verifier);
+    }
+
+    #[test]
+    fn test_verifier_parse_rejects_garbage() {
+        // A buffer matching neither encoding's length should fail to parse with
+        // `InvalidProofFormat`. 17 bytes is below every plausible header size, so neither
+        // candidate length computation succeeds.
+        let garbage = vec![0xAAu8; 17];
+        let err = SP1Groth16Verifier::parse(&garbage).unwrap_err();
+        assert!(matches!(
+            err,
+            Sp1Groth16Error::Serialization(SerializationError::InvalidProofFormat(_))
+        ));
+    }
+
+    #[test]
+    fn test_verifier_parse_surfaces_format_specific_error() {
+        // When the buffer length matches the uncompressed format but the VK bytes are
+        // corrupted, `parse` should return the uncompressed parser's error — not silently
+        // fall back to compressed (which would give a misleading error from a different
+        // format).
+        let (verifier, _) = load_verifier_and_proof();
+        let mut bytes = verifier.to_uncompressed_bytes();
+        // Corrupt a coordinate inside G1 alpha (the first VK field, just past the header) so
+        // the uncompressed parser fails at the point-decoding stage.
+        bytes[VERIFIER_HEADER_SIZE] ^= 0xFF;
+        bytes[VERIFIER_HEADER_SIZE + 1] ^= 0xFF;
+
+        let err = SP1Groth16Verifier::parse(&bytes).unwrap_err();
+        // The error must come from the uncompressed parser's point validation — not from
+        // length mismatch (which would indicate the parser was never invoked).
+        assert!(!matches!(
+            err,
+            Sp1Groth16Error::Serialization(SerializationError::InvalidProofFormat(_))
+        ));
+    }
 }
 
 // See the crate-level "Backwards compatibility with SP1 v5" docs for why this verifies
@@ -517,7 +910,7 @@ mod tests {
 mod v5_tests {
     use zkaleido::{ProofReceipt, ProofReceiptWithMetadata};
 
-    use crate::{SP1Groth16Verifier, VK_HASH_PREFIX_LENGTH};
+    use crate::{SP1Groth16Verifier, types::constant::VK_HASH_PREFIX_LENGTH};
 
     fn load_v5_verifier_and_proof() -> (SP1Groth16Verifier, ProofReceipt) {
         const SP1_V5_GROTH16_VK_BYTES: &[u8] =
