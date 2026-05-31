@@ -48,6 +48,19 @@ impl Groth16VerifyingKey {
     /// - [224..288)   : G2 δ (compressed)
     /// - [288..292)   : `num_k` (u32 BE)
     /// - [292..292+i) : `i = 32 * num_k` bytes of G1 K-points (compressed)
+    /// - [292+i..)    : Pedersen-commitment metadata (parsed by GNARK, ignored here)
+    ///
+    /// # Pedersen commitments
+    ///
+    /// After the K-points GNARK serializes its commitment-proving data: the
+    /// `PublicAndCommitmentCommitted` index lists and the per-commitment Pedersen verifying
+    /// keys, each written as a `u32`-length-prefixed array. SP1's circuit uses no Pedersen
+    /// commitments, so both arrays are empty and the tail is exactly two zero `u32`s — the 8
+    /// trailing `0x00` bytes you see on SP1's `GROTH16_VK_BYTES` (492 = 292 header + 192 K +
+    /// 8). This verifier does not support Pedersen commitments and ignores that tail entirely:
+    /// parsing stops once the K-points are read. Consequently the length check below is `<`
+    /// (enough bytes for header + K-points) rather than `==`, so a buffer is accepted whether
+    /// or not it carries the trailing 8 bytes, even though GNARK always emits them.
     ///
     /// Reference: <https://pkg.go.dev/github.com/consensys/gnark/backend/groth16/bn254#VerifyingKey>
     pub(crate) fn from_gnark_bytes(buffer: &[u8]) -> Result<Self, Sp1Groth16Error> {
@@ -73,7 +86,9 @@ impl Groth16VerifyingKey {
             buffer[GNARK_VK_COMPRESSED_NUM_K_OFFSET + 3],
         ]);
 
-        // Validate that buffer has enough bytes for all K points
+        // Validate that the buffer has enough bytes for all K points. Anything past them is
+        // GNARK's (ignored) Pedersen-commitment tail, so this is a `<` check, not `==`: see the
+        // "Pedersen commitments" note above.
         let expected_size = GNARK_VK_COMPRESSED_HEADER_SIZE + (num_k as usize * G1_COMPRESSED_SIZE);
         if buffer.len() < expected_size {
             return Err(Sp1Groth16Error::Serialization(
@@ -221,6 +236,13 @@ impl Groth16VerifyingKey {
     /// - bytes 224..288:  G2 δ (GNARK-compressed)
     /// - bytes 288..292:  `num_k` (u32 BE)
     /// - bytes 292..:     `32 * num_k` bytes of G1 K-points (GNARK-compressed)
+    ///
+    /// The output stops after the K-points and omits the trailing Pedersen-commitment
+    /// metadata that GNARK appends (see the "Pedersen commitments" note on
+    /// [`Self::from_gnark_bytes`]). This verifier does not support Pedersen commitments, and
+    /// SP1's circuit uses none, so there is nothing to emit; the result is 8 bytes shorter
+    /// than GNARK's own output but round-trips through `from_gnark_bytes`, which ignores that
+    /// tail. Re-deriving the empty arrays would only reproduce two zero `u32`s.
     pub(crate) fn to_gnark_bytes(&self) -> Vec<u8> {
         let num_k = self.g1.k.len() as u32;
         let total_size = GNARK_VK_COMPRESSED_HEADER_SIZE + (num_k as usize * G1_COMPRESSED_SIZE);
