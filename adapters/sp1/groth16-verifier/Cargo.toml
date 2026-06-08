@@ -22,7 +22,7 @@ thiserror.workspace = true
 zkaleido.workspace = true
 
 [dev-dependencies]
-serde_json = "1.0.149"
+serde_json = "1.0.150"
 bincode.workspace = true
 rand = "0.8.3"
 sp1-verifier.workspace = true
