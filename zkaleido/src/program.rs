@@ -1,9 +1,6 @@
 use std::env::var;
 
 #[cfg(feature = "remote-prover")]
-use async_trait::async_trait;
-
-#[cfg(feature = "remote-prover")]
 use crate::ZkVmRemoteHost;
 use crate::{
     ExecutionSummary, ProofReceiptWithMetadata, ProofType, PublicValues, ZkVmInputResult,
@@ -166,7 +163,6 @@ impl<T: ZkVmProgram> ZkVmProgramPerf for T {}
 /// to initiate asynchronous proof generation via the `start_proving` method, and later retrieve the
 /// proof once it is ready.
 #[cfg(feature = "remote-prover")]
-#[async_trait(?Send)]
 pub trait ZkVmRemoteProgram: ZkVmProgram {
     /// Starts the proving process using any zkVM remote host, returning a typed proof ID.
     async fn start_proving<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<H::ProofId>
@@ -187,5 +183,4 @@ pub trait ZkVmRemoteProgram: ZkVmProgram {
 /// automatically satisfy the `ZkVmRemoteProgram` trait without requiring explicit implementations.
 /// The default `start_proving` method provided by the trait is sufficient for most use cases.
 #[cfg(feature = "remote-prover")]
-#[async_trait(?Send)]
 impl<T: ZkVmProgram> ZkVmRemoteProgram for T {}
