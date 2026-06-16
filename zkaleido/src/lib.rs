@@ -67,6 +67,8 @@ pub enum ZkVm {
     SP1 = 1,
     /// Risc0 ZKVM
     Risc0 = 2,
+    /// Process ZKVM
+    Process = 3,
 }
 
 impl Display for ZkVm {
@@ -75,6 +77,7 @@ impl Display for ZkVm {
             ZkVm::SP1 => "SP1",
             ZkVm::Risc0 => "Risc0",
             ZkVm::Native => "Native",
+            ZkVm::Process => "Process",
         };
         write!(f, "{}", s)
     }
@@ -88,6 +91,7 @@ impl TryFrom<u8> for ZkVm {
             0 => Ok(ZkVm::Native),
             1 => Ok(ZkVm::SP1),
             2 => Ok(ZkVm::Risc0),
+            3 => Ok(ZkVm::Process),
             _ => Err(ZkVmError::Other(format!("unknown zkvm tag: {tag}"))),
         }
     }
