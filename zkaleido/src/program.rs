@@ -175,7 +175,10 @@ pub trait ZkVmRemoteProgram: ZkVmProgram {
     // Concrete callers therefore get a `Send`, spawnable future via auto-trait leakage; only a
     // purely generic caller would be unable to name the bound, and none exists. Suppress rather
     // than desugar to `fn -> impl Future + Send` to keep the `async fn` body.
-    #[expect(async_fn_in_trait, reason = "future is Send via Input: Send + Sync, just not named")]
+    #[expect(
+        async_fn_in_trait,
+        reason = "future is Send via Input: Send + Sync, just not named"
+    )]
     async fn start_proving<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<H::ProofId>
     where
         H: ZkVmRemoteHost,
