@@ -79,7 +79,11 @@ pub trait ZkVmRemoteProver: ZkVmProver {
     /// Must be displayable for logging, cloneable for repeated status queries, and
     /// convertible to/from `Vec<u8>` for persistent storage (e.g. in a database) so
     /// that proof status polling can be resumed across restarts.
-    type ProofId: Debug + Display + Clone + Into<Vec<u8>> + TryFrom<Vec<u8>> + 'static;
+    ///
+    /// `Send + Sync` is required so the ID can be carried across `.await` points and
+    /// shared between tasks by async consumers driving proofs on a multithreaded
+    /// executor, without each consumer having to restate the bound.
+    type ProofId: Debug + Display + Clone + Into<Vec<u8>> + TryFrom<Vec<u8>> + Send + Sync + 'static;
 
     /// Starts the proving process for the given input and proof type.
     ///
