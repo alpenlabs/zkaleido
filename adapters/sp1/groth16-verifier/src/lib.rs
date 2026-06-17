@@ -12,11 +12,14 @@
 //!
 //! - [`SP1Groth16Verifier`] — the verifier itself, with `load` / `verify` / canonical byte
 //!   serialization (`to_compressed_bytes`, `to_uncompressed_bytes`, `parse`).
-//! - [`Sp1Groth16Proof`] — parses the on-wire byte format into the optional prefix fields.
+//! - [`Sp1Groth16Proof`] — parses the on-wire byte format into the optional prefix fields and the
+//!   underlying [`Groth16Proof`].
+//! - [`Groth16Proof`] — the underlying Groth16 proof carried by [`Sp1Groth16Proof`], with
+//!   GNARK-compressed and uncompressed byte (de)serialization.
 //! - [`Sp1Groth16Error`] — error type returned by the inherent methods on the two types above.
 //!
-//! Everything else (the inner Groth16 types, the algebraic pairing routine, size constants)
-//! is an implementation detail and not part of the stable surface.
+//! Everything else (the algebraic pairing routine, size constants) is an implementation detail and
+//! not part of the stable surface.
 //!
 //! # The "fold fixed inputs into K0" optimisation
 //!
@@ -65,4 +68,5 @@ mod verifier;
 
 pub use error::Sp1Groth16Error;
 pub use proof::Sp1Groth16Proof;
+pub use types::proof::Groth16Proof;
 pub use verifier::SP1Groth16Verifier;

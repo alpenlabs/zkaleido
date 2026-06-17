@@ -12,7 +12,7 @@ use crate::{
 
 /// Proof for the Groth16 verification.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub(crate) struct Groth16Proof {
+pub struct Groth16Proof {
     pub(crate) ar: SAffineG1,
     pub(crate) krs: SAffineG1,
     pub(crate) bs: SAffineG2,
@@ -27,7 +27,7 @@ impl Groth16Proof {
     /// - bytes 192..256: uncompressed G1 point `K·R·S`
     ///
     /// Returns a `Groth16Proof` containing affine points `(ar, bs, krs)`.
-    pub(crate) fn from_uncompressed_bytes(buffer: &[u8]) -> Result<Groth16Proof, Sp1Groth16Error> {
+    pub fn from_uncompressed_bytes(buffer: &[u8]) -> Result<Groth16Proof, Sp1Groth16Error> {
         if buffer.len() != GROTH16_PROOF_UNCOMPRESSED_SIZE {
             return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
@@ -52,7 +52,7 @@ impl Groth16Proof {
     }
 
     /// Deserialize from GNARK-compressed bytes (128 bytes).
-    pub(crate) fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
+    pub fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, Sp1Groth16Error> {
         if bytes.len() != GROTH16_PROOF_COMPRESSED_SIZE {
             return Err(Sp1Groth16Error::Serialization(
                 BufferLengthError {
@@ -85,8 +85,7 @@ impl Groth16Proof {
     /// - bytes 96..128:  GNARK-compressed G1 point `K·R·S`
     ///
     /// Note: This is more compact than GNARK's uncompressed format (256 bytes).
-    #[cfg(test)]
-    pub(crate) fn to_gnark_compressed_bytes(&self) -> [u8; GROTH16_PROOF_COMPRESSED_SIZE] {
+    pub fn to_gnark_compressed_bytes(&self) -> [u8; GROTH16_PROOF_COMPRESSED_SIZE] {
         let mut bytes = [0u8; GROTH16_PROOF_COMPRESSED_SIZE];
 
         // Serialize ar (G1 GNARK-compressed)
@@ -106,8 +105,7 @@ impl Groth16Proof {
     /// Serialize to uncompressed bytes (256 bytes: 64 + 128 + 64).
     ///
     /// This is equivalent to GNARK's format.
-    #[cfg(test)]
-    pub(crate) fn to_uncompressed_bytes(&self) -> [u8; GROTH16_PROOF_UNCOMPRESSED_SIZE] {
+    pub fn to_uncompressed_bytes(&self) -> [u8; GROTH16_PROOF_UNCOMPRESSED_SIZE] {
         let mut bytes = [0u8; GROTH16_PROOF_UNCOMPRESSED_SIZE];
 
         // Serialize ar (G1 uncompressed)
