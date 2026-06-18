@@ -45,7 +45,7 @@ impl ZkVmExecutor for SP1Host {
     }
 
     fn save_trace(&self, trace_name: &str) {
-        let profiling_file_name = format!("{}_{:?}.trace_profile", trace_name, &self);
+        let profiling_file_name = format!("{}_{:?}.trace_profile", trace_name, self);
         // SAFETY: SP1 consumes this process-global trace setting from the
         // environment. Callers must configure tracing before concurrent prover
         // work starts.

@@ -1,7 +1,4 @@
-use std::env::var;
-
-#[cfg(feature = "remote-prover")]
-use async_trait::async_trait;
+use std::{env::var, future::Future};
 
 #[cfg(feature = "remote-prover")]
 use crate::ZkVmRemoteHost;
@@ -25,7 +22,11 @@ pub trait ZkVmProgram {
     /// necessary for the proof. It will be transformed into a ZkVM-specific format using a
     /// [`ZkVmInputBuilder`]. Implementers of this trait should define how the input
     /// structure is created, validated, and passed along to the ZkVM for proof generation.
-    type Input;
+    ///
+    /// `Send + Sync` lets `ZkVmRemoteProgram::start_proving` (under the `remote-prover`
+    /// feature) return a `Send` future, so remote proofs can be driven on a multithreaded
+    /// runtime. Every in-tree input is plain owned proof data that already satisfies it.
+    type Input: Send + Sync;
 
     /// Represents the final, verifiable output produced by the program.
     ///
@@ -166,18 +167,30 @@ impl<T: ZkVmProgram> ZkVmProgramPerf for T {}
 /// to initiate asynchronous proof generation via the `start_proving` method, and later retrieve the
 /// proof once it is ready.
 #[cfg(feature = "remote-prover")]
-#[async_trait(?Send)]
 pub trait ZkVmRemoteProgram: ZkVmProgram {
     /// Starts the proving process using any zkVM remote host, returning a typed proof ID.
-    async fn start_proving<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<H::ProofId>
+    ///
+    /// The returned future is explicitly `Send` so consumers (e.g. `prover-core`/paas) can drive
+    /// remote proofs on a multithreaded runtime and `tokio::spawn` them, instead of confining them
+    /// to a `LocalSet`. It is `Send` because it only borrows `&Self::Input` (`Send` via
+    /// `ZkVmProgram::Input: Send + Sync`) and `&H` (`Send` via `ZkVmHost: …: ZkVmExecutor: Sync`),
+    /// and awaits the host's `Send` future. We spell out `-> impl Future + Send` rather than use an
+    /// `async fn`, whose desugaring leaves the `Send` bound unnamed and therefore unusable by
+    /// generic callers.
+    fn start_proving<'a, H>(
+        input: &'a Self::Input,
+        host: &H,
+    ) -> impl Future<Output = ZkVmResult<H::ProofId>> + Send
     where
         H: ZkVmRemoteHost,
         H::Input<'a>: ZkVmInputBuilder<'a>,
     {
-        // Prepare the input using the host's input builder.
-        let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
+        async move {
+            // Prepare the input using the host's input builder.
+            let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
 
-        host.start_proving(zkvm_input, Self::proof_type()).await
+            host.start_proving(zkvm_input, Self::proof_type()).await
+        }
     }
 }
 
@@ -187,5 +200,4 @@ pub trait ZkVmRemoteProgram: ZkVmProgram {
 /// automatically satisfy the `ZkVmRemoteProgram` trait without requiring explicit implementations.
 /// The default `start_proving` method provided by the trait is sufficient for most use cases.
 #[cfg(feature = "remote-prover")]
-#[async_trait(?Send)]
 impl<T: ZkVmProgram> ZkVmRemoteProgram for T {}
