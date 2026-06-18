@@ -1,4 +1,4 @@
-use std::env::var;
+use std::{env::var, future::Future};
 
 #[cfg(feature = "remote-prover")]
 use crate::ZkVmRemoteHost;
@@ -169,25 +169,28 @@ impl<T: ZkVmProgram> ZkVmProgramPerf for T {}
 #[cfg(feature = "remote-prover")]
 pub trait ZkVmRemoteProgram: ZkVmProgram {
     /// Starts the proving process using any zkVM remote host, returning a typed proof ID.
-    // `async_fn_in_trait` fires because a native async fn in a trait carries no `Send` bound in
-    // its signature. The future is nonetheless `Send`: it captures `&Self::Input`, which is
-    // `Send` because `ZkVmProgram::Input: Send + Sync`, and awaits the now-`Send` host future.
-    // Concrete callers therefore get a `Send`, spawnable future via auto-trait leakage; only a
-    // purely generic caller would be unable to name the bound, and none exists. Suppress rather
-    // than desugar to `fn -> impl Future + Send` to keep the `async fn` body.
-    #[expect(
-        async_fn_in_trait,
-        reason = "future is Send via Input: Send + Sync, just not named"
-    )]
-    async fn start_proving<'a, H>(input: &'a Self::Input, host: &H) -> ZkVmResult<H::ProofId>
+    ///
+    /// The returned future is explicitly `Send` so consumers (e.g. `prover-core`/paas) can drive
+    /// remote proofs on a multithreaded runtime and `tokio::spawn` them, instead of confining them
+    /// to a `LocalSet`. It is `Send` because it only borrows `&Self::Input` (`Send` via
+    /// `ZkVmProgram::Input: Send + Sync`) and `&H` (`Send` via `ZkVmHost: …: ZkVmExecutor: Sync`),
+    /// and awaits the host's `Send` future. We spell out `-> impl Future + Send` rather than use an
+    /// `async fn`, whose desugaring leaves the `Send` bound unnamed and therefore unusable by
+    /// generic callers.
+    fn start_proving<'a, H>(
+        input: &'a Self::Input,
+        host: &H,
+    ) -> impl Future<Output = ZkVmResult<H::ProofId>> + Send
     where
         H: ZkVmRemoteHost,
         H::Input<'a>: ZkVmInputBuilder<'a>,
     {
-        // Prepare the input using the host's input builder.
-        let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
+        async move {
+            // Prepare the input using the host's input builder.
+            let zkvm_input = Self::prepare_input::<H::Input<'a>>(input)?;
 
-        host.start_proving(zkvm_input, Self::proof_type()).await
+            host.start_proving(zkvm_input, Self::proof_type()).await
+        }
     }
 }
 
