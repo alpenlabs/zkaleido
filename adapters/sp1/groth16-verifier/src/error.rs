@@ -34,6 +34,16 @@ pub struct InvalidProofFormatError {
     pub actual: usize,
 }
 
+/// Error for unsupported or invalid verifier (verifying key) format.
+///
+/// Raised when a serialized verifier's byte length does not match either the compressed or the
+/// uncompressed canonical encoding.
+#[derive(Error, Debug, Clone, PartialEq, Eq)]
+#[error("Invalid SP1 Groth16 verifier length: got {actual} bytes")]
+pub struct InvalidVerifierFormatError {
+    pub actual: usize,
+}
+
 /// Error for Groth16 public input count mismatches.
 #[derive(Error, Debug, Clone, PartialEq, Eq)]
 #[error("Invalid public input count: expected {expected}, got {actual}")]
@@ -66,6 +76,10 @@ pub enum SerializationError {
     /// Proof format is invalid or unsupported.
     #[error(transparent)]
     InvalidProofFormat(#[from] InvalidProofFormatError),
+
+    /// Verifier (verifying key) format is invalid or unsupported.
+    #[error(transparent)]
+    InvalidVerifierFormat(#[from] InvalidVerifierFormatError),
 
     /// Elliptic curve point is invalid.
     #[error(transparent)]

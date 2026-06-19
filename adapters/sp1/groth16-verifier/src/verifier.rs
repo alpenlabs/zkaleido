@@ -15,7 +15,7 @@ use zkaleido::{ProofReceipt, ZkVmError, ZkVmResult, ZkVmVerifier};
 use crate::{
     Sp1Groth16Proof,
     error::{
-        BufferLengthError, InvalidDataFormatError, InvalidProofFormatError, SerializationError,
+        BufferLengthError, InvalidDataFormatError, InvalidVerifierFormatError, SerializationError,
         Sp1Groth16Error,
     },
     hashes::{blake3_to_fr, sha256_to_fr},
@@ -330,7 +330,7 @@ impl SP1Groth16Verifier {
     /// Detection is structural: both encodings store `num_k` at a known offset within the VK
     /// header, so this function peeks at each candidate offset, computes the implied total
     /// length, and dispatches to the parser whose computed length matches the input buffer.
-    /// If neither matches, an `InvalidProofFormatError` is returned without invoking either
+    /// If neither matches, an `InvalidVerifierFormatError` is returned without invoking either
     /// parser; if exactly one matches, that parser's error (if any) is the one surfaced — so
     /// callers don't see a misleading "wrong format" error from the fallback.
     ///
@@ -350,7 +350,7 @@ impl SP1Groth16Verifier {
                 Self::from_uncompressed_bytes(bytes).or_else(|_| Self::from_compressed_bytes(bytes))
             }
             (false, false) => Err(Sp1Groth16Error::Serialization(
-                InvalidProofFormatError {
+                InvalidVerifierFormatError {
                     actual: bytes.len(),
                 }
                 .into(),
@@ -871,13 +871,13 @@ mod tests {
     #[test]
     fn test_verifier_parse_rejects_garbage() {
         // A buffer matching neither encoding's length should fail to parse with
-        // `InvalidProofFormat`. 17 bytes is below every plausible header size, so neither
+        // `InvalidVerifierFormat`. 17 bytes is below every plausible header size, so neither
         // candidate length computation succeeds.
         let garbage = vec![0xAAu8; 17];
         let err = SP1Groth16Verifier::parse(&garbage).unwrap_err();
         assert!(matches!(
             err,
-            Sp1Groth16Error::Serialization(SerializationError::InvalidProofFormat(_))
+            Sp1Groth16Error::Serialization(SerializationError::InvalidVerifierFormat(_))
         ));
     }
 
