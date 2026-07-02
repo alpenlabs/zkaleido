@@ -1,4 +1,6 @@
-use std::{env::var, future::Future};
+use std::env::var;
+#[cfg(feature = "remote-prover")]
+use std::future::Future;
 
 #[cfg(feature = "remote-prover")]
 use crate::ZkVmRemoteHost;
