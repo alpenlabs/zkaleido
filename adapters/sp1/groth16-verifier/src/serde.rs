@@ -410,7 +410,20 @@ fn hex_string_to_fq_bytes(hex_str: &str) -> Result<[u8; FQ_SIZE], SerializationE
 mod tests {
     use sp1_verifier::GROTH16_VK_BYTES;
 
-    use crate::types::vk::Groth16VerifyingKey;
+    use crate::types::{proof::Groth16Proof, vk::Groth16VerifyingKey};
+
+    #[test]
+    fn test_groth16_proof_json_rejects_invalid_points() {
+        let zero = format!("0x{}", "00".repeat(32));
+        let g1 = serde_json::json!({ "x": zero, "y": zero });
+        let fq2 = serde_json::json!({ "real": zero, "imaginary": zero });
+        let g2 = serde_json::json!({ "x": fq2, "y": fq2 });
+        let proof = serde_json::json!({ "ar": g1, "krs": g1, "bs": g2 });
+
+        let result = serde_json::from_value::<Groth16Proof>(proof);
+
+        assert!(result.is_err());
+    }
 
     #[test]
     fn test_vk_serde_json() {
