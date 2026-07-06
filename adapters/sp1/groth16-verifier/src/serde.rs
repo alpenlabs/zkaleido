@@ -18,7 +18,7 @@ use serde::{
 };
 
 use crate::{
-    error::{BufferLengthError, InvalidDataFormatError, InvalidPointError, SerializationError},
+    error::{BufferLengthError, InvalidDataFormatError, SerializationError},
     types::{
         constant::{FQ_SIZE, G1_UNCOMPRESSED_SIZE, G2_UNCOMPRESSED_SIZE},
         g1::SAffineG1,
@@ -68,11 +68,7 @@ impl TryFrom<SAffineG1Helper> for SAffineG1 {
     fn try_from(value: SAffineG1Helper) -> Result<Self, Self::Error> {
         let x = deserialize_fq_from_hex(&value.x)?;
         let y = deserialize_fq_from_hex(&value.y)?;
-        let z = Fq::one();
-
-        let projective = G1::new(x, y, z);
-
-        let g1 = bn::AffineG1::from_jacobian(projective).ok_or(InvalidPointError)?;
+        let g1 = bn::AffineG1::new(x, y)?;
         Ok(SAffineG1(g1))
     }
 }
@@ -137,11 +133,7 @@ impl TryFrom<SAffineG2Helper> for SAffineG2 {
     fn try_from(value: SAffineG2Helper) -> Result<Self, Self::Error> {
         let x = deserialize_fq2_from_hex(&value.x)?;
         let y = deserialize_fq2_from_hex(&value.y)?;
-        let z = Fq2::one();
-
-        let projective = G2::new(x, y, z);
-
-        let g2 = bn::AffineG2::from_jacobian(projective).ok_or(InvalidPointError)?;
+        let g2 = bn::AffineG2::new(x, y)?;
         Ok(SAffineG2(g2))
     }
 }
