@@ -29,8 +29,9 @@ impl SAffineG2 {
     /// Deserialize from GNARK-compressed bytes (64 bytes: x-coordinate (Fq2) with flag bits).
     ///
     /// Uses the GNARK compression scheme where the first two bits of the first byte encode a flag:
-    /// - `COMPRESSED_INFINITY`: the point at infinity in G2.
     /// - `COMPRESSED_POSITIVE` / `COMPRESSED_NEGATIVE`: choose the appropriate y‐coordinate branch.
+    /// - `COMPRESSED_INFINITY`: rejected. The point at infinity is not representable as an affine
+    ///   point and never appears in a valid Groth16 proof or verifying key.
     pub(crate) fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, SerializationError> {
         if bytes.len() != G2_COMPRESSED_SIZE {
             return Err(BufferLengthError {
@@ -44,11 +45,10 @@ impl SAffineG2 {
         // Extract the two-bit flag from the first byte.
         let flag = bytes[0] & MASK;
 
-        // If the flag indicates infinity, return the point at infinity in G2.
+        // Reject the infinity flag: the point at infinity has no affine representation, and
+        // decoding it to any concrete point would silently substitute a different point.
         if flag == COMPRESSED_INFINITY {
-            return Ok(SAffineG2(
-                AffineG2::from_jacobian(G2::one()).ok_or(InvalidPointError)?,
-            ));
+            return Err(InvalidDataFormatError.into());
         }
 
         // Reconstruct x1 (imaginary part of Fq2) with flags cleared.
@@ -209,7 +209,20 @@ impl fmt::Debug for SAffineG2 {
 mod tests {
     use bn::{AffineG2, G2, Group};
 
-    use crate::types::g2::SAffineG2;
+    use crate::types::{
+        constant::{COMPRESSED_INFINITY, G2_COMPRESSED_SIZE},
+        g2::SAffineG2,
+    };
+
+    #[test]
+    fn test_compressed_g2_rejects_infinity_flag() {
+        let mut bytes = [0u8; G2_COMPRESSED_SIZE];
+        bytes[0] = COMPRESSED_INFINITY;
+
+        let result = SAffineG2::from_gnark_compressed_bytes(&bytes);
+
+        assert!(result.is_err());
+    }
 
     #[test]
     fn test_uncompressed_g2_roundtrip() {
