@@ -3,100 +3,101 @@ use std::{env, fmt};
 use anyhow::{Context, Result};
 use clap::Args;
 
-use crate::github::GithubPrReporter;
+use crate::github::{DEFAULT_API_BASE_URL, GithubPrReporter};
 
 /// Returns the PR number parsed from the `GITHUB_REF` env var set by GitHub
 /// Actions (`refs/pull/<number>/merge` on pull_request-triggered runs),
-/// `None` on any other trigger or outside of CI.
-fn pr_number_from_env() -> Option<u64> {
-    let github_ref = env::var("GITHUB_REF").ok()?;
+/// empty on any other trigger or outside of CI.
+fn default_pr_number() -> String {
+    let Ok(github_ref) = env::var("GITHUB_REF") else {
+        return String::new();
+    };
     github_ref
-        .strip_prefix("refs/pull/")?
-        .split('/')
-        .next()?
-        .parse()
-        .ok()
+        .strip_prefix("refs/pull/")
+        .and_then(|rest| rest.split('/').next())
+        .map(str::to_string)
+        .unwrap_or_default()
 }
 
 /// Returns the repository from the `GITHUB_REPOSITORY` env var set by
-/// GitHub Actions, `None` outside of CI.
-fn repo_from_env() -> Option<String> {
-    env::var("GITHUB_REPOSITORY").ok()
+/// GitHub Actions, empty outside of CI.
+fn default_github_repo() -> String {
+    env::var("GITHUB_REPOSITORY").unwrap_or_default()
 }
 
 /// Returns the commit hash from the `GITHUB_SHA` env var set by GitHub
-/// Actions, `None` outside of CI.
-fn commit_hash_from_env() -> Option<String> {
-    env::var("GITHUB_SHA").ok()
+/// Actions, empty outside of CI.
+fn default_commit_hash() -> String {
+    env::var("GITHUB_SHA").unwrap_or_default()
 }
 
 /// Returns the API base URL from the `GITHUB_API_URL` env var set by GitHub
-/// Actions (which points at the enterprise host on GHES), `None` outside of
-/// CI.
-fn api_base_url_from_env() -> Option<String> {
-    env::var("GITHUB_API_URL").ok()
+/// Actions (which points at the enterprise host on GHES), falling back to
+/// the public GitHub API outside of CI.
+fn default_api_base_url() -> String {
+    env::var("GITHUB_API_URL")
+        .ok()
+        .filter(|url| !url.trim().is_empty())
+        .unwrap_or_else(|| DEFAULT_API_BASE_URL.to_string())
 }
 
 /// CLI arguments for posting a performance report to a GitHub PR.
 ///
 /// Meant to be embedded in a binary's argument struct via
 /// `#[command(flatten)]`, either directly or as `Option<GithubReportArgs>`
-/// to make "was any reporting flag given" drive whether to post. Values not
-/// given on the command line are filled from the GitHub Actions environment
-/// when [`reporter`](Self::reporter) is called, so env vars alone never
-/// count as the group being present.
+/// to make "was any reporting flag given" drive whether to post. All
+/// defaults are computed (not clap `env` attributes) so that env vars alone
+/// never count as the group being present.
 #[derive(Args, Clone)]
 pub struct GithubReportArgs {
     /// The GitHub token for authentication.
-    #[arg(long)]
-    pub github_token: Option<String>,
+    #[arg(long, default_value = "")]
+    pub github_token: String,
 
     /// The GitHub PR number to comment on.
     ///
     /// Defaults to the PR that triggered the CI run.
-    #[arg(long)]
-    pub pr_number: Option<u64>,
+    #[arg(long, default_value_t = default_pr_number())]
+    pub pr_number: String,
 
     /// GitHub repository in `owner/repo` format.
     ///
     /// Defaults to the repository the CI run is for.
-    #[arg(long)]
-    pub github_repo: Option<String>,
+    #[arg(long, default_value_t = default_github_repo())]
+    pub github_repo: String,
+
+    /// Base URL of the GitHub API, e.g. for GitHub Enterprise Server.
+    ///
+    /// Defaults to the API host of the CI run, or the public GitHub API.
+    #[arg(long, default_value_t = default_api_base_url())]
+    pub api_base_url: String,
 
     /// Commit hash shown in the report header.
     ///
     /// Defaults to the commit that triggered the CI run.
-    #[arg(long)]
-    pub commit_hash: Option<String>,
+    #[arg(long, default_value_t = default_commit_hash())]
+    pub commit_hash: String,
 }
 
 impl GithubReportArgs {
-    /// Builds a [`GithubPrReporter`] targeting the configured PR, filling
-    /// values not given on the command line from the GitHub Actions
-    /// environment. Fails if the target cannot be fully resolved, so call
-    /// this before doing any expensive work.
+    /// Builds a [`GithubPrReporter`] targeting the configured PR. Fails if
+    /// the target cannot be fully resolved, so call this before doing any
+    /// expensive work.
     pub fn reporter(&self, marker: &str) -> Result<GithubPrReporter> {
-        let repo = self
-            .github_repo
-            .clone()
-            .or_else(repo_from_env)
-            .context("github repo not provided and GITHUB_REPOSITORY is not set")?;
-        let pr_number = self
-            .pr_number
-            .or_else(pr_number_from_env)
-            .context("PR number not provided and GITHUB_REF is not a pull request ref")?;
-        let token = self
-            .github_token
-            .as_deref()
-            .context("github token not provided")?;
-
-        let mut reporter = GithubPrReporter::new(&repo, pr_number, token, marker)?;
-        if let Some(api_base_url) = api_base_url_from_env() {
-            reporter = reporter.with_api_base_url(&api_base_url);
-        }
-        if let Some(hash) = self.commit_hash.clone().or_else(commit_hash_from_env) {
-            reporter = reporter.with_commit_hash(&hash);
-        }
+        let pr_number: u64 = self.pr_number.trim().parse().with_context(|| {
+            format!(
+                "invalid PR number {:?}; pass --pr-number or run on a pull_request-triggered CI job",
+                self.pr_number
+            )
+        })?;
+        let reporter = GithubPrReporter::new(
+            &self.github_repo,
+            pr_number,
+            &self.github_token,
+            marker,
+            &self.api_base_url,
+        )?
+        .with_commit_hash(&self.commit_hash);
         Ok(reporter)
     }
 }
@@ -104,12 +105,10 @@ impl GithubReportArgs {
 impl fmt::Debug for GithubReportArgs {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("GithubReportArgs")
-            .field(
-                "github_token",
-                &self.github_token.as_ref().map(|_| "<redacted>"),
-            )
+            .field("github_token", &"<redacted>")
             .field("pr_number", &self.pr_number)
             .field("github_repo", &self.github_repo)
+            .field("api_base_url", &self.api_base_url)
             .field("commit_hash", &self.commit_hash)
             .finish()
     }

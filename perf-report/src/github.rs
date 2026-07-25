@@ -47,10 +47,18 @@ pub struct GithubPrReporter {
 }
 
 impl GithubPrReporter {
-    /// Creates a reporter targeting the given PR. Fails if any of the
-    /// required fields is blank, so misconfiguration surfaces at
-    /// construction rather than when the report is posted.
-    pub fn new(repo: &str, pr_number: u64, token: &str, marker: &str) -> Result<Self> {
+    /// Creates a reporter targeting the given PR. Use
+    /// [`DEFAULT_API_BASE_URL`] as `api_base_url` unless targeting a GitHub
+    /// Enterprise Server instance. Fails if any of the required fields is
+    /// blank, so misconfiguration surfaces at construction rather than when
+    /// the report is posted.
+    pub fn new(
+        repo: &str,
+        pr_number: u64,
+        token: &str,
+        marker: &str,
+        api_base_url: &str,
+    ) -> Result<Self> {
         if repo.trim().is_empty() {
             bail!("github repo is required");
         }
@@ -60,21 +68,18 @@ impl GithubPrReporter {
         if marker.trim().is_empty() {
             bail!("comment marker is required");
         }
+        if api_base_url.trim().is_empty() {
+            bail!("github API base url is required");
+        }
         Ok(Self {
             repo: repo.to_string(),
             pr_number,
             token: token.to_string(),
             marker: marker.to_string(),
             user_agent: DEFAULT_USER_AGENT.to_string(),
-            api_base_url: DEFAULT_API_BASE_URL.to_string(),
+            api_base_url: api_base_url.trim_end_matches('/').to_string(),
             commit_hash: None,
         })
-    }
-
-    /// Overrides the GitHub API base URL, e.g. for GitHub Enterprise Server.
-    pub fn with_api_base_url(mut self, api_base_url: &str) -> Self {
-        self.api_base_url = api_base_url.trim_end_matches('/').to_string();
-        self
     }
 
     /// Overrides the `User-Agent` header sent with GitHub API requests.
