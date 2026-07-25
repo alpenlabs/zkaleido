@@ -30,7 +30,7 @@ pub struct GithubPrReporter {
     /// Repository in `owner/name` form, e.g. `alpenlabs/zkaleido`.
     repo: String,
     /// Number of the PR to comment on.
-    pr_number: String,
+    pr_number: u64,
     /// GitHub token used for authentication.
     token: String,
     /// Identifier embedded in the comment to make it sticky.
@@ -42,16 +42,27 @@ pub struct GithubPrReporter {
 }
 
 impl GithubPrReporter {
-    /// Creates a reporter targeting the given PR.
-    pub fn new(repo: &str, pr_number: &str, token: &str, marker: &str) -> Self {
-        Self {
+    /// Creates a reporter targeting the given PR. Fails if any of the
+    /// required fields is blank, so misconfiguration surfaces at
+    /// construction rather than when the report is posted.
+    pub fn new(repo: &str, pr_number: u64, token: &str, marker: &str) -> Result<Self> {
+        if repo.trim().is_empty() {
+            bail!("github repo is required");
+        }
+        if token.trim().is_empty() {
+            bail!("github token is required");
+        }
+        if marker.trim().is_empty() {
+            bail!("comment marker is required");
+        }
+        Ok(Self {
             repo: repo.to_string(),
-            pr_number: pr_number.to_string(),
+            pr_number,
             token: token.to_string(),
             marker: marker.to_string(),
             user_agent: DEFAULT_USER_AGENT.to_string(),
             commit_hash: None,
-        }
+        })
     }
 
     /// Overrides the `User-Agent` header sent with GitHub API requests.
@@ -81,19 +92,6 @@ impl GithubPrReporter {
     /// Posts the message to the PR, updating the existing sticky comment if
     /// one is found.
     async fn post(&self, message: &str) -> Result<()> {
-        if self.repo.trim().is_empty() {
-            bail!("github repo is required");
-        }
-        if self.pr_number.trim().is_empty() {
-            bail!("PR number is required");
-        }
-        if self.token.trim().is_empty() {
-            bail!("github token is required");
-        }
-        if self.marker.trim().is_empty() {
-            bail!("comment marker is required");
-        }
-
         let hidden_marker = format!("<!-- {} -->", self.marker);
         let body = format!("{hidden_marker}\n{message}");
 

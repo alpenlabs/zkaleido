@@ -13,6 +13,14 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sp1_sdk::utils::setup_logger();
     let args = EvalArgs::parse();
 
+    // Resolve the reporting target up front so a misconfiguration fails
+    // before the benchmarks run, not after.
+    let reporter = args
+        .github
+        .as_ref()
+        .map(|github| github.reporter(COMMENT_MARKER))
+        .transpose()?;
+
     let mut results: Vec<ZkVmResults> = Vec::new();
 
     #[cfg(feature = "sp1")]
@@ -31,11 +39,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("{}", render_report(&results));
 
     // Post to GitHub PR
-    if let Some(github) = &args.github {
-        github
-            .reporter(COMMENT_MARKER)
-            .post_report(&results)
-            .await?;
+    if let Some(reporter) = reporter {
+        reporter.post_report(&results).await?;
     }
 
     Ok(())
