@@ -30,6 +30,13 @@ fn commit_hash_from_env() -> Option<String> {
     env::var("GITHUB_SHA").ok()
 }
 
+/// Returns the API base URL from the `GITHUB_API_URL` env var set by GitHub
+/// Actions (which points at the enterprise host on GHES), `None` outside of
+/// CI.
+fn api_base_url_from_env() -> Option<String> {
+    env::var("GITHUB_API_URL").ok()
+}
+
 /// CLI arguments for posting a performance report to a GitHub PR.
 ///
 /// Meant to be embedded in a binary's argument struct via
@@ -83,11 +90,14 @@ impl GithubReportArgs {
             .as_deref()
             .context("github token not provided")?;
 
-        let reporter = GithubPrReporter::new(&repo, pr_number, token, marker)?;
-        Ok(match self.commit_hash.clone().or_else(commit_hash_from_env) {
-            Some(hash) => reporter.with_commit_hash(&hash),
-            None => reporter,
-        })
+        let mut reporter = GithubPrReporter::new(&repo, pr_number, token, marker)?;
+        if let Some(api_base_url) = api_base_url_from_env() {
+            reporter = reporter.with_api_base_url(&api_base_url);
+        }
+        if let Some(hash) = self.commit_hash.clone().or_else(commit_hash_from_env) {
+            reporter = reporter.with_commit_hash(&hash);
+        }
+        Ok(reporter)
     }
 }
 

@@ -20,6 +20,9 @@ fn format_header(commit_hash: Option<&str>) -> String {
 /// Default `User-Agent` header sent with GitHub API requests.
 pub const DEFAULT_USER_AGENT: &str = "zkaleido-perf-report";
 
+/// Default base URL of the GitHub REST API.
+pub const DEFAULT_API_BASE_URL: &str = "https://api.github.com";
+
 /// Posts performance reports as a sticky comment on a GitHub PR.
 ///
 /// The posted comment body is prefixed with an invisible HTML comment built
@@ -37,6 +40,8 @@ pub struct GithubPrReporter {
     marker: String,
     /// `User-Agent` header sent with GitHub API requests.
     user_agent: String,
+    /// Base URL of the GitHub API, without a trailing slash.
+    api_base_url: String,
     /// Commit hash shown in the report header, `None` for local runs.
     commit_hash: Option<String>,
 }
@@ -61,8 +66,15 @@ impl GithubPrReporter {
             token: token.to_string(),
             marker: marker.to_string(),
             user_agent: DEFAULT_USER_AGENT.to_string(),
+            api_base_url: DEFAULT_API_BASE_URL.to_string(),
             commit_hash: None,
         })
+    }
+
+    /// Overrides the GitHub API base URL, e.g. for GitHub Enterprise Server.
+    pub fn with_api_base_url(mut self, api_base_url: &str) -> Self {
+        self.api_base_url = api_base_url.trim_end_matches('/').to_string();
+        self
     }
 
     /// Overrides the `User-Agent` header sent with GitHub API requests.
@@ -97,8 +109,8 @@ impl GithubPrReporter {
 
         let client = Client::new();
         let comments_url = format!(
-            "https://api.github.com/repos/{}/issues/{}/comments?per_page=100",
-            self.repo, self.pr_number
+            "{}/repos/{}/issues/{}/comments?per_page=100",
+            self.api_base_url, self.repo, self.pr_number
         );
 
         let comments_response = self
@@ -163,6 +175,7 @@ impl fmt::Debug for GithubPrReporter {
             .field("token", &"<redacted>")
             .field("marker", &self.marker)
             .field("user_agent", &self.user_agent)
+            .field("api_base_url", &self.api_base_url)
             .field("commit_hash", &self.commit_hash)
             .finish()
     }
