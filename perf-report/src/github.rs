@@ -109,7 +109,15 @@ impl GithubPrReporter {
         let hidden_marker = format!("<!-- {} -->", self.marker);
         let body = format!("{hidden_marker}\n{message}");
 
+        // TODO: set a request timeout on the client so a hung connection
+        // fails on its own. Acceptable for now: this is expected to run in
+        // CI, where the job-level timeout covers it.
         let client = Client::new();
+        // TODO: follow the `Link` header to paginate instead of fetching a
+        // single page; a sticky comment past the first 100 comments is
+        // missed and a duplicate gets created. Acceptable for now: the
+        // comment is posted right after the first CI run of a PR, so it
+        // lands within the first page.
         let comments_url = format!(
             "{}/repos/{}/issues/{}/comments?per_page=100",
             self.api_base_url, self.repo, self.pr_number
@@ -125,6 +133,9 @@ impl GithubPrReporter {
             bail!("failed to fetch PR comments ({status}): {body}");
         }
 
+        // TODO: deserialize the comments into a typed struct instead of
+        // poking at `serde_json::Value`, for better errors when the
+        // response doesn't have the expected shape.
         let comments: Vec<serde_json::Value> = comments_response
             .json()
             .await
