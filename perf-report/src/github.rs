@@ -11,9 +11,9 @@ fn format_header(commit_hash: Option<&str>) -> String {
     match commit_hash {
         Some(hash) => {
             let short_commit: String = hash.chars().take(8).collect();
-            format!("*Commit*: {short_commit}")
+            format!("**Commit**: {short_commit}")
         }
-        None => "*Local execution*".to_string(),
+        None => "**Local execution**".to_string(),
     }
 }
 
@@ -95,10 +95,7 @@ impl GithubPrReporter {
     pub async fn post_report(&self, results: &[ZkVmResults]) -> Result<()> {
         let header = format_header(self.commit_hash.as_deref());
         let report_text = format!("{header}\n{}", render_report(results));
-        // TODO: emit GitHub markdown directly in the formatters instead of
-        // the `*bold*` -> `**bold**` rewrite, once all consumers go through
-        // this crate.
-        self.post(&report_text.replace('*', "**")).await
+        self.post(&report_text).await
     }
 
     /// Posts the message to the PR, updating the existing sticky comment if

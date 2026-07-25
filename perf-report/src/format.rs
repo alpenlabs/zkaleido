@@ -32,5 +32,5 @@ pub fn format_results(results: &ZkVmResults) -> String {
     }
     table_text.push('\n');
 
-    format!("*{} Execution Results*\n {table_text}", results.zkvm)
+    format!("**{} Execution Results**\n {table_text}", results.zkvm)
 }
