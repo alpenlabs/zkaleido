@@ -9919,6 +9919,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "zkaleido-perf-report"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "clap",
+ "num-format",
+ "reqwest 0.13.4",
+ "serde_json",
+ "zkaleido",
+]
+
+[[package]]
 name = "zkaleido-risc0-artifacts"
 version = "0.1.0"
 dependencies = [

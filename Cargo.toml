@@ -14,6 +14,7 @@ members = [
 
   "zkaleido",
   "logging",
+  "perf-report",
 
   # binaries
   "runner",
@@ -42,6 +43,7 @@ rustdoc.all = "warn"
 [workspace.dependencies]
 zkaleido = { path = "zkaleido" }
 zkaleido-logging = { path = "logging" }
+zkaleido-perf-report = { path = "perf-report" }
 zkaleido-native-adapter = { path = "adapters/native" }
 zkaleido-sp1-groth16-verifier = { path = "adapters/sp1/groth16-verifier" }
 zkaleido-risc0-groth16-verifier = { path = "adapters/risc0/groth16-verifier" }
