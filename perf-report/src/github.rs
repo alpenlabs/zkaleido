@@ -1,16 +1,10 @@
-use std::{env, fmt};
+use std::fmt;
 
 use anyhow::{Result, anyhow, bail};
 use reqwest::{Client, RequestBuilder};
 use serde_json::json;
 
 use crate::{format::render_report, report::ZkVmResults};
-
-/// Returns the commit hash of the workflow run from the `GITHUB_SHA` env var
-/// set by GitHub Actions, `None` outside of CI.
-fn detect_commit_hash() -> Option<String> {
-    env::var("GITHUB_SHA").ok().filter(|sha| !sha.is_empty())
-}
 
 /// Returns the report header identifying what was benchmarked.
 fn format_header(commit_hash: Option<&str>) -> String {
@@ -43,6 +37,8 @@ pub struct GithubPrReporter {
     marker: String,
     /// `User-Agent` header sent with GitHub API requests.
     user_agent: String,
+    /// Commit hash shown in the report header, `None` for local runs.
+    commit_hash: Option<String>,
 }
 
 impl GithubPrReporter {
@@ -54,6 +50,7 @@ impl GithubPrReporter {
             token: token.to_string(),
             marker: marker.to_string(),
             user_agent: DEFAULT_USER_AGENT.to_string(),
+            commit_hash: None,
         }
     }
 
@@ -63,14 +60,17 @@ impl GithubPrReporter {
         self
     }
 
+    /// Sets the commit hash shown in the report header. An empty hash is
+    /// treated as unset, so the header falls back to "Local execution".
+    pub fn with_commit_hash(mut self, commit_hash: &str) -> Self {
+        self.commit_hash = Some(commit_hash.to_string()).filter(|hash| !hash.trim().is_empty());
+        self
+    }
+
     /// Renders the results and posts them to the PR, updating the existing
     /// sticky comment if one is found.
-    ///
-    /// The commit hash shown in the report header is taken from the
-    /// `GITHUB_SHA` env var set by GitHub Actions.
     pub async fn post_report(&self, results: &[ZkVmResults]) -> Result<()> {
-        let commit_hash = detect_commit_hash();
-        let header = format_header(commit_hash.as_deref());
+        let header = format_header(self.commit_hash.as_deref());
         let report_text = format!("{header}\n{}", render_report(results));
         // TODO: emit GitHub markdown directly in the formatters instead of
         // the `*bold*` -> `**bold**` rewrite, once all consumers go through
@@ -165,6 +165,7 @@ impl fmt::Debug for GithubPrReporter {
             .field("token", &"<redacted>")
             .field("marker", &self.marker)
             .field("user_agent", &self.user_agent)
+            .field("commit_hash", &self.commit_hash)
             .finish()
     }
 }

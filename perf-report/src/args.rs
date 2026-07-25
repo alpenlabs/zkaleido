@@ -25,6 +25,12 @@ fn default_github_repo() -> String {
     env::var("GITHUB_REPOSITORY").unwrap_or_default()
 }
 
+/// Returns the commit hash from the `GITHUB_SHA` env var set by GitHub
+/// Actions, empty outside of CI.
+fn default_commit_hash() -> String {
+    env::var("GITHUB_SHA").unwrap_or_default()
+}
+
 /// CLI arguments for posting a performance report to a GitHub PR.
 ///
 /// Meant to be embedded in a binary's argument struct via
@@ -49,6 +55,12 @@ pub struct GithubReportArgs {
     /// Defaults to the repository the CI run is for.
     #[arg(long, default_value_t = default_github_repo())]
     pub github_repo: String,
+
+    /// Commit hash shown in the report header.
+    ///
+    /// Defaults to the commit that triggered the CI run.
+    #[arg(long, default_value_t = default_commit_hash())]
+    pub commit_hash: String,
 }
 
 impl GithubReportArgs {
@@ -60,6 +72,7 @@ impl GithubReportArgs {
             &self.github_token,
             marker,
         )
+        .with_commit_hash(&self.commit_hash)
     }
 }
 
@@ -69,6 +82,7 @@ impl fmt::Debug for GithubReportArgs {
             .field("github_token", &"<redacted>")
             .field("pr_number", &self.pr_number)
             .field("github_repo", &self.github_repo)
+            .field("commit_hash", &self.commit_hash)
             .finish()
     }
 }
