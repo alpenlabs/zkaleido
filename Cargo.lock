@@ -9979,22 +9979,19 @@ dependencies = [
 name = "zkaleido-runner"
 version = "0.1.0"
 dependencies = [
- "anyhow",
  "bincode",
  "clap",
  "fibonacci",
  "fibonacci-composition",
  "groth16-verify-sp1",
- "num-format",
- "reqwest 0.13.4",
  "schnorr-sig-verify",
  "serde",
- "serde_json",
  "sha2-chain",
  "sp1-sdk",
  "time",
  "tokio",
  "zkaleido",
+ "zkaleido-perf-report",
  "zkaleido-risc0-artifacts",
  "zkaleido-risc0-host",
  "zkaleido-sp1-artifacts",
