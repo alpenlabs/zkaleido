@@ -144,10 +144,14 @@ impl GithubPrReporter {
             .await
             .map_err(|e| anyhow!("failed to decode PR comments response: {e}"))?;
 
+        // Only a body that *starts* with the marker counts: the reporter
+        // always writes the marker first, so a comment that merely quotes
+        // it (e.g. a human discussing this report) is never mistaken for
+        // the sticky comment and overwritten.
         let sticky_comment = comments.iter().find(|comment| {
             comment["body"]
                 .as_str()
-                .map(|body| body.contains(&hidden_marker))
+                .map(|body| body.starts_with(&hidden_marker))
                 .unwrap_or(false)
         });
 
