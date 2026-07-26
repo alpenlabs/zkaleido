@@ -31,6 +31,13 @@ fn default_commit_hash() -> String {
     env::var("GITHUB_SHA").unwrap_or_default()
 }
 
+/// Returns the base branch from the `GITHUB_BASE_REF` env var set by GitHub
+/// Actions (the PR's target branch on pull_request-triggered runs), empty
+/// on any other trigger or outside of CI.
+fn default_base_branch() -> String {
+    env::var("GITHUB_BASE_REF").unwrap_or_default()
+}
+
 /// Returns the API base URL from the `GITHUB_API_URL` env var set by GitHub
 /// Actions (which points at the enterprise host on GHES), falling back to
 /// the public GitHub API outside of CI.
@@ -77,6 +84,13 @@ pub struct GithubReportArgs {
     /// Defaults to the commit that triggered the CI run.
     #[arg(long, default_value_t = default_commit_hash())]
     pub commit_hash: String,
+
+    /// Base branch whose most recently merged PR provides the baseline
+    /// report to diff against.
+    ///
+    /// Defaults to the base branch of the PR that triggered the CI run.
+    #[arg(long, default_value_t = default_base_branch())]
+    pub base_branch: String,
 }
 
 impl GithubReportArgs {
@@ -99,6 +113,9 @@ impl GithubReportArgs {
             // An empty hash (e.g. outside CI) means unset, so the header
             // falls back to "Local execution".
             commit_hash: Some(self.commit_hash.clone()).filter(|hash| !hash.trim().is_empty()),
+            // An empty branch (e.g. outside CI) means unset, which
+            // disables baseline lookup.
+            base_branch: Some(self.base_branch.clone()).filter(|branch| !branch.trim().is_empty()),
             ..Default::default()
         })
     }
@@ -112,6 +129,7 @@ impl fmt::Debug for GithubReportArgs {
             .field("github_repo", &self.github_repo)
             .field("api_base_url", &self.api_base_url)
             .field("commit_hash", &self.commit_hash)
+            .field("base_branch", &self.base_branch)
             .finish()
     }
 }
