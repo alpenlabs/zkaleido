@@ -35,12 +35,28 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         results.push(ZkVmResults::new(ZkVm::Risc0, risc0_reports));
     }
 
+    // A missing baseline only degrades the report to absolute numbers, so
+    // fetch failures must not block posting it.
+    let baseline = match &reporter {
+        Some(reporter) => reporter.fetch_baseline().await.unwrap_or_else(|err| {
+            eprintln!("warning: failed to fetch baseline report: {err:#}");
+            None
+        }),
+        None => None,
+    };
+
     // Print results
-    println!("{}", render_report(&results, None));
+    println!(
+        "{}",
+        render_report(
+            &results,
+            baseline.as_ref().map(|baseline| &baseline.payload)
+        )
+    );
 
     // Post to GitHub PR
     if let Some(reporter) = reporter {
-        reporter.post_report(&results, None).await?;
+        reporter.post_report(&results, baseline.as_ref()).await?;
     }
 
     Ok(())
