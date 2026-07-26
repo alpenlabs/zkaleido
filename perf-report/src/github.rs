@@ -4,7 +4,7 @@ use anyhow::{Result, anyhow, bail};
 use reqwest::{Client, RequestBuilder};
 use serde_json::json;
 
-use crate::{format::render_report, report::ZkVmResults};
+use crate::{format::render_report, payload::ReportPayload, report::ZkVmResults};
 
 /// Returns the report header identifying what was benchmarked.
 fn format_header(commit_hash: Option<&str>) -> String {
@@ -96,10 +96,13 @@ impl GithubPrReporter {
     }
 
     /// Renders the results and posts them to the PR, updating the existing
-    /// sticky comment if one is found.
+    /// sticky comment if one is found. The posted comment also embeds the
+    /// results as a hidden machine-readable payload, which is what later
+    /// runs read back as their baseline.
     pub async fn post_report(&self, results: &[ZkVmResults]) -> Result<()> {
         let header = format_header(self.commit_hash.as_deref());
-        let report_text = format!("{header}\n{}", render_report(results));
+        let payload = ReportPayload::from(results).embed()?;
+        let report_text = format!("{header}\n{}\n{payload}", render_report(results));
         self.post(&report_text).await
     }
 

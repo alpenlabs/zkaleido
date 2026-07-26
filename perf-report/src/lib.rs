@@ -8,9 +8,11 @@
 mod args;
 mod format;
 mod github;
+mod payload;
 mod report;
 
 pub use args::GithubReportArgs;
 pub use format::{format_results, render_report};
 pub use github::{DEFAULT_API_BASE_URL, DEFAULT_USER_AGENT, GithubPrReporter};
+pub use payload::{ProgramPayload, ReportPayload, ZkVmPayload};
 pub use report::{ProgramResult, ZkVmResults};
