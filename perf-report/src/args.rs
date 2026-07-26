@@ -3,7 +3,7 @@ use std::{env, fmt};
 use anyhow::{Context, Result};
 use clap::Args;
 
-use crate::github::{DEFAULT_API_BASE_URL, GithubPrReporter};
+use crate::github::{DEFAULT_API_BASE_URL, GithubPrReporter, GithubPrReporterConfig};
 
 /// Returns the PR number parsed from the `GITHUB_REF` env var set by GitHub
 /// Actions (`refs/pull/<number>/merge` on pull_request-triggered runs),
@@ -90,15 +90,17 @@ impl GithubReportArgs {
                 self.pr_number
             )
         })?;
-        let reporter = GithubPrReporter::new(
-            &self.github_repo,
+        GithubPrReporter::new(GithubPrReporterConfig {
+            repo: self.github_repo.clone(),
             pr_number,
-            &self.github_token,
-            marker,
-            &self.api_base_url,
-        )?
-        .with_commit_hash(&self.commit_hash);
-        Ok(reporter)
+            token: self.github_token.clone(),
+            marker: marker.to_string(),
+            api_base_url: self.api_base_url.clone(),
+            // An empty hash (e.g. outside CI) means unset, so the header
+            // falls back to "Local execution".
+            commit_hash: Some(self.commit_hash.clone()).filter(|hash| !hash.trim().is_empty()),
+            ..Default::default()
+        })
     }
 }
 
