@@ -3,7 +3,10 @@ use std::{env, fmt};
 use anyhow::{Context, Result};
 use clap::Args;
 
-use crate::github::{DEFAULT_API_BASE_URL, GithubPrReporter, GithubPrReporterConfig};
+use crate::github::{
+    DEFAULT_API_BASE_URL, DEFAULT_BASELINE_COMMIT_LOOKBACK, GithubPrReporter,
+    GithubPrReporterConfig,
+};
 
 /// Returns the PR number parsed from the `GITHUB_REF` env var set by GitHub
 /// Actions (`refs/pull/<number>/merge` on pull_request-triggered runs),
@@ -91,6 +94,15 @@ pub struct GithubReportArgs {
     /// Defaults to the base branch of the PR that triggered the CI run.
     #[arg(long, default_value_t = default_base_branch())]
     pub base_branch: String,
+
+    /// How many base branch commits to walk back when looking for the
+    /// baseline report. Zero disables the lookup.
+    ///
+    /// The window counts commits, not PRs: with squash merges the two
+    /// coincide, but with rebase or merge-commit merges a single PR can
+    /// span many commits, so a larger window may be needed.
+    #[arg(long, default_value_t = DEFAULT_BASELINE_COMMIT_LOOKBACK)]
+    pub baseline_commit_lookback: usize,
 }
 
 impl GithubReportArgs {
@@ -116,6 +128,7 @@ impl GithubReportArgs {
             // An empty branch (e.g. outside CI) means unset, which
             // disables baseline lookup.
             base_branch: Some(self.base_branch.clone()).filter(|branch| !branch.trim().is_empty()),
+            baseline_commit_lookback: self.baseline_commit_lookback,
             ..Default::default()
         })
     }
@@ -130,6 +143,7 @@ impl fmt::Debug for GithubReportArgs {
             .field("api_base_url", &self.api_base_url)
             .field("commit_hash", &self.commit_hash)
             .field("base_branch", &self.base_branch)
+            .field("baseline_commit_lookback", &self.baseline_commit_lookback)
             .finish()
     }
 }

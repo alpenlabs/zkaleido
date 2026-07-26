@@ -6,8 +6,15 @@ use serde_json::{Value, json};
 
 use crate::{format::render_report, payload::ReportPayload, report::ZkVmResults};
 
-/// How many base-branch commits to walk back when looking for a baseline.
-const BASELINE_COMMIT_LOOKBACK: usize = 20;
+/// Default number of base-branch commits to walk back when looking for a
+/// baseline.
+///
+/// The window counts commits, not PRs. Under squash merging every base
+/// branch commit corresponds to one PR, so this spans ~20 PRs. Under
+/// rebase or merge-commit merging a single PR lands all of its commits on
+/// the base branch, so one large PR can consume most of the window;
+/// configure a larger lookback in such repositories.
+pub const DEFAULT_BASELINE_COMMIT_LOOKBACK: usize = 20;
 
 /// A performance report recovered from an already-merged PR, used as the
 /// baseline to diff a new report against.
@@ -112,6 +119,11 @@ pub struct GithubPrReporterConfig {
     /// Base branch searched for the baseline report, `None` to disable
     /// baseline lookup.
     pub base_branch: Option<String>,
+    /// How many base-branch commits to walk back when looking for a
+    /// baseline. Zero disables baseline lookup. See
+    /// [`DEFAULT_BASELINE_COMMIT_LOOKBACK`] for how the window relates to
+    /// the repository's merge strategy.
+    pub baseline_commit_lookback: usize,
 }
 
 impl Default for GithubPrReporterConfig {
@@ -125,6 +137,7 @@ impl Default for GithubPrReporterConfig {
             api_base_url: DEFAULT_API_BASE_URL.to_string(),
             commit_hash: None,
             base_branch: None,
+            baseline_commit_lookback: DEFAULT_BASELINE_COMMIT_LOOKBACK,
         }
     }
 }
@@ -140,6 +153,7 @@ impl fmt::Debug for GithubPrReporterConfig {
             .field("api_base_url", &self.api_base_url)
             .field("commit_hash", &self.commit_hash)
             .field("base_branch", &self.base_branch)
+            .field("baseline_commit_lookback", &self.baseline_commit_lookback)
             .finish()
     }
 }
@@ -180,17 +194,26 @@ impl GithubPrReporter {
     /// branch. Walks the base branch history commit by commit, so commits
     /// without a merged PR (direct pushes) and PRs without a readable
     /// report (failed perf job, predates the embedded payload) are skipped
-    /// in favor of an older baseline. Returns `None` when no base branch is
-    /// configured or nothing is found within the lookback window.
+    /// in favor of an older baseline. Returns `None` when baseline lookup
+    /// is disabled (no base branch, zero lookback) or nothing is found
+    /// within the lookback window.
     pub async fn fetch_baseline(&self) -> Result<Option<BaselineReport>> {
         let Some(base_branch) = self.config.base_branch.as_deref() else {
             return Ok(None);
         };
+        // Guard explicitly: the GitHub API treats `per_page=0` as "use the
+        // default page size" rather than "no commits".
+        if self.config.baseline_commit_lookback == 0 {
+            return Ok(None);
+        }
 
         let client = Client::new();
+        // TODO: lookbacks above 100 are silently capped by the GitHub API,
+        // which serves at most one page of commits; paginate to support
+        // larger windows.
         let commits_url = format!(
-            "{}/repos/{}/commits?sha={base_branch}&per_page={BASELINE_COMMIT_LOOKBACK}",
-            self.config.api_base_url, self.config.repo
+            "{}/repos/{}/commits?sha={base_branch}&per_page={}",
+            self.config.api_base_url, self.config.repo, self.config.baseline_commit_lookback
         );
         let commits = self
             .get_json_array(&client, &commits_url, "base branch commits")
