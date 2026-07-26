@@ -47,15 +47,36 @@ fn first_merged_pr(pulls: &[Value], base_branch: &str) -> Option<u64> {
         .and_then(|pull| pull["number"].as_u64())
 }
 
-/// Returns the report header identifying what was benchmarked.
-fn format_header(commit_hash: Option<&str>) -> String {
-    match commit_hash {
-        Some(hash) => {
-            let short_commit: String = hash.chars().take(8).collect();
-            format!("**Commit**: {short_commit}")
-        }
+/// Returns the first 8 characters of a commit hash.
+fn short_hash(hash: &str) -> String {
+    hash.chars().take(8).collect()
+}
+
+/// Returns the report header identifying what was benchmarked and which
+/// baseline it is compared against.
+fn format_header(
+    commit_hash: Option<&str>,
+    baseline: Option<&BaselineReport>,
+    base_branch: Option<&str>,
+) -> String {
+    let mut lines = vec![match commit_hash {
+        Some(hash) => format!("**Commit**: {}", short_hash(hash)),
         None => "**Local execution**".to_string(),
+    }];
+    match (baseline, base_branch) {
+        (Some(baseline), _) => lines.push(format!(
+            "**Baseline**: #{} ({})",
+            baseline.pr_number,
+            short_hash(&baseline.commit_hash)
+        )),
+        // A base branch was configured but yielded no baseline; say so to
+        // distinguish "nothing to compare against yet" from a broken lookup.
+        (None, Some(base_branch)) => {
+            lines.push(format!("**Baseline**: none found on `{base_branch}`"))
+        }
+        (None, None) => {}
     }
+    lines.join("\n")
 }
 
 /// Default `User-Agent` header sent with GitHub API requests.
@@ -206,13 +227,23 @@ impl GithubPrReporter {
     }
 
     /// Renders the results and posts them to the PR, updating the existing
-    /// sticky comment if one is found. The posted comment also embeds the
-    /// results as a hidden machine-readable payload, which is what later
-    /// runs read back as their baseline.
-    pub async fn post_report(&self, results: &[ZkVmResults]) -> Result<()> {
-        let header = format_header(self.config.commit_hash.as_deref());
+    /// sticky comment if one is found, with per-program deltas when a
+    /// `baseline` is given. The posted comment also embeds the results as a
+    /// hidden machine-readable payload, which is what later runs read back
+    /// as their baseline.
+    pub async fn post_report(
+        &self,
+        results: &[ZkVmResults],
+        baseline: Option<&BaselineReport>,
+    ) -> Result<()> {
+        let header = format_header(
+            self.config.commit_hash.as_deref(),
+            baseline,
+            self.config.base_branch.as_deref(),
+        );
         let payload = ReportPayload::from(results).embed()?;
-        let report_text = format!("{header}\n{}\n{payload}", render_report(results));
+        let report = render_report(results, baseline.map(|baseline| &baseline.payload));
+        let report_text = format!("{header}\n{report}\n{payload}");
         self.post(&report_text).await
     }
 

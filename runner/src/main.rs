@@ -36,11 +36,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     }
 
     // Print results
-    println!("{}", render_report(&results));
+    println!("{}", render_report(&results, None));
 
     // Post to GitHub PR
     if let Some(reporter) = reporter {
-        reporter.post_report(&results).await?;
+        reporter.post_report(&results, None).await?;
     }
 
     Ok(())

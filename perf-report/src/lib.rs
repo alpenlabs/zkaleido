@@ -1,11 +1,14 @@
 //! Formatting and publishing of zkVM performance reports.
 //!
 //! Two parts: a formatter that renders per-zkVM
-//! [`ExecutionSummary`](zkaleido::ExecutionSummary) results as a report, and
-//! a GitHub poster that publishes it as a "sticky" comment on a PR: the
-//! first post creates the comment, subsequent posts update it in place.
+//! [`ExecutionSummary`](zkaleido::ExecutionSummary) results as a report,
+//! optionally with per-program deltas against a baseline recovered from the
+//! last merged PR, and a GitHub poster that publishes it as a "sticky"
+//! comment on a PR: the first post creates the comment, subsequent posts
+//! update it in place.
 
 mod args;
+mod diff;
 mod format;
 mod github;
 mod payload;
