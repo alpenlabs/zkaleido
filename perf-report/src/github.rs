@@ -64,24 +64,23 @@ fn short_hash(hash: &str) -> String {
 fn format_header(
     commit_hash: Option<&str>,
     baseline: Option<&BaselineReport>,
-    base_branch: Option<&str>,
+    lookup_enabled: bool,
 ) -> String {
     let mut lines = vec![match commit_hash {
         Some(hash) => format!("**Commit**: {}", short_hash(hash)),
         None => "**Local execution**".to_string(),
     }];
-    match (baseline, base_branch) {
-        (Some(baseline), _) => lines.push(format!(
+    match baseline {
+        Some(baseline) => lines.push(format!(
             "**Baseline**: #{} ({})",
             baseline.pr_number,
             short_hash(&baseline.commit_hash)
         )),
-        // A base branch was configured but yielded no baseline; say so to
-        // distinguish "nothing to compare against yet" from a broken lookup.
-        (None, Some(base_branch)) => {
-            lines.push(format!("**Baseline**: none found on `{base_branch}`"))
-        }
-        (None, None) => {}
+        // The lookup ran but yielded no baseline (e.g. no merged PR with a
+        // readable report yet); say so to distinguish "nothing to compare
+        // against" from lookup being disabled.
+        None if lookup_enabled => lines.push("**Baseline**: none found".to_string()),
+        None => {}
     }
     lines.join("\n")
 }
@@ -116,9 +115,6 @@ pub struct GithubPrReporterConfig {
     pub api_base_url: String,
     /// Commit hash shown in the report header, `None` for local runs.
     pub commit_hash: Option<String>,
-    /// Base branch searched for the baseline report, `None` to disable
-    /// baseline lookup.
-    pub base_branch: Option<String>,
     /// How many base-branch commits to walk back when looking for a
     /// baseline. Zero disables baseline lookup. See
     /// [`DEFAULT_BASELINE_COMMIT_LOOKBACK`] for how the window relates to
@@ -136,7 +132,6 @@ impl Default for GithubPrReporterConfig {
             user_agent: DEFAULT_USER_AGENT.to_string(),
             api_base_url: DEFAULT_API_BASE_URL.to_string(),
             commit_hash: None,
-            base_branch: None,
             baseline_commit_lookback: DEFAULT_BASELINE_COMMIT_LOOKBACK,
         }
     }
@@ -152,7 +147,6 @@ impl fmt::Debug for GithubPrReporterConfig {
             .field("user_agent", &self.user_agent)
             .field("api_base_url", &self.api_base_url)
             .field("commit_hash", &self.commit_hash)
-            .field("base_branch", &self.base_branch)
             .field("baseline_commit_lookback", &self.baseline_commit_lookback)
             .finish()
     }
@@ -191,16 +185,16 @@ impl GithubPrReporter {
 
     /// Fetches the baseline report to diff against: the payload embedded in
     /// the sticky report comment of the most recently merged PR on the base
-    /// branch. Walks the base branch history commit by commit, so commits
-    /// without a merged PR (direct pushes) and PRs without a readable
-    /// report (failed perf job, predates the embedded payload) are skipped
-    /// in favor of an older baseline. Returns `None` when baseline lookup
-    /// is disabled (no base branch, zero lookback) or nothing is found
-    /// within the lookback window.
+    /// branch. The base branch is resolved from the PR being reported on,
+    /// so no configuration is needed and any trigger type works. Walks the
+    /// base branch history commit by commit, so commits without a merged PR
+    /// (direct pushes) and PRs without a readable report (failed perf job,
+    /// predates the embedded payload) are skipped in favor of an older
+    /// baseline. Returns `None` when the lookback is zero or nothing is
+    /// found within the lookback window; a missing baseline only degrades
+    /// the report to absolute numbers, so callers can treat errors the same
+    /// way.
     pub async fn fetch_baseline(&self) -> Result<Option<BaselineReport>> {
-        let Some(base_branch) = self.config.base_branch.as_deref() else {
-            return Ok(None);
-        };
         // Guard explicitly: the GitHub API treats `per_page=0` as "use the
         // default page size" rather than "no commits".
         if self.config.baseline_commit_lookback == 0 {
@@ -208,6 +202,7 @@ impl GithubPrReporter {
         }
 
         let client = Client::new();
+        let base_branch = self.fetch_pr_base_branch(&client).await?;
         // TODO: lookbacks above 100 are silently capped by the GitHub API,
         // which serves at most one page of commits; paginate to support
         // larger windows.
@@ -230,7 +225,7 @@ impl GithubPrReporter {
             let pulls = self
                 .get_json_array(&client, &pulls_url, "associated pull requests")
                 .await?;
-            let Some(pr_number) = first_merged_pr(&pulls, base_branch) else {
+            let Some(pr_number) = first_merged_pr(&pulls, &base_branch) else {
                 continue;
             };
             let comments = self.fetch_comments(&client, pr_number).await?;
@@ -262,7 +257,7 @@ impl GithubPrReporter {
         let header = format_header(
             self.config.commit_hash.as_deref(),
             baseline,
-            self.config.base_branch.as_deref(),
+            self.config.baseline_commit_lookback > 0,
         );
         let payload = ReportPayload::from(results).embed()?;
         let report = render_report(results, baseline.map(|baseline| &baseline.payload));
@@ -312,6 +307,19 @@ impl GithubPrReporter {
         format!("<!-- {} -->", self.config.marker)
     }
 
+    /// Returns the base branch of the PR the report is posted on.
+    async fn fetch_pr_base_branch(&self, client: &Client) -> Result<String> {
+        let url = format!(
+            "{}/repos/{}/pulls/{}",
+            self.config.api_base_url, self.config.repo, self.config.pr_number
+        );
+        let pr = self.get_json(client, &url, "pull request").await?;
+        pr["base"]["ref"]
+            .as_str()
+            .map(str::to_string)
+            .ok_or_else(|| anyhow!("pull request response did not include base.ref"))
+    }
+
     fn comments_url(&self, pr_number: u64) -> String {
         // TODO: follow the `Link` header to paginate instead of fetching a
         // single page; a sticky comment past the first 100 comments is
@@ -329,8 +337,8 @@ impl GithubPrReporter {
             .await
     }
 
-    /// Fetches `url` and decodes the response as a JSON array.
-    async fn get_json_array(&self, client: &Client, url: &str, what: &str) -> Result<Vec<Value>> {
+    /// Fetches `url` and decodes the response as JSON.
+    async fn get_json(&self, client: &Client, url: &str, what: &str) -> Result<Value> {
         let response = self.set_github_headers(client.get(url)).send().await?;
         if !response.status().is_success() {
             let status = response.status();
@@ -345,6 +353,14 @@ impl GithubPrReporter {
             .json()
             .await
             .map_err(|e| anyhow!("failed to decode {what} response: {e}"))
+    }
+
+    /// Fetches `url` and decodes the response as a JSON array.
+    async fn get_json_array(&self, client: &Client, url: &str, what: &str) -> Result<Vec<Value>> {
+        match self.get_json(client, url, what).await? {
+            Value::Array(items) => Ok(items),
+            _ => bail!("expected a JSON array in {what} response"),
+        }
     }
 
     fn set_github_headers(&self, builder: RequestBuilder) -> RequestBuilder {
