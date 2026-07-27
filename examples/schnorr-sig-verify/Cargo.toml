@@ -7,7 +7,7 @@ edition = "2024"
 zkaleido = { path = "../../zkaleido", features = ["ssz"] }
 zkaleido-native-adapter = { path = "../../adapters/native" }
 
-k256 = "0.13.4"
+k256 = "0.14.0"
 rand = { version = "0.8.5", features = [
   "getrandom",
   "std_rng",
