@@ -206,12 +206,18 @@ impl GithubPrReporter {
         // TODO: lookbacks above 100 are silently capped by the GitHub API,
         // which serves at most one page of commits; paginate to support
         // larger windows.
+        let lookback = self.config.baseline_commit_lookback.to_string();
         let commits_url = format!(
-            "{}/repos/{}/commits?sha={base_branch}&per_page={}",
-            self.config.api_base_url, self.config.repo, self.config.baseline_commit_lookback
+            "{}/repos/{}/commits",
+            self.config.api_base_url, self.config.repo
         );
         let commits = self
-            .get_json_array(&client, &commits_url, "base branch commits")
+            .get_json_array(
+                &client,
+                &commits_url,
+                &[("sha", base_branch.as_str()), ("per_page", &lookback)],
+                "base branch commits",
+            )
             .await?;
 
         for commit in &commits {
@@ -223,7 +229,7 @@ impl GithubPrReporter {
                 self.config.api_base_url, self.config.repo
             );
             let pulls = self
-                .get_json_array(&client, &pulls_url, "associated pull requests")
+                .get_json_array(&client, &pulls_url, &[], "associated pull requests")
                 .await?;
             let Some(pr_number) = first_merged_pr(&pulls, &base_branch) else {
                 continue;
@@ -313,7 +319,7 @@ impl GithubPrReporter {
             "{}/repos/{}/pulls/{}",
             self.config.api_base_url, self.config.repo, self.config.pr_number
         );
-        let pr = self.get_json(client, &url, "pull request").await?;
+        let pr = self.get_json(client, &url, &[], "pull request").await?;
         pr["base"]["ref"]
             .as_str()
             .map(str::to_string)
@@ -333,13 +339,26 @@ impl GithubPrReporter {
     }
 
     async fn fetch_comments(&self, client: &Client, pr_number: u64) -> Result<Vec<Value>> {
-        self.get_json_array(client, &self.comments_url(pr_number), "PR comments")
+        self.get_json_array(client, &self.comments_url(pr_number), &[], "PR comments")
             .await
     }
 
-    /// Fetches `url` and decodes the response as JSON.
-    async fn get_json(&self, client: &Client, url: &str, what: &str) -> Result<Value> {
-        let response = self.set_github_headers(client.get(url)).send().await?;
+    /// Fetches `url` and decodes the response as JSON. `query` is appended
+    /// as URL-encoded query parameters rather than interpolated into
+    /// `url` directly, so values with URL-significant characters (e.g. a
+    /// branch name like `release#1`) can't truncate or redirect the
+    /// request.
+    async fn get_json(
+        &self,
+        client: &Client,
+        url: &str,
+        query: &[(&str, &str)],
+        what: &str,
+    ) -> Result<Value> {
+        let response = self
+            .set_github_headers(client.get(url).query(query))
+            .send()
+            .await?;
         if !response.status().is_success() {
             let status = response.status();
             let body = response.text().await.unwrap_or_default();
@@ -355,9 +374,16 @@ impl GithubPrReporter {
             .map_err(|e| anyhow!("failed to decode {what} response: {e}"))
     }
 
-    /// Fetches `url` and decodes the response as a JSON array.
-    async fn get_json_array(&self, client: &Client, url: &str, what: &str) -> Result<Vec<Value>> {
-        match self.get_json(client, url, what).await? {
+    /// Fetches `url` and decodes the response as a JSON array. See
+    /// [`Self::get_json`] for `query`.
+    async fn get_json_array(
+        &self,
+        client: &Client,
+        url: &str,
+        query: &[(&str, &str)],
+        what: &str,
+    ) -> Result<Vec<Value>> {
+        match self.get_json(client, url, query, what).await? {
             Value::Array(items) => Ok(items),
             _ => bail!("expected a JSON array in {what} response"),
         }
