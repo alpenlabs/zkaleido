@@ -57,10 +57,7 @@ jobs:
       - name: Run performance evaluation
         run: |
           ZKVM_MOCK=1 cargo run --release -- \
-          --post-to-gh \
           --github-token "${{ secrets.GITHUB_TOKEN }}" \
-          --pr-number "${{ github.event.pull_request.number }}" \
-          --commit-hash "${{ github.sha }}" \
           --programs fibonacci,sha2-chain,schnorr-sig-verify,groth16-verify-sp1
         env:
           RUSTFLAGS: "-C target-cpu=native -C link-arg=-fuse-ld=lld"

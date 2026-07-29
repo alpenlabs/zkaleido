@@ -1,40 +1,46 @@
 pub mod args;
-pub mod format;
-pub mod github;
 pub mod programs;
 
-use anyhow::Result;
 use args::EvalArgs;
 use clap::Parser;
-use format::{format_header, format_results};
-use github::{format_github_message, post_to_github_pr};
+use zkaleido::ZkVm;
+use zkaleido_perf_report::{ZkVmResults, render_report};
+
+const COMMENT_MARKER: &str = "zkaleido-perf-report";
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     sp1_sdk::utils::setup_logger();
     let args = EvalArgs::parse();
 
-    let mut results_text = vec![format_header(&args)];
+    // Resolve the reporting target up front so a misconfiguration fails
+    // before the benchmarks run, not after.
+    let reporter = args
+        .github
+        .as_ref()
+        .map(|github| github.reporter(COMMENT_MARKER))
+        .transpose()?;
+
+    let mut results: Vec<ZkVmResults> = Vec::new();
 
     #[cfg(feature = "sp1")]
     {
         let sp1_reports = programs::run_sp1_programs(&args.programs).await;
-        results_text.push(format_results(&sp1_reports, "SP1".to_owned()));
+        results.push(ZkVmResults::new(ZkVm::SP1, sp1_reports));
     }
 
     #[cfg(feature = "risc0")]
     {
         let risc0_reports = programs::run_risc0_programs(&args.programs).await;
-        results_text.push(format_results(&risc0_reports, "RISC0".to_owned()));
+        results.push(ZkVmResults::new(ZkVm::Risc0, risc0_reports));
     }
 
     // Print results
-    println!("{}", results_text.join("\n"));
+    println!("{}", render_report(&results));
 
-    if args.post_to_gh {
-        // Post to GitHub PR
-        let message = format_github_message(&results_text);
-        post_to_github_pr(&args, &message).await?;
+    // Post to GitHub PR
+    if let Some(reporter) = reporter {
+        reporter.post_report(&results).await?;
     }
 
     Ok(())

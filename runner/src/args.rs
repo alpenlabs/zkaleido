@@ -1,4 +1,5 @@
 use clap::Parser;
+use zkaleido_perf_report::GithubReportArgs;
 
 use crate::programs::GuestProgram;
 
@@ -6,21 +7,10 @@ use crate::programs::GuestProgram;
 #[derive(Parser, Clone)]
 #[command(about = "Evaluate the performance of SP1 on programs.")]
 pub struct EvalArgs {
-    /// Whether to post on github or run locally and only log the results.
-    #[arg(long, default_value_t = false)]
-    pub post_to_gh: bool,
-
-    /// The GitHub token for authentication.
-    #[arg(long, default_value = "")]
-    pub github_token: String,
-
-    /// The GitHub PR number.
-    #[arg(long, default_value = "")]
-    pub pr_number: String,
-
-    /// The commit hash.
-    #[arg(long, default_value = "local_commit")]
-    pub commit_hash: String,
+    /// GitHub reporting options; the report is posted to the PR only when
+    /// at least one of these is provided.
+    #[command(flatten)]
+    pub github: Option<GithubReportArgs>,
 
     /// Programs to run (comma-delimited).
     /// e.g. `--programs fibonacci,sha2-chain,schnorr-sig-verify`
