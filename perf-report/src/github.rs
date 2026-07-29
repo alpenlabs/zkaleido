@@ -43,14 +43,12 @@ fn find_sticky_comment<'a>(comments: &'a [Value], hidden_marker: &str) -> Option
     })
 }
 
-/// Returns the number of the first of `pulls` that was merged into
-/// `base_branch`.
-fn first_merged_pr(pulls: &[Value], base_branch: &str) -> Option<u64> {
-    pulls
+/// Returns the number of the merged pull request in `merged_pulls` whose
+/// merge commit is `sha`.
+fn find_pr_for_merge_commit(merged_pulls: &[Value], sha: &str) -> Option<u64> {
+    merged_pulls
         .iter()
-        .find(|pull| {
-            !pull["merged_at"].is_null() && pull["base"]["ref"].as_str() == Some(base_branch)
-        })
+        .find(|pull| !pull["merged_at"].is_null() && pull["merge_commit_sha"].as_str() == Some(sha))
         .and_then(|pull| pull["number"].as_u64())
 }
 
@@ -187,13 +185,17 @@ impl GithubPrReporter {
     /// the sticky report comment of the most recently merged PR on the base
     /// branch. The base branch is resolved from the PR being reported on,
     /// so no configuration is needed and any trigger type works. Walks the
-    /// base branch history commit by commit, so commits without a merged PR
-    /// (direct pushes) and PRs without a readable report (failed perf job,
-    /// predates the embedded payload) are skipped in favor of an older
-    /// baseline. Returns `None` when the lookback is zero or nothing is
-    /// found within the lookback window; a missing baseline only degrades
-    /// the report to absolute numbers, so callers can treat errors the same
-    /// way.
+    /// base branch history commit by commit, matching each commit to a
+    /// merged PR by `merge_commit_sha` rather than GitHub's commit-to-PR
+    /// association endpoint, which only reports merged PRs for commits
+    /// reachable from the repository's default branch and would otherwise
+    /// miss every PR merged into a non-default base. Commits without a
+    /// matching merged PR (direct pushes) and PRs without a readable report
+    /// (failed perf job, predates the embedded payload) are skipped in
+    /// favor of an older baseline. Returns `None` when the lookback is zero
+    /// or nothing is found within the lookback window; a missing baseline
+    /// only degrades the report to absolute numbers, so callers can treat
+    /// errors the same way.
     pub async fn fetch_baseline(&self) -> Result<Option<BaselineReport>> {
         // Guard explicitly: the GitHub API treats `per_page=0` as "use the
         // default page size" rather than "no commits".
@@ -204,8 +206,8 @@ impl GithubPrReporter {
         let client = Client::new();
         let base_branch = self.fetch_pr_base_branch(&client).await?;
         // TODO: lookbacks above 100 are silently capped by the GitHub API,
-        // which serves at most one page of commits; paginate to support
-        // larger windows.
+        // which serves at most one page of commits or merged pull requests;
+        // paginate to support larger windows.
         let lookback = self.config.baseline_commit_lookback.to_string();
         let commits_url = format!(
             "{}/repos/{}/commits",
@@ -220,18 +222,30 @@ impl GithubPrReporter {
             )
             .await?;
 
+        let pulls_url = format!(
+            "{}/repos/{}/pulls",
+            self.config.api_base_url, self.config.repo
+        );
+        let merged_pulls = self
+            .get_json_array(
+                &client,
+                &pulls_url,
+                &[
+                    ("base", base_branch.as_str()),
+                    ("state", "closed"),
+                    ("sort", "updated"),
+                    ("direction", "desc"),
+                    ("per_page", &lookback),
+                ],
+                "merged pull requests",
+            )
+            .await?;
+
         for commit in &commits {
             let Some(sha) = commit["sha"].as_str() else {
                 continue;
             };
-            let pulls_url = format!(
-                "{}/repos/{}/commits/{sha}/pulls",
-                self.config.api_base_url, self.config.repo
-            );
-            let pulls = self
-                .get_json_array(&client, &pulls_url, &[], "associated pull requests")
-                .await?;
-            let Some(pr_number) = first_merged_pr(&pulls, &base_branch) else {
+            let Some(pr_number) = find_pr_for_merge_commit(&merged_pulls, sha) else {
                 continue;
             };
             let comments = self.fetch_comments(&client, pr_number).await?;
@@ -415,14 +429,14 @@ mod tests {
     }
 
     #[test]
-    fn picks_merged_pr_targeting_base_branch() {
-        let pulls = vec![
-            json!({"number": 1, "merged_at": null, "base": {"ref": "main"}}),
-            json!({"number": 2, "merged_at": "2026-07-01T00:00:00Z", "base": {"ref": "dev"}}),
-            json!({"number": 3, "merged_at": "2026-07-01T00:00:00Z", "base": {"ref": "main"}}),
+    fn finds_pr_by_merge_commit_sha() {
+        let merged_pulls = vec![
+            json!({"number": 1, "merged_at": null, "merge_commit_sha": "abc123"}),
+            json!({"number": 2, "merged_at": "2026-07-01T00:00:00Z", "merge_commit_sha": "def456"}),
+            json!({"number": 3, "merged_at": "2026-07-01T00:00:00Z", "merge_commit_sha": "abc123"}),
         ];
-        assert_eq!(first_merged_pr(&pulls, "main"), Some(3));
-        assert_eq!(first_merged_pr(&pulls, "dev"), Some(2));
-        assert_eq!(first_merged_pr(&pulls, "release"), None);
+        assert_eq!(find_pr_for_merge_commit(&merged_pulls, "abc123"), Some(3));
+        assert_eq!(find_pr_for_merge_commit(&merged_pulls, "def456"), Some(2));
+        assert_eq!(find_pr_for_merge_commit(&merged_pulls, "missing"), None);
     }
 }
