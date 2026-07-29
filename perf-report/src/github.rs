@@ -57,12 +57,24 @@ fn short_hash(hash: &str) -> String {
     hash.chars().take(8).collect()
 }
 
+/// Why no baseline is available, used by [`format_header`] to describe a
+/// missing baseline accurately instead of always reading as a clean miss.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum NoBaselineReason {
+    /// Baseline lookup is disabled (`baseline_commit_lookback == 0`).
+    LookupDisabled,
+    /// The lookup ran to completion and found nothing within the window.
+    NotFound,
+    /// The lookup itself failed, e.g. a network or API error.
+    LookupFailed,
+}
+
 /// Returns the report header identifying what was benchmarked and which
 /// baseline it is compared against.
 fn format_header(
     commit_hash: Option<&str>,
     baseline: Option<&BaselineReport>,
-    lookup_enabled: bool,
+    no_baseline_reason: NoBaselineReason,
 ) -> String {
     let mut lines = vec![match commit_hash {
         Some(hash) => format!("**Commit**: {}", short_hash(hash)),
@@ -77,7 +89,14 @@ fn format_header(
         // The lookup ran but yielded no baseline (e.g. no merged PR with a
         // readable report yet); say so to distinguish "nothing to compare
         // against" from lookup being disabled.
-        None if lookup_enabled => lines.push("**Baseline**: none found".to_string()),
+        None if no_baseline_reason == NoBaselineReason::NotFound => {
+            lines.push("**Baseline**: none found".to_string())
+        }
+        // The lookup didn't run to completion, so "none found" would
+        // misrepresent a transient failure as a confirmed clean miss.
+        None if no_baseline_reason == NoBaselineReason::LookupFailed => {
+            lines.push("**Baseline**: lookup failed, see job logs".to_string())
+        }
         None => {}
     }
     lines.join("\n")
@@ -269,15 +288,28 @@ impl GithubPrReporter {
     /// `baseline` is given. The posted comment also embeds the results as a
     /// hidden machine-readable payload, which is what later runs read back
     /// as their baseline.
+    ///
+    /// `baseline_lookup_failed` should be set when the caller's
+    /// [`Self::fetch_baseline`] call returned `Err` rather than `Ok(None)`,
+    /// so the posted header can say the lookup failed instead of implying a
+    /// confirmed clean miss.
     pub async fn post_report(
         &self,
         results: &[ZkVmResults],
         baseline: Option<&BaselineReport>,
+        baseline_lookup_failed: bool,
     ) -> Result<()> {
+        let no_baseline_reason = if baseline_lookup_failed {
+            NoBaselineReason::LookupFailed
+        } else if self.config.baseline_commit_lookback > 0 {
+            NoBaselineReason::NotFound
+        } else {
+            NoBaselineReason::LookupDisabled
+        };
         let header = format_header(
             self.config.commit_hash.as_deref(),
             baseline,
-            self.config.baseline_commit_lookback > 0,
+            no_baseline_reason,
         );
         let payload = ReportPayload::from(results).embed()?;
         let report = render_report(results, baseline.map(|baseline| &baseline.payload));
