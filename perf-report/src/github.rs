@@ -358,6 +358,11 @@ impl GithubPrReporter {
             bail!("expected comment author is required");
         }
         config.api_base_url = config.api_base_url.trim_end_matches('/').to_string();
+        // Surrounding whitespace would otherwise never equal a real GitHub
+        // login in find_sticky_comment's exact comparison, silently
+        // breaking both patching (every run creates a duplicate) and
+        // baseline lookups (every candidate is skipped).
+        config.expected_comment_author = config.expected_comment_author.trim().to_string();
         Ok(Self { config })
     }
 
@@ -854,6 +859,22 @@ mod tests {
             ..Default::default()
         };
         assert!(GithubPrReporter::new(config).is_err());
+    }
+
+    #[test]
+    fn trims_surrounding_whitespace_from_expected_comment_author() {
+        let config = GithubPrReporterConfig {
+            repo: "owner/repo".to_string(),
+            token: "token".to_string(),
+            marker: "marker".to_string(),
+            expected_comment_author: " github-actions[bot] ".to_string(),
+            ..Default::default()
+        };
+        let reporter = GithubPrReporter::new(config).unwrap();
+        assert_eq!(
+            reporter.config.expected_comment_author,
+            "github-actions[bot]"
+        );
     }
 
     #[test]
