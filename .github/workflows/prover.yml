@@ -2,6 +2,10 @@ name: Run prover guest code checks
 
 on: pull_request
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
 permissions: {}
 
 jobs:
