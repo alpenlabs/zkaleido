@@ -606,18 +606,28 @@ impl GithubPrReporter {
         // CI, where the job-level timeout covers it.
         let client = Client::new();
 
-        // A concurrent push, or a manual re-run of an older completed
-        // workflow run, can post after a newer push has already been
-        // tested and posted; the workflow's concurrency cancellation only
-        // cancels *overlapping* runs, so it doesn't catch either case. If
-        // the PR has since moved past the commit this run tested, these
-        // results are superseded, and posting them would silently
-        // overwrite a fresher report with stale data sharing the same
-        // base_sha (undetectable by baseline validation, which doesn't
-        // track head identity).
-        if let Some(tested_head) = &self.config.head_sha {
-            let current_head = self.fetch_pr_head(&client, self.config.pr_number).await?;
-            if &current_head != tested_head {
+        // A newer push, the PR being reopened, or a manual re-run of an
+        // older completed workflow run can all post after this run
+        // started. If the PR's head or base has since moved past what
+        // this run actually tested, these results are superseded: posting
+        // them would silently overwrite a fresher report with stale data.
+        // A stale base is just as important to catch as a stale head --
+        // e.g. a reopened-PR run posting fresh results against a newer
+        // base, later overwritten by a rerun of the original, older-base
+        // event, which still has the same (unchanged) head and so would
+        // pass a head-only check.
+        if self.config.head_sha.is_some() || self.config.base_sha.is_some() {
+            let (current_head, current_base) = self
+                .fetch_pr_head_and_base(&client, self.config.pr_number)
+                .await?;
+            if let Some(tested_head) = &self.config.head_sha
+                && current_head != *tested_head
+            {
+                return Ok(());
+            }
+            if let Some(tested_base) = &self.config.base_sha
+                && current_base != *tested_base
+            {
                 return Ok(());
             }
         }
@@ -675,17 +685,26 @@ impl GithubPrReporter {
             .await
     }
 
-    /// Fetches the PR's current head commit sha, live.
-    async fn fetch_pr_head(&self, client: &Client, pr_number: u64) -> Result<String> {
+    /// Fetches the PR's current head and base commit shas, live.
+    async fn fetch_pr_head_and_base(
+        &self,
+        client: &Client,
+        pr_number: u64,
+    ) -> Result<(String, String)> {
         let url = format!(
             "{}/repos/{}/pulls/{pr_number}",
             self.config.api_base_url, self.config.repo
         );
         let pr = self.get_json(client, &url, &[], "pull request").await?;
-        pr["head"]["sha"]
+        let head = pr["head"]["sha"]
             .as_str()
             .map(str::to_string)
-            .ok_or_else(|| anyhow!("pull request response did not include head.sha"))
+            .ok_or_else(|| anyhow!("pull request response did not include head.sha"))?;
+        let base = pr["base"]["sha"]
+            .as_str()
+            .map(str::to_string)
+            .ok_or_else(|| anyhow!("pull request response did not include base.sha"))?;
+        Ok((head, base))
     }
 
     /// Returns the number of commits `merge_commit` actually landed on the
