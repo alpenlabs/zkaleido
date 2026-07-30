@@ -77,6 +77,16 @@ fn find_pr_for_merge_commit(merged_pulls: &[Value], sha: &str) -> Option<u64> {
 /// Comparing trees rather than the commit message (which a maintainer can
 /// edit after the fact) makes this immune to that kind of drift.
 ///
+/// This heuristic can still be misled: if the PR's commits before the
+/// last happen to net to no tree change (e.g. an add followed by a
+/// revert), the pre-PR base tree can coincidentally equal the
+/// second-to-last commit's tree, misclassifying a squash as a rebase.
+/// Callers should only reach for this after a direct one-hop check
+/// against `payload.base_sha` has already failed -- that check is exact
+/// and always correct when it succeeds, so this is only ever asked to
+/// resolve genuinely ambiguous cases, never able to override a real
+/// match.
+///
 /// A single-commit PR is excluded: squash and rebase are indistinguishable
 /// for it (both land as exactly one commit), so there's nothing to tell
 /// apart.
@@ -426,10 +436,21 @@ impl GithubPrReporter {
             if payload.base_sha.is_none() {
                 continue;
             }
-            let commit_count = self
-                .resolve_landed_commit_count(&client, &tree_of, commit, pr_number)
-                .await?;
-            if !baseline_is_fresh(sha, commit_count, &parent_of, &payload) {
+            // Try the direct parent first: it's an exact sha comparison,
+            // so a match is always correct regardless of merge strategy,
+            // with no extra API calls. Only fall back to resolving the
+            // full landed span -- which relies on a tree-based heuristic
+            // that a coincidental no-net-change commit could mislead --
+            // when this doesn't already settle it.
+            let is_fresh = if baseline_is_fresh(sha, 1, &parent_of, &payload) {
+                true
+            } else {
+                let commit_count = self
+                    .resolve_landed_commit_count(&client, &tree_of, commit, pr_number)
+                    .await?;
+                baseline_is_fresh(sha, commit_count, &parent_of, &payload)
+            };
+            if !is_fresh {
                 continue;
             }
             return Ok(Some(BaselineReport {
