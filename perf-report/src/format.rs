@@ -133,6 +133,7 @@ mod tests {
     fn sample_baseline() -> ReportPayload {
         ReportPayload {
             base_sha: Some("abc123".to_string()),
+            head_sha: Some("head123".to_string()),
             zkvms: vec![ZkVmPayload {
                 zkvm: "SP1".to_string(),
                 results: vec![

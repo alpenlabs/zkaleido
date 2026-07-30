@@ -28,6 +28,17 @@ pub struct ReportPayload {
     /// still decodes, as `None`.
     #[serde(default)]
     pub base_sha: Option<String>,
+    /// The PR head commit this report was actually tested against, `None`
+    /// if unavailable (e.g. outside CI). A later baseline walk uses this
+    /// to detect a candidate whose CI run posted successfully for an
+    /// earlier head, then failed or was cancelled for a later head before
+    /// it could post -- leaving the sticky comment describing a commit
+    /// that isn't what the PR actually merged. The base-only freshness
+    /// check can't catch this, since both heads can share the same tested
+    /// base. `#[serde(default)]` so a payload posted before this field
+    /// existed still decodes, as `None`.
+    #[serde(default)]
+    pub head_sha: Option<String>,
     /// Per-zkVM results.
     pub zkvms: Vec<ZkVmPayload>,
 }
@@ -84,14 +95,20 @@ impl ZkVmPayload {
 impl ReportPayload {
     /// Builds the payload embedded in a posted report. `base_sha` should be
     /// the base commit resolved by the run's [`BaselineAnchor`], `None` if
-    /// no anchor was resolved (lookup disabled or failed), which makes this
-    /// payload unusable as a future baseline since there is nothing to
-    /// validate it against.
+    /// no anchor was resolved (lookup disabled or failed); `head_sha`
+    /// should be the PR head commit this run tested, `None` outside CI.
+    /// Either being `None` makes this payload unusable as a future
+    /// baseline since there is nothing to validate it against.
     ///
     /// [`BaselineAnchor`]: crate::BaselineAnchor
-    pub fn new(results: &[ZkVmResults], base_sha: Option<String>) -> Self {
+    pub fn new(
+        results: &[ZkVmResults],
+        base_sha: Option<String>,
+        head_sha: Option<String>,
+    ) -> Self {
         Self {
             base_sha,
+            head_sha,
             zkvms: results
                 .iter()
                 .map(|zkvm_results| ZkVmPayload {
@@ -118,6 +135,7 @@ mod tests {
     fn sample_payload() -> ReportPayload {
         ReportPayload {
             base_sha: Some("abc123".to_string()),
+            head_sha: Some("head123".to_string()),
             zkvms: vec![ZkVmPayload {
                 zkvm: "SP1".to_string(),
                 results: vec![

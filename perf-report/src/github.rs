@@ -69,13 +69,28 @@ fn find_sticky_comment<'a>(
     })
 }
 
-/// Returns the number of the merged pull request in `merged_pulls` whose
-/// merge commit is `sha`.
-fn find_pr_for_merge_commit(merged_pulls: &[Value], sha: &str) -> Option<u64> {
+/// Returns the merged pull request in `merged_pulls` whose merge commit is
+/// `sha`.
+fn find_pr_for_merge_commit<'a>(merged_pulls: &'a [Value], sha: &str) -> Option<&'a Value> {
     merged_pulls
         .iter()
         .find(|pull| !pull["merged_at"].is_null() && pull["merge_commit_sha"].as_str() == Some(sha))
-        .and_then(|pull| pull["number"].as_u64())
+}
+
+/// Returns whether `payload_head_sha` (a candidate's tested head, from its
+/// embedded payload) matches `merged_head_sha` (that PR's own recorded
+/// `head.sha`).
+///
+/// A run whose CI succeeded and posted for one head, followed by a further
+/// push whose own CI run failed or was cancelled before it could post,
+/// leaves the sticky comment holding an earlier head's results even
+/// though a later head is what the PR actually merged. Both heads can
+/// share the same tested base, so the base-only freshness check can't
+/// catch this; comparing head identity closes that gap. A payload with no
+/// `head_sha` (e.g. posted before this field existed) can't be verified
+/// and is treated as not matching.
+fn tested_correct_head(payload_head_sha: Option<&str>, merged_head_sha: &str) -> bool {
+    payload_head_sha == Some(merged_head_sha)
 }
 
 /// Returns whether a merge commit whose first parent has author identity
@@ -473,7 +488,10 @@ impl GithubPrReporter {
             let Some(sha) = commit["sha"].as_str() else {
                 continue;
             };
-            let Some(pr_number) = find_pr_for_merge_commit(&merged_pulls, sha) else {
+            let Some(pull) = find_pr_for_merge_commit(&merged_pulls, sha) else {
+                continue;
+            };
+            let Some(pr_number) = pull["number"].as_u64() else {
                 continue;
             };
             let comments = self.fetch_comments(&client, pr_number).await?;
@@ -489,6 +507,18 @@ impl GithubPrReporter {
             // Skip the extra work below when there's nothing to validate
             // against anyway.
             if payload.base_sha.is_none() {
+                continue;
+            }
+            // Cheap and no extra API calls, so check head identity before
+            // the base freshness check below: both heads can share the
+            // same tested base, so this catches a candidate whose sticky
+            // comment was left holding an earlier head's results after a
+            // later head's own CI run failed or was cancelled before
+            // posting.
+            let Some(merged_head_sha) = pull["head"]["sha"].as_str() else {
+                continue;
+            };
+            if !tested_correct_head(payload.head_sha.as_deref(), merged_head_sha) {
                 continue;
             }
             // Try the direct parent first: it's an exact sha comparison,
@@ -549,8 +579,12 @@ impl GithubPrReporter {
             baseline,
             no_baseline_reason,
         );
-        let payload =
-            ReportPayload::new(results, anchor.map(|anchor| anchor.base_sha.clone())).embed()?;
+        let payload = ReportPayload::new(
+            results,
+            anchor.map(|anchor| anchor.base_sha.clone()),
+            self.config.head_sha.clone(),
+        )
+        .embed()?;
         let report = render_report(results, baseline.map(|baseline| &baseline.payload));
         let report_text = format!("{header}\n{report}\n{payload}");
         self.post(&report_text).await
@@ -853,14 +887,40 @@ mod tests {
             json!({"number": 2, "merged_at": "2026-07-01T00:00:00Z", "merge_commit_sha": "def456"}),
             json!({"number": 3, "merged_at": "2026-07-01T00:00:00Z", "merge_commit_sha": "abc123"}),
         ];
-        assert_eq!(find_pr_for_merge_commit(&merged_pulls, "abc123"), Some(3));
-        assert_eq!(find_pr_for_merge_commit(&merged_pulls, "def456"), Some(2));
-        assert_eq!(find_pr_for_merge_commit(&merged_pulls, "missing"), None);
+        assert_eq!(
+            find_pr_for_merge_commit(&merged_pulls, "abc123")
+                .and_then(|pull| pull["number"].as_u64()),
+            Some(3)
+        );
+        assert_eq!(
+            find_pr_for_merge_commit(&merged_pulls, "def456")
+                .and_then(|pull| pull["number"].as_u64()),
+            Some(2)
+        );
+        assert!(find_pr_for_merge_commit(&merged_pulls, "missing").is_none());
+    }
+
+    #[test]
+    fn tested_correct_head_matches_recorded_head() {
+        assert!(tested_correct_head(Some("head1"), "head1"));
+    }
+
+    #[test]
+    fn tested_correct_head_rejects_a_mismatched_head() {
+        // The sticky comment held an earlier head's results because a
+        // later head's own CI run failed or was cancelled before posting.
+        assert!(!tested_correct_head(Some("head1"), "head2"));
+    }
+
+    #[test]
+    fn tested_correct_head_rejects_a_missing_head() {
+        assert!(!tested_correct_head(None, "head1"));
     }
 
     fn payload_with_base_sha(base_sha: Option<&str>) -> ReportPayload {
         ReportPayload {
             base_sha: base_sha.map(str::to_string),
+            head_sha: None,
             zkvms: Vec::new(),
         }
     }
