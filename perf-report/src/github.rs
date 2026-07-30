@@ -1,4 +1,7 @@
-use std::{collections::HashMap, fmt};
+use std::{
+    collections::{HashMap, HashSet},
+    fmt,
+};
 
 use anyhow::{Result, anyhow, bail};
 use reqwest::{Client, RequestBuilder};
@@ -331,29 +334,61 @@ impl GithubPrReporter {
             )
             .await?;
 
+        let candidate_shas: HashSet<&str> = commits
+            .iter()
+            .filter_map(|commit| commit["sha"].as_str())
+            .collect();
+
         let pulls_url = format!(
             "{}/repos/{}/pulls",
             self.config.api_base_url, self.config.repo
         );
-        // `state=closed` includes closed-but-unmerged PRs alongside merged
-        // ones, so this can't be capped to `lookback`: a burst of
-        // recently-updated rejected PRs would crowd out the merged PR that
-        // actually matches one of the fetched commits. Always search at
-        // least a full page.
-        let merged_pulls = self
-            .get_json_array_paginated(
-                &client,
-                &pulls_url,
-                &[
-                    ("base", anchor.base_ref.as_str()),
-                    ("state", "closed"),
-                    ("sort", "updated"),
-                    ("direction", "desc"),
-                ],
-                "merged pull requests",
-                lookback.max(100),
-            )
-            .await?;
+        // `sort=updated` has no reliable relationship to merge order: a PR
+        // merged long ago can resurface at the top of this list from a
+        // single new comment, while an unrelated rejected PR can sit there
+        // indefinitely. A fixed page cap can therefore still miss the
+        // merged PR for a commit inside our lookback window; keep paging
+        // until every candidate commit has been matched to a PR, or the
+        // endpoint itself runs out.
+        //
+        // TODO: a base branch commit that was never merged in via a PR
+        // (e.g. a direct push) can never be matched, which degrades this
+        // to fetching every closed PR against `base_ref`. Acceptable for
+        // now: base branches are typically protected to require PRs.
+        let mut merged_pulls: Vec<Value> = Vec::new();
+        let mut matched_shas: HashSet<String> = HashSet::new();
+        let mut page = 1u32;
+        loop {
+            let page_str = page.to_string();
+            let batch = self
+                .get_json_array(
+                    &client,
+                    &pulls_url,
+                    &[
+                        ("base", anchor.base_ref.as_str()),
+                        ("state", "closed"),
+                        ("sort", "updated"),
+                        ("direction", "desc"),
+                        ("per_page", "100"),
+                        ("page", &page_str),
+                    ],
+                    "merged pull requests",
+                )
+                .await?;
+            let batch_len = batch.len();
+            for pull in &batch {
+                if let Some(sha) = pull["merge_commit_sha"].as_str()
+                    && candidate_shas.contains(sha)
+                {
+                    matched_shas.insert(sha.to_string());
+                }
+            }
+            merged_pulls.extend(batch);
+            if batch_len < 100 || matched_shas.len() == candidate_shas.len() {
+                break;
+            }
+            page += 1;
+        }
 
         let parent_of: HashMap<&str, &str> = commits
             .iter()
