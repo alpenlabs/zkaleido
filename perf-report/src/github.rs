@@ -225,8 +225,8 @@ impl GithubPrReporter {
         let client = Client::new();
         let base_branch = self.fetch_pr_base_branch(&client).await?;
         // TODO: lookbacks above 100 are silently capped by the GitHub API,
-        // which serves at most one page of commits or merged pull requests;
-        // paginate to support larger windows.
+        // which serves at most one page of commits; paginate to support
+        // larger windows.
         let lookback = self.config.baseline_commit_lookback.to_string();
         let commits_url = format!(
             "{}/repos/{}/commits",
@@ -245,6 +245,15 @@ impl GithubPrReporter {
             "{}/repos/{}/pulls",
             self.config.api_base_url, self.config.repo
         );
+        // `state=closed` includes closed-but-unmerged PRs alongside merged
+        // ones, so this page can't be capped to `lookback`: a burst of
+        // recently-updated rejected PRs would crowd out the merged PR that
+        // actually matches one of the fetched commits. Always ask for a
+        // full page (the GitHub API's max) instead.
+        //
+        // TODO: lookbacks above 100 are silently capped by the GitHub API,
+        // which serves at most one page of merged pull requests; paginate
+        // to support larger windows.
         let merged_pulls = self
             .get_json_array(
                 &client,
@@ -254,7 +263,7 @@ impl GithubPrReporter {
                     ("state", "closed"),
                     ("sort", "updated"),
                     ("direction", "desc"),
-                    ("per_page", &lookback),
+                    ("per_page", "100"),
                 ],
                 "merged pull requests",
             )
