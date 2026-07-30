@@ -5,8 +5,8 @@ use clap::Args;
 use serde_json::Value;
 
 use crate::github::{
-    DEFAULT_API_BASE_URL, DEFAULT_BASELINE_COMMIT_LOOKBACK, GithubPrReporter,
-    GithubPrReporterConfig,
+    DEFAULT_API_BASE_URL, DEFAULT_BASELINE_COMMIT_LOOKBACK, DEFAULT_EXPECTED_COMMENT_AUTHOR,
+    GithubPrReporter, GithubPrReporterConfig,
 };
 
 /// Returns the PR number parsed from the `GITHUB_REF` env var set by GitHub
@@ -145,6 +145,18 @@ pub struct GithubReportArgs {
     /// lookup runs.
     #[arg(long, default_value_t = default_base_sha())]
     pub base_sha: String,
+
+    /// Expected GitHub login of the sticky report comment's author.
+    ///
+    /// A comment is only ever treated as a genuine report -- to patch when
+    /// posting, or to read back as a baseline -- when it was posted by
+    /// this identity; otherwise anyone who can comment on a PR could forge
+    /// a fake report. Defaults to the identity GitHub attributes comments
+    /// to when posted with the default `GITHUB_TOKEN`; override this if
+    /// posting with a different token (a custom bot account, a GitHub App
+    /// installation, or a PAT).
+    #[arg(long, default_value = DEFAULT_EXPECTED_COMMENT_AUTHOR)]
+    pub expected_comment_author: String,
 }
 
 impl GithubReportArgs {
@@ -172,6 +184,7 @@ impl GithubReportArgs {
             // unset, so the baseline anchor falls back to a live lookup.
             base_ref: Some(self.base_ref.clone()).filter(|s| !s.trim().is_empty()),
             base_sha: Some(self.base_sha.clone()).filter(|s| !s.trim().is_empty()),
+            expected_comment_author: self.expected_comment_author.clone(),
             ..Default::default()
         })
     }
@@ -188,6 +201,7 @@ impl fmt::Debug for GithubReportArgs {
             .field("baseline_commit_lookback", &self.baseline_commit_lookback)
             .field("base_ref", &self.base_ref)
             .field("base_sha", &self.base_sha)
+            .field("expected_comment_author", &self.expected_comment_author)
             .finish()
     }
 }

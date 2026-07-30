@@ -18,7 +18,7 @@ pub use args::GithubReportArgs;
 pub use format::{format_results, render_report};
 pub use github::{
     BaselineAnchor, BaselineReport, DEFAULT_API_BASE_URL, DEFAULT_BASELINE_COMMIT_LOOKBACK,
-    DEFAULT_USER_AGENT, GithubPrReporter, GithubPrReporterConfig,
+    DEFAULT_EXPECTED_COMMENT_AUTHOR, DEFAULT_USER_AGENT, GithubPrReporter, GithubPrReporterConfig,
 };
 pub use payload::{ProgramPayload, ReportPayload, ZkVmPayload};
 pub use report::{ProgramResult, ZkVmResults};

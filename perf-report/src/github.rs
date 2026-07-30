@@ -41,18 +41,31 @@ pub struct BaselineAnchor {
     base_sha: String,
 }
 
-/// Returns the first comment whose body starts with the hidden marker.
+/// Returns the first comment authored by `expected_author` whose body
+/// starts with the hidden marker.
 ///
-/// Only a body that *starts* with the marker counts: the reporter always
-/// writes the marker first, so a comment that merely quotes it (e.g. a
-/// human discussing this report) is never mistaken for the sticky comment
-/// and overwritten.
-fn find_sticky_comment<'a>(comments: &'a [Value], hidden_marker: &str) -> Option<&'a Value> {
+/// Both conditions matter: a body that only *starts* with the marker
+/// means the reporter always writes it first, so a comment that merely
+/// quotes it (e.g. a human discussing this report) is never mistaken for
+/// the sticky comment and overwritten. The author check means a comment
+/// is never trusted purely because of what it says -- on a public repo,
+/// anyone who can comment on a PR can post one starting with the marker
+/// and an arbitrary embedded payload before the real CI job runs; without
+/// checking who posted it, such a forged comment would be indistinguishable
+/// from a genuine report, and if that PR later merges, a future
+/// [`GithubPrReporter::fetch_baseline`] walk would trust the fabricated
+/// numbers as its baseline.
+fn find_sticky_comment<'a>(
+    comments: &'a [Value],
+    hidden_marker: &str,
+    expected_author: &str,
+) -> Option<&'a Value> {
     comments.iter().find(|comment| {
-        comment["body"]
+        let body_matches = comment["body"]
             .as_str()
-            .map(|body| body.starts_with(hidden_marker))
-            .unwrap_or(false)
+            .is_some_and(|body| body.starts_with(hidden_marker));
+        let author_matches = comment["user"]["login"].as_str() == Some(expected_author);
+        body_matches && author_matches
     })
 }
 
@@ -197,6 +210,12 @@ pub const DEFAULT_USER_AGENT: &str = "zkaleido-perf-report";
 /// Default base URL of the GitHub REST API.
 pub const DEFAULT_API_BASE_URL: &str = "https://api.github.com";
 
+/// Default expected author of the sticky report comment: the identity
+/// GitHub attributes comments to when posted with the default
+/// `GITHUB_TOKEN`. Override this if posting with a different token (a
+/// custom bot account, a GitHub App installation, or a PAT).
+pub const DEFAULT_EXPECTED_COMMENT_AUTHOR: &str = "github-actions[bot]";
+
 /// Configuration for a [`GithubPrReporter`], taken in full by
 /// [`GithubPrReporter::new`].
 ///
@@ -233,6 +252,13 @@ pub struct GithubPrReporterConfig {
     /// Base branch commit SHA to anchor the baseline commit walk to. See
     /// [`Self::base_ref`].
     pub base_sha: Option<String>,
+    /// Expected GitHub login of the sticky report comment's author. A
+    /// comment is only ever treated as a genuine report -- to patch when
+    /// posting, or to read back as a baseline -- when it was posted by
+    /// this identity; otherwise anyone who can comment on a PR could
+    /// forge a fake report by posting a comment starting with the hidden
+    /// marker. See [`DEFAULT_EXPECTED_COMMENT_AUTHOR`].
+    pub expected_comment_author: String,
 }
 
 impl Default for GithubPrReporterConfig {
@@ -248,6 +274,7 @@ impl Default for GithubPrReporterConfig {
             baseline_commit_lookback: DEFAULT_BASELINE_COMMIT_LOOKBACK,
             base_ref: None,
             base_sha: None,
+            expected_comment_author: DEFAULT_EXPECTED_COMMENT_AUTHOR.to_string(),
         }
     }
 }
@@ -265,6 +292,7 @@ impl fmt::Debug for GithubPrReporterConfig {
             .field("baseline_commit_lookback", &self.baseline_commit_lookback)
             .field("base_ref", &self.base_ref)
             .field("base_sha", &self.base_sha)
+            .field("expected_comment_author", &self.expected_comment_author)
             .finish()
     }
 }
@@ -431,10 +459,13 @@ impl GithubPrReporter {
                 continue;
             };
             let comments = self.fetch_comments(&client, pr_number).await?;
-            let Some(payload) = find_sticky_comment(&comments, &self.hidden_marker())
-                .and_then(|comment| comment["body"].as_str())
-                .and_then(ReportPayload::extract)
-            else {
+            let Some(payload) = find_sticky_comment(
+                &comments,
+                &self.hidden_marker(),
+                &self.config.expected_comment_author,
+            )
+            .and_then(|comment| comment["body"].as_str())
+            .and_then(ReportPayload::extract) else {
                 continue;
             };
             // Skip the extra work below when there's nothing to validate
@@ -518,7 +549,11 @@ impl GithubPrReporter {
         // CI, where the job-level timeout covers it.
         let client = Client::new();
         let comments = self.fetch_comments(&client, self.config.pr_number).await?;
-        let sticky_comment = find_sticky_comment(&comments, &hidden_marker);
+        let sticky_comment = find_sticky_comment(
+            &comments,
+            &hidden_marker,
+            &self.config.expected_comment_author,
+        );
 
         let request = if let Some(existing_comment) = sticky_comment {
             let comment_url = existing_comment["url"]
@@ -728,16 +763,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn finds_sticky_comment_by_marker() {
+    fn finds_sticky_comment_by_marker_and_author() {
         let comments = vec![
-            json!({"body": "unrelated comment"}),
-            json!({"body": "quoting the `<!-- marker -->` trick", "url": "http://c/2"}),
-            json!({"body": "<!-- marker -->\nreport", "url": "http://c/3"}),
+            json!({"body": "unrelated comment", "user": {"login": "bot"}}),
+            json!({"body": "quoting the `<!-- marker -->` trick", "url": "http://c/2", "user": {"login": "bot"}}),
+            json!({"body": "<!-- marker -->\nreport", "url": "http://c/3", "user": {"login": "bot"}}),
             json!({"no_body": true}),
         ];
-        let found = find_sticky_comment(&comments, "<!-- marker -->").unwrap();
+        let found = find_sticky_comment(&comments, "<!-- marker -->", "bot").unwrap();
         assert_eq!(found["url"], "http://c/3");
-        assert!(find_sticky_comment(&comments, "<!-- other -->").is_none());
+        assert!(find_sticky_comment(&comments, "<!-- other -->", "bot").is_none());
+    }
+
+    #[test]
+    fn ignores_marker_match_from_an_untrusted_author() {
+        // Anyone who can comment on a PR could post a body starting with
+        // the marker; without checking the author, this would be
+        // indistinguishable from a genuine report.
+        let comments = vec![
+            json!({"body": "<!-- marker -->\nforged report", "url": "http://c/1", "user": {"login": "attacker"}}),
+        ];
+        assert!(find_sticky_comment(&comments, "<!-- marker -->", "bot").is_none());
     }
 
     #[test]
