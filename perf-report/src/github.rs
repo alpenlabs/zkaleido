@@ -65,27 +65,26 @@ fn find_pr_for_merge_commit(merged_pulls: &[Value], sha: &str) -> Option<u64> {
         .and_then(|pull| pull["number"].as_u64())
 }
 
-/// Returns whether `merge_commit` unambiguously landed as a single commit
-/// on the base branch, regardless of how many source commits the PR had:
+/// Returns whether a merge commit whose first parent has tree
+/// `parent_tree_sha` landed via rebase-and-merge, given `pr_commits` (the
+/// PR's own commits, oldest first, as returned by the GitHub API).
 ///
-/// - A two-parent commit is a standard merge commit, where `parents[0]` is always the base tip
-///   immediately before the merge.
-/// - A message containing `(#<pr_number>)` matches GitHub's default squash-commit title (`<PR
-///   title> (#<number>)`), which also always lands as a single commit no matter how many commits
-///   the PR had.
+/// A rebase's merge commit has as its parent a content-identical replay of
+/// the PR's own second-to-last commit -- same tree, different sha, since
+/// rebasing changes parent linkage (and thus the commit hash) without
+/// touching content. A squash (or a single fast-forwarded commit) instead
+/// has a parent that predates the PR entirely, with an unrelated tree.
+/// Comparing trees rather than the commit message (which a maintainer can
+/// edit after the fact) makes this immune to that kind of drift.
 ///
-/// Only when neither holds does the PR's own source commit count become
-/// relevant, for the remaining case: rebase-and-merge, which replays every
-/// source commit individually.
-fn merge_landed_as_one_commit(merge_commit: &Value, pr_number: u64) -> bool {
-    let is_standard_merge = merge_commit["parents"]
-        .as_array()
-        .is_some_and(|parents| parents.len() == 2);
-    let squash_marker = format!("(#{pr_number})");
-    let looks_like_squash = merge_commit["commit"]["message"]
-        .as_str()
-        .is_some_and(|message| message.contains(&squash_marker));
-    is_standard_merge || looks_like_squash
+/// A single-commit PR is excluded: squash and rebase are indistinguishable
+/// for it (both land as exactly one commit), so there's nothing to tell
+/// apart.
+fn merge_looks_rebased(parent_tree_sha: &str, pr_commits: &[Value]) -> bool {
+    let Some(second_to_last) = pr_commits.len().checked_sub(2).map(|i| &pr_commits[i]) else {
+        return false;
+    };
+    second_to_last["commit"]["tree"]["sha"].as_str() == Some(parent_tree_sha)
 }
 
 /// Returns whether `payload` was tested against exactly the base state the
@@ -93,12 +92,10 @@ fn merge_landed_as_one_commit(merge_commit: &Value, pr_number: u64) -> bool {
 ///
 /// Walks back exactly `commit_count` first-parent hops from `merge_sha`
 /// (the candidate's merge commit) -- one hop per commit this PR actually
-/// landed on the base branch. Callers should pass 1 when
-/// [`merge_landed_as_one_commit`] holds and the PR's own source commit
-/// count only otherwise, for rebase-and-merge, which replays every source
-/// commit individually. `parent_of` should map each base-branch commit's
-/// sha to its first parent's sha, built from the already-fetched commit
-/// history.
+/// landed on the base branch; see [`GithubPrReporter::resolve_landed_commit_count`]
+/// for how that count is determined. `parent_of` should map each
+/// base-branch commit's sha to its first parent's sha, built from the
+/// already-fetched commit history.
 ///
 /// The walk must stop at exactly `commit_count` hops rather than
 /// continuing until *some* match turns up: the base branch's history is
@@ -401,6 +398,14 @@ impl GithubPrReporter {
                 Some((sha, parent_sha))
             })
             .collect();
+        let tree_of: HashMap<&str, &str> = commits
+            .iter()
+            .filter_map(|commit| {
+                let sha = commit["sha"].as_str()?;
+                let tree_sha = commit["commit"]["tree"]["sha"].as_str()?;
+                Some((sha, tree_sha))
+            })
+            .collect();
 
         for commit in &commits {
             let Some(sha) = commit["sha"].as_str() else {
@@ -421,15 +426,9 @@ impl GithubPrReporter {
             if payload.base_sha.is_none() {
                 continue;
             }
-            // The PR's own source commit count only matters for
-            // rebase-and-merge; skip that extra API call for the much
-            // more common squash/standard-merge case, where exactly one
-            // commit lands regardless of source commit count.
-            let commit_count = if merge_landed_as_one_commit(commit, pr_number) {
-                1
-            } else {
-                self.fetch_pr_commit_count(&client, pr_number).await?
-            };
+            let commit_count = self
+                .resolve_landed_commit_count(&client, &tree_of, commit, pr_number)
+                .await?;
             if !baseline_is_fresh(sha, commit_count, &parent_of, &payload) {
                 continue;
             }
@@ -540,19 +539,73 @@ impl GithubPrReporter {
             .await
     }
 
-    /// Returns the number of commits in PR `pr_number`, used to bound
-    /// [`baseline_is_fresh`]'s parent walk to exactly that PR's own commit
-    /// span. The list-pulls endpoint used to build `merged_pulls` doesn't
-    /// include this count; only the single-PR endpoint does.
-    async fn fetch_pr_commit_count(&self, client: &Client, pr_number: u64) -> Result<u64> {
+    /// Returns the number of commits `merge_commit` actually landed on the
+    /// base branch: 1 for a squash merge or a standard two-parent merge
+    /// commit, regardless of how many source commits the PR had, or the
+    /// PR's full source commit count for rebase-and-merge, which replays
+    /// every commit individually. See [`merge_looks_rebased`] for how
+    /// those two cases are told apart. `tree_of` should map each
+    /// base-branch commit's sha to its own tree sha, built from the
+    /// already-fetched commit history.
+    async fn resolve_landed_commit_count(
+        &self,
+        client: &Client,
+        tree_of: &HashMap<&str, &str>,
+        merge_commit: &Value,
+        pr_number: u64,
+    ) -> Result<u64> {
+        // A two-parent merge commit is unambiguous: parents[0] is always
+        // the base tip immediately before the merge.
+        if merge_commit["parents"]
+            .as_array()
+            .is_some_and(|parents| parents.len() == 2)
+        {
+            return Ok(1);
+        }
+        let Some(parent_sha) = merge_commit["parents"][0]["sha"].as_str() else {
+            return Ok(1);
+        };
+        let parent_tree_sha = match tree_of.get(parent_sha) {
+            Some(&tree_sha) => tree_sha.to_string(),
+            // The parent falls outside the fetched commit history (the
+            // candidate sits at the edge of the lookback window); fetch
+            // it directly rather than skip the check.
+            None => self.fetch_commit_tree_sha(client, parent_sha).await?,
+        };
+        let pr_commits = self.fetch_pr_commits(client, pr_number).await?;
+        if merge_looks_rebased(&parent_tree_sha, &pr_commits) {
+            Ok(pr_commits.len() as u64)
+        } else {
+            Ok(1)
+        }
+    }
+
+    /// Fetches the commits of PR `pr_number`, oldest first.
+    ///
+    /// TODO: this endpoint paginates at 100 commits per page and this only
+    /// fetches the first page, so a PR with more than 100 commits is
+    /// treated as if it only had its first 100. Acceptable for now: a PR
+    /// that large is already far outside normal usage.
+    async fn fetch_pr_commits(&self, client: &Client, pr_number: u64) -> Result<Vec<Value>> {
         let url = format!(
-            "{}/repos/{}/pulls/{pr_number}",
+            "{}/repos/{}/pulls/{pr_number}/commits",
             self.config.api_base_url, self.config.repo
         );
-        let pr = self.get_json(client, &url, &[], "pull request").await?;
-        pr["commits"]
-            .as_u64()
-            .ok_or_else(|| anyhow!("pull request response did not include commits count"))
+        self.get_json_array(client, &url, &[("per_page", "100")], "pull request commits")
+            .await
+    }
+
+    /// Fetches the tree sha of a single commit.
+    async fn fetch_commit_tree_sha(&self, client: &Client, sha: &str) -> Result<String> {
+        let url = format!(
+            "{}/repos/{}/commits/{sha}",
+            self.config.api_base_url, self.config.repo
+        );
+        let commit = self.get_json(client, &url, &[], "commit").await?;
+        commit["commit"]["tree"]["sha"]
+            .as_str()
+            .map(str::to_string)
+            .ok_or_else(|| anyhow!("commit response did not include tree sha"))
     }
 
     /// Fetches `url` and decodes the response as JSON. `query` is appended
@@ -678,33 +731,35 @@ mod tests {
         }
     }
 
-    #[test]
-    fn merge_landed_as_one_commit_for_a_two_parent_merge() {
-        let commit = json!({
-            "parents": [{"sha": "base1"}, {"sha": "head1"}],
-            "commit": {"message": "Merge pull request #42 from user/branch"},
-        });
-        assert!(merge_landed_as_one_commit(&commit, 42));
+    fn pr_commit_with_tree(tree_sha: &str) -> Value {
+        json!({"commit": {"tree": {"sha": tree_sha}}})
     }
 
     #[test]
-    fn merge_landed_as_one_commit_for_githubs_default_squash_message() {
-        let commit = json!({
-            "parents": [{"sha": "base1"}],
-            "commit": {"message": "some change (#42)"},
-        });
-        assert!(merge_landed_as_one_commit(&commit, 42));
+    fn merge_looks_rebased_when_parent_tree_matches_second_to_last_commit() {
+        let pr_commits = vec![
+            pr_commit_with_tree("tree1"),
+            pr_commit_with_tree("tree2"),
+            pr_commit_with_tree("tree3"),
+        ];
+        assert!(merge_looks_rebased("tree2", &pr_commits));
     }
 
     #[test]
-    fn merge_did_not_land_as_one_commit_for_a_rebased_commit() {
-        // One parent, and the message doesn't reference this PR at all
-        // (it's the original commit message carried over by the rebase).
-        let commit = json!({
-            "parents": [{"sha": "rebased2"}],
-            "commit": {"message": "some change"},
-        });
-        assert!(!merge_landed_as_one_commit(&commit, 42));
+    fn merge_does_not_look_rebased_when_parent_tree_predates_the_pr() {
+        // A squash (or standard merge) commit's parent is the base tip
+        // from before the PR touched anything, with a tree unrelated to
+        // any of the PR's own commits.
+        let pr_commits = vec![pr_commit_with_tree("tree1"), pr_commit_with_tree("tree2")];
+        assert!(!merge_looks_rebased("unrelated-tree", &pr_commits));
+    }
+
+    #[test]
+    fn merge_does_not_look_rebased_for_a_single_commit_pr() {
+        // Squash and rebase are indistinguishable for a single-commit PR
+        // -- both land as exactly one commit -- so this is never "rebased".
+        let pr_commits = vec![pr_commit_with_tree("tree1")];
+        assert!(!merge_looks_rebased("tree1", &pr_commits));
     }
 
     #[test]
