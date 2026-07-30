@@ -65,22 +65,28 @@ fn find_pr_for_merge_commit(merged_pulls: &[Value], sha: &str) -> Option<u64> {
         .and_then(|pull| pull["number"].as_u64())
 }
 
-/// Returns whether a merge commit whose first parent has tree
-/// `parent_tree_sha` landed via rebase-and-merge, given `pr_commits` (the
-/// PR's own commits, oldest first, as returned by the GitHub API).
+/// Returns whether a merge commit whose first parent has author identity
+/// `parent_author` (the `commit.author` object: name, email, and date)
+/// landed via rebase-and-merge, given `pr_commits` (the PR's own commits,
+/// oldest first, as returned by the GitHub API).
 ///
-/// A rebase's merge commit has as its parent a content-identical replay of
-/// the PR's own second-to-last commit -- same tree, different sha, since
-/// rebasing changes parent linkage (and thus the commit hash) without
-/// touching content. A squash (or a single fast-forwarded commit) instead
-/// has a parent that predates the PR entirely, with an unrelated tree.
-/// Comparing trees rather than the commit message (which a maintainer can
-/// edit after the fact) makes this immune to that kind of drift.
+/// A clean git rebase preserves each commit's author name, email, and
+/// author date exactly -- only the committer (and committer date) change,
+/// since the committer becomes GitHub's merge machinery at merge time.
+/// Author identity is a reliable signal even when the PR's branch was
+/// based on an older point in the base branch's history: unlike a tree
+/// comparison, it doesn't depend on the base being unchanged since the PR
+/// branched, only on the rebase itself being clean. A tree comparison was
+/// tried and discarded for exactly this reason: a real rebase reapplies
+/// each commit's diff onto the new base, so its tree differs from the
+/// original source commit's whenever the base actually changed in
+/// between -- the very case this needs to detect.
 ///
-/// This heuristic can still be misled: if the PR's commits before the
-/// last happen to net to no tree change (e.g. an add followed by a
-/// revert), the pre-PR base tree can coincidentally equal the
-/// second-to-last commit's tree, misclassifying a squash as a rebase.
+/// A squash (or a single fast-forwarded commit) instead has a parent that
+/// predates the PR entirely, authored by whoever committed to the base
+/// branch at that point -- vanishingly unlikely to coincidentally match
+/// this PR's own second-to-last commit's author identity and timestamp.
+///
 /// Callers should only reach for this after a direct one-hop check
 /// against `payload.base_sha` has already failed -- that check is exact
 /// and always correct when it succeeds, so this is only ever asked to
@@ -90,11 +96,11 @@ fn find_pr_for_merge_commit(merged_pulls: &[Value], sha: &str) -> Option<u64> {
 /// A single-commit PR is excluded: squash and rebase are indistinguishable
 /// for it (both land as exactly one commit), so there's nothing to tell
 /// apart.
-fn merge_looks_rebased(parent_tree_sha: &str, pr_commits: &[Value]) -> bool {
+fn merge_looks_rebased(parent_author: &Value, pr_commits: &[Value]) -> bool {
     let Some(second_to_last) = pr_commits.len().checked_sub(2).map(|i| &pr_commits[i]) else {
         return false;
     };
-    second_to_last["commit"]["tree"]["sha"].as_str() == Some(parent_tree_sha)
+    &second_to_last["commit"]["author"] == parent_author
 }
 
 /// Returns whether `payload` was tested against exactly the base state the
@@ -408,12 +414,12 @@ impl GithubPrReporter {
                 Some((sha, parent_sha))
             })
             .collect();
-        let tree_of: HashMap<&str, &str> = commits
+        let author_of: HashMap<&str, &Value> = commits
             .iter()
             .filter_map(|commit| {
                 let sha = commit["sha"].as_str()?;
-                let tree_sha = commit["commit"]["tree"]["sha"].as_str()?;
-                Some((sha, tree_sha))
+                let author = commit["commit"].get("author")?;
+                Some((sha, author))
             })
             .collect();
 
@@ -439,14 +445,14 @@ impl GithubPrReporter {
             // Try the direct parent first: it's an exact sha comparison,
             // so a match is always correct regardless of merge strategy,
             // with no extra API calls. Only fall back to resolving the
-            // full landed span -- which relies on a tree-based heuristic
-            // that a coincidental no-net-change commit could mislead --
-            // when this doesn't already settle it.
+            // full landed span -- which relies on an author-based
+            // heuristic that could in principle be misled by coincidence
+            // -- when this doesn't already settle it.
             let is_fresh = if baseline_is_fresh(sha, 1, &parent_of, &payload) {
                 true
             } else {
                 let commit_count = self
-                    .resolve_landed_commit_count(&client, &tree_of, commit, pr_number)
+                    .resolve_landed_commit_count(&client, &author_of, commit, pr_number)
                     .await?;
                 baseline_is_fresh(sha, commit_count, &parent_of, &payload)
             };
@@ -565,13 +571,13 @@ impl GithubPrReporter {
     /// commit, regardless of how many source commits the PR had, or the
     /// PR's full source commit count for rebase-and-merge, which replays
     /// every commit individually. See [`merge_looks_rebased`] for how
-    /// those two cases are told apart. `tree_of` should map each
-    /// base-branch commit's sha to its own tree sha, built from the
-    /// already-fetched commit history.
+    /// those two cases are told apart. `author_of` should map each
+    /// base-branch commit's sha to its own `commit.author` object, built
+    /// from the already-fetched commit history.
     async fn resolve_landed_commit_count(
         &self,
         client: &Client,
-        tree_of: &HashMap<&str, &str>,
+        author_of: &HashMap<&str, &Value>,
         merge_commit: &Value,
         pr_number: u64,
     ) -> Result<u64> {
@@ -586,15 +592,15 @@ impl GithubPrReporter {
         let Some(parent_sha) = merge_commit["parents"][0]["sha"].as_str() else {
             return Ok(1);
         };
-        let parent_tree_sha = match tree_of.get(parent_sha) {
-            Some(&tree_sha) => tree_sha.to_string(),
+        let parent_author = match author_of.get(parent_sha) {
+            Some(&author) => author.clone(),
             // The parent falls outside the fetched commit history (the
             // candidate sits at the edge of the lookback window); fetch
             // it directly rather than skip the check.
-            None => self.fetch_commit_tree_sha(client, parent_sha).await?,
+            None => self.fetch_commit_author(client, parent_sha).await?,
         };
         let pr_commits = self.fetch_pr_commits(client, pr_number).await?;
-        if merge_looks_rebased(&parent_tree_sha, &pr_commits) {
+        if merge_looks_rebased(&parent_author, &pr_commits) {
             Ok(pr_commits.len() as u64)
         } else {
             Ok(1)
@@ -616,17 +622,18 @@ impl GithubPrReporter {
             .await
     }
 
-    /// Fetches the tree sha of a single commit.
-    async fn fetch_commit_tree_sha(&self, client: &Client, sha: &str) -> Result<String> {
+    /// Fetches the `commit.author` object of a single commit.
+    async fn fetch_commit_author(&self, client: &Client, sha: &str) -> Result<Value> {
         let url = format!(
             "{}/repos/{}/commits/{sha}",
             self.config.api_base_url, self.config.repo
         );
         let commit = self.get_json(client, &url, &[], "commit").await?;
-        commit["commit"]["tree"]["sha"]
-            .as_str()
-            .map(str::to_string)
-            .ok_or_else(|| anyhow!("commit response did not include tree sha"))
+        let author = commit["commit"]["author"].clone();
+        if author.is_null() {
+            bail!("commit response did not include author");
+        }
+        Ok(author)
     }
 
     /// Fetches `url` and decodes the response as JSON. `query` is appended
@@ -752,35 +759,44 @@ mod tests {
         }
     }
 
-    fn pr_commit_with_tree(tree_sha: &str) -> Value {
-        json!({"commit": {"tree": {"sha": tree_sha}}})
+    fn pr_commit_with_author(name: &str, date: &str) -> Value {
+        json!({"commit": {"author": {"name": name, "email": "a@example.com", "date": date}}})
     }
 
     #[test]
-    fn merge_looks_rebased_when_parent_tree_matches_second_to_last_commit() {
+    fn merge_looks_rebased_when_parent_author_matches_second_to_last_commit() {
         let pr_commits = vec![
-            pr_commit_with_tree("tree1"),
-            pr_commit_with_tree("tree2"),
-            pr_commit_with_tree("tree3"),
+            pr_commit_with_author("alice", "2026-01-01T00:00:00Z"),
+            pr_commit_with_author("alice", "2026-01-02T00:00:00Z"),
+            pr_commit_with_author("alice", "2026-01-03T00:00:00Z"),
         ];
-        assert!(merge_looks_rebased("tree2", &pr_commits));
+        let parent_author =
+            pr_commit_with_author("alice", "2026-01-02T00:00:00Z")["commit"]["author"].clone();
+        assert!(merge_looks_rebased(&parent_author, &pr_commits));
     }
 
     #[test]
-    fn merge_does_not_look_rebased_when_parent_tree_predates_the_pr() {
+    fn merge_does_not_look_rebased_when_parent_author_predates_the_pr() {
         // A squash (or standard merge) commit's parent is the base tip
-        // from before the PR touched anything, with a tree unrelated to
-        // any of the PR's own commits.
-        let pr_commits = vec![pr_commit_with_tree("tree1"), pr_commit_with_tree("tree2")];
-        assert!(!merge_looks_rebased("unrelated-tree", &pr_commits));
+        // from before the PR touched anything, authored by whoever
+        // committed to the base branch at that point.
+        let pr_commits = vec![
+            pr_commit_with_author("alice", "2026-01-01T00:00:00Z"),
+            pr_commit_with_author("alice", "2026-01-02T00:00:00Z"),
+        ];
+        let parent_author =
+            pr_commit_with_author("bob", "2025-06-01T00:00:00Z")["commit"]["author"].clone();
+        assert!(!merge_looks_rebased(&parent_author, &pr_commits));
     }
 
     #[test]
     fn merge_does_not_look_rebased_for_a_single_commit_pr() {
         // Squash and rebase are indistinguishable for a single-commit PR
         // -- both land as exactly one commit -- so this is never "rebased".
-        let pr_commits = vec![pr_commit_with_tree("tree1")];
-        assert!(!merge_looks_rebased("tree1", &pr_commits));
+        let pr_commits = vec![pr_commit_with_author("alice", "2026-01-01T00:00:00Z")];
+        let parent_author =
+            pr_commit_with_author("alice", "2026-01-01T00:00:00Z")["commit"]["author"].clone();
+        assert!(!merge_looks_rebased(&parent_author, &pr_commits));
     }
 
     #[test]
