@@ -1,7 +1,4 @@
-use std::{
-    collections::{HashMap, HashSet},
-    fmt,
-};
+use std::{collections::HashMap, fmt};
 
 use anyhow::{Result, anyhow, bail};
 use reqwest::{Client, RequestBuilder};
@@ -337,61 +334,40 @@ impl GithubPrReporter {
             )
             .await?;
 
-        let candidate_shas: HashSet<&str> = commits
-            .iter()
-            .filter_map(|commit| commit["sha"].as_str())
-            .collect();
-
         let pulls_url = format!(
             "{}/repos/{}/pulls",
             self.config.api_base_url, self.config.repo
         );
-        // `sort=updated` has no reliable relationship to merge order: a PR
-        // merged long ago can resurface at the top of this list from a
-        // single new comment, while an unrelated rejected PR can sit there
-        // indefinitely. A fixed page cap can therefore still miss the
-        // merged PR for a commit inside our lookback window; keep paging
-        // until every candidate commit has been matched to a PR, or the
-        // endpoint itself runs out.
+        // `state=closed` includes closed-but-unmerged PRs alongside merged
+        // ones, and `sort=updated` has no reliable relationship to merge
+        // order -- a PR merged long ago can resurface at the top of this
+        // list from a single new comment, while an unrelated rejected PR
+        // can sit there indefinitely. This cap is therefore a bounded
+        // best-effort, not an exhaustive search: it can still miss the
+        // merged PR for a commit inside the lookback window if enough
+        // irrelevant closed PRs crowd it out.
         //
-        // TODO: a base branch commit that was never merged in via a PR
-        // (e.g. a direct push) can never be matched, which degrades this
-        // to fetching every closed PR against `base_ref`. Acceptable for
-        // now: base branches are typically protected to require PRs.
-        let mut merged_pulls: Vec<Value> = Vec::new();
-        let mut matched_shas: HashSet<String> = HashSet::new();
-        let mut page = 1u32;
-        loop {
-            let page_str = page.to_string();
-            let batch = self
-                .get_json_array(
-                    &client,
-                    &pulls_url,
-                    &[
-                        ("base", anchor.base_ref.as_str()),
-                        ("state", "closed"),
-                        ("sort", "updated"),
-                        ("direction", "desc"),
-                        ("per_page", "100"),
-                        ("page", &page_str),
-                    ],
-                    "merged pull requests",
-                )
-                .await?;
-            let batch_len = batch.len();
-            for pull in &batch {
-                if let Some(sha) = pull["merge_commit_sha"].as_str()
-                    && candidate_shas.contains(sha)
-                {
-                    matched_shas.insert(sha.to_string());
-                }
-            }
-            merged_pulls.extend(batch);
-            if batch_len < 100 || matched_shas.len() == candidate_shas.len() {
-                break;
-            }
-            page += 1;
-        }
+        // TODO: an exhaustive search (page until every commit in the
+        // window is accounted for) was tried and reverted: on a
+        // repository using rebase-and-merge, every commit but the last in
+        // each PR's span can never match any `merge_commit_sha`, which
+        // degenerated into paging through the entire closed-PR history on
+        // every run. Revisit if this cap turns out to miss baselines in
+        // practice.
+        let merged_pulls = self
+            .get_json_array_paginated(
+                &client,
+                &pulls_url,
+                &[
+                    ("base", anchor.base_ref.as_str()),
+                    ("state", "closed"),
+                    ("sort", "updated"),
+                    ("direction", "desc"),
+                ],
+                "merged pull requests",
+                lookback.max(100),
+            )
+            .await?;
 
         let parent_of: HashMap<&str, &str> = commits
             .iter()
