@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{collections::HashMap, fmt};
 
 use anyhow::{Result, anyhow, bail};
 use reqwest::{Client, RequestBuilder};
@@ -65,33 +65,40 @@ fn find_pr_for_merge_commit(merged_pulls: &[Value], sha: &str) -> Option<u64> {
         .and_then(|pull| pull["number"].as_u64())
 }
 
-/// Returns whether `payload` was tested against exactly the base state
-/// `commit` (the candidate's merge commit) landed on, i.e. `payload.base_sha`
-/// matches `commit`'s first parent.
+/// Returns whether `payload` was tested against exactly the base state the
+/// candidate's commit span landed on.
+///
+/// Starting at `merge_sha` (the candidate's merge commit), walks back
+/// through first-parent links looking for `payload.base_sha`: one hop for
+/// a squash commit or a standard two-parent merge commit, one hop per
+/// rebased commit for rebase-and-merge, since GitHub replays each of the
+/// PR's commits individually onto the base tip and every one of them
+/// lands in the base branch's own history. `parent_of` should map each
+/// base-branch commit's sha to its first parent's sha, built from the
+/// already-fetched commit history.
 ///
 /// If the base branch advanced after the candidate PR's last CI run but
-/// before it merged, `payload.base_sha` names a commit that is no longer
-/// the merge's parent; using such a payload as a baseline would silently
-/// attribute the base branch's intervening changes to whichever PR is
-/// compared against it next. A payload with no `base_sha` (e.g. posted
-/// before this field existed) can't be verified and is treated as stale.
-///
-/// This assumes the merge landed as a squash or a standard two-parent
-/// merge commit, where `parents[0]` is the base tip immediately before the
-/// merge.
-///
-/// TODO: rebase-and-merge instead replays the PR's commits individually,
-/// so `parents[0]` of the last one is another of the PR's own commits, not
-/// the pre-merge base; this check would then reject even a fresh candidate
-/// on repositories using that merge strategy.
-fn baseline_is_fresh(commit: &Value, payload: &ReportPayload) -> bool {
+/// before it merged, `payload.base_sha` won't appear anywhere in this
+/// walk; using such a payload as a baseline would silently attribute the
+/// base branch's intervening changes to whichever PR is compared against
+/// it next. A payload with no `base_sha` (e.g. posted before this field
+/// existed) can't be verified and is treated as stale.
+fn baseline_is_fresh(
+    merge_sha: &str,
+    parent_of: &HashMap<&str, &str>,
+    payload: &ReportPayload,
+) -> bool {
     let Some(tested_base_sha) = payload.base_sha.as_deref() else {
         return false;
     };
-    let Some(base_parent_sha) = commit["parents"][0]["sha"].as_str() else {
-        return false;
-    };
-    tested_base_sha == base_parent_sha
+    let mut sha = merge_sha;
+    while let Some(&parent_sha) = parent_of.get(sha) {
+        if parent_sha == tested_base_sha {
+            return true;
+        }
+        sha = parent_sha;
+    }
+    false
 }
 
 /// Returns the first 8 characters of a commit hash.
@@ -348,6 +355,15 @@ impl GithubPrReporter {
             )
             .await?;
 
+        let parent_of: HashMap<&str, &str> = commits
+            .iter()
+            .filter_map(|commit| {
+                let sha = commit["sha"].as_str()?;
+                let parent_sha = commit["parents"][0]["sha"].as_str()?;
+                Some((sha, parent_sha))
+            })
+            .collect();
+
         for commit in &commits {
             let Some(sha) = commit["sha"].as_str() else {
                 continue;
@@ -362,7 +378,7 @@ impl GithubPrReporter {
             else {
                 continue;
             };
-            if !baseline_is_fresh(commit, &payload) {
+            if !baseline_is_fresh(sha, &parent_of, &payload) {
                 continue;
             }
             return Ok(Some(BaselineReport {
@@ -597,31 +613,45 @@ mod tests {
 
     #[test]
     fn baseline_is_fresh_when_tested_base_matches_merge_parent() {
-        let commit = json!({"sha": "merge1", "parents": [{"sha": "base1"}]});
+        let parent_of = HashMap::from([("merge1", "base1")]);
         let payload = payload_with_base_sha(Some("base1"));
-        assert!(baseline_is_fresh(&commit, &payload));
+        assert!(baseline_is_fresh("merge1", &parent_of, &payload));
+    }
+
+    #[test]
+    fn baseline_is_fresh_across_a_multi_commit_rebase_span() {
+        // Rebase-and-merge replays each of the PR's commits individually;
+        // the tested base is several hops back through the PR's own
+        // commits, not the merge commit's direct parent.
+        let parent_of = HashMap::from([
+            ("rebased3", "rebased2"),
+            ("rebased2", "rebased1"),
+            ("rebased1", "base1"),
+        ]);
+        let payload = payload_with_base_sha(Some("base1"));
+        assert!(baseline_is_fresh("rebased3", &parent_of, &payload));
     }
 
     #[test]
     fn baseline_is_stale_when_base_advanced_before_merge() {
         // The candidate was last tested against `base1`, but by the time it
         // merged the base branch had moved on to `base2`.
-        let commit = json!({"sha": "merge1", "parents": [{"sha": "base2"}]});
+        let parent_of = HashMap::from([("merge1", "base2")]);
         let payload = payload_with_base_sha(Some("base1"));
-        assert!(!baseline_is_fresh(&commit, &payload));
+        assert!(!baseline_is_fresh("merge1", &parent_of, &payload));
     }
 
     #[test]
     fn baseline_is_stale_without_a_tested_base_sha() {
-        let commit = json!({"sha": "merge1", "parents": [{"sha": "base1"}]});
+        let parent_of = HashMap::from([("merge1", "base1")]);
         let payload = payload_with_base_sha(None);
-        assert!(!baseline_is_fresh(&commit, &payload));
+        assert!(!baseline_is_fresh("merge1", &parent_of, &payload));
     }
 
     #[test]
     fn baseline_is_stale_without_commit_parents() {
-        let commit = json!({"sha": "merge1", "parents": []});
+        let parent_of = HashMap::new();
         let payload = payload_with_base_sha(Some("base1"));
-        assert!(!baseline_is_fresh(&commit, &payload));
+        assert!(!baseline_is_fresh("merge1", &parent_of, &payload));
     }
 }
