@@ -261,20 +261,18 @@ impl GithubPrReporter {
     /// callers can treat errors the same way.
     pub async fn fetch_baseline(&self, anchor: &BaselineAnchor) -> Result<Option<BaselineReport>> {
         let client = Client::new();
-        // TODO: lookbacks above 100 are silently capped by the GitHub API,
-        // which serves at most one page of commits; paginate to support
-        // larger windows.
-        let lookback = self.config.baseline_commit_lookback.to_string();
+        let lookback = self.config.baseline_commit_lookback;
         let commits_url = format!(
             "{}/repos/{}/commits",
             self.config.api_base_url, self.config.repo
         );
         let commits = self
-            .get_json_array(
+            .get_json_array_paginated(
                 &client,
                 &commits_url,
-                &[("sha", anchor.base_sha.as_str()), ("per_page", &lookback)],
+                &[("sha", anchor.base_sha.as_str())],
                 "base branch commits",
+                lookback,
             )
             .await?;
 
@@ -283,16 +281,12 @@ impl GithubPrReporter {
             self.config.api_base_url, self.config.repo
         );
         // `state=closed` includes closed-but-unmerged PRs alongside merged
-        // ones, so this page can't be capped to `lookback`: a burst of
+        // ones, so this can't be capped to `lookback`: a burst of
         // recently-updated rejected PRs would crowd out the merged PR that
-        // actually matches one of the fetched commits. Always ask for a
-        // full page (the GitHub API's max) instead.
-        //
-        // TODO: lookbacks above 100 are silently capped by the GitHub API,
-        // which serves at most one page of merged pull requests; paginate
-        // to support larger windows.
+        // actually matches one of the fetched commits. Always search at
+        // least a full page.
         let merged_pulls = self
-            .get_json_array(
+            .get_json_array_paginated(
                 &client,
                 &pulls_url,
                 &[
@@ -300,9 +294,9 @@ impl GithubPrReporter {
                     ("state", "closed"),
                     ("sort", "updated"),
                     ("direction", "desc"),
-                    ("per_page", "100"),
                 ],
                 "merged pull requests",
+                lookback.max(100),
             )
             .await?;
 
@@ -466,6 +460,39 @@ impl GithubPrReporter {
             Value::Array(items) => Ok(items),
             _ => bail!("expected a JSON array in {what} response"),
         }
+    }
+
+    /// Fetches up to `limit` items from a paginated JSON array endpoint.
+    /// `query` should not include `per_page` or `page`: a full page (the
+    /// GitHub API's max of 100) is always requested, and further pages are
+    /// fetched until `limit` items have been collected or a short page
+    /// signals there are no more.
+    async fn get_json_array_paginated(
+        &self,
+        client: &Client,
+        url: &str,
+        query: &[(&str, &str)],
+        what: &str,
+        limit: usize,
+    ) -> Result<Vec<Value>> {
+        const PAGE_SIZE: usize = 100;
+        let mut items = Vec::new();
+        let mut page = 1u32;
+        while items.len() < limit {
+            let page_str = page.to_string();
+            let mut paged_query = query.to_vec();
+            paged_query.push(("per_page", "100"));
+            paged_query.push(("page", &page_str));
+            let batch = self.get_json_array(client, url, &paged_query, what).await?;
+            let batch_len = batch.len();
+            items.extend(batch);
+            if batch_len < PAGE_SIZE {
+                break;
+            }
+            page += 1;
+        }
+        items.truncate(limit);
+        Ok(items)
     }
 
     fn set_github_headers(&self, builder: RequestBuilder) -> RequestBuilder {
