@@ -28,6 +28,19 @@ pub struct BaselineReport {
     pub payload: ReportPayload,
 }
 
+/// A fixed point to anchor the baseline commit walk to: the PR's base
+/// branch name and the commit it pointed to when resolved.
+///
+/// Resolve this once, before doing any long-running work, and reuse it for
+/// [`GithubPrReporter::fetch_baseline`]. Re-resolving the base branch late
+/// (e.g. after benchmarks run) would let the walk start from whatever the
+/// branch has advanced to by then rather than what was actually tested.
+#[derive(Debug, Clone)]
+pub struct BaselineAnchor {
+    base_ref: String,
+    base_sha: String,
+}
+
 /// Returns the first comment whose body starts with the hidden marker.
 ///
 /// Only a body that *starts* with the marker counts: the reporter always
@@ -200,30 +213,54 @@ impl GithubPrReporter {
         Ok(Self { config })
     }
 
-    /// Fetches the baseline report to diff against: the payload embedded in
-    /// the sticky report comment of the most recently merged PR on the base
-    /// branch. The base branch is resolved from the PR being reported on,
-    /// so no configuration is needed and any trigger type works. Walks the
-    /// base branch history commit by commit, matching each commit to a
-    /// merged PR by `merge_commit_sha` rather than GitHub's commit-to-PR
-    /// association endpoint, which only reports merged PRs for commits
-    /// reachable from the repository's default branch and would otherwise
-    /// miss every PR merged into a non-default base. Commits without a
-    /// matching merged PR (direct pushes) and PRs without a readable report
-    /// (failed perf job, predates the embedded payload) are skipped in
-    /// favor of an older baseline. Returns `None` when the lookback is zero
-    /// or nothing is found within the lookback window; a missing baseline
-    /// only degrades the report to absolute numbers, so callers can treat
-    /// errors the same way.
-    pub async fn fetch_baseline(&self) -> Result<Option<BaselineReport>> {
-        // Guard explicitly: the GitHub API treats `per_page=0` as "use the
-        // default page size" rather than "no commits".
+    /// Resolves the anchor for the baseline commit walk: the PR's base
+    /// branch and the commit it currently points to. Call this before doing
+    /// any long-running work (e.g. before running benchmarks) and pass the
+    /// result to [`Self::fetch_baseline`] once that work is done.
+    ///
+    /// Resolving this late instead (i.e. inside `fetch_baseline`, after
+    /// benchmarks run) would let another PR merging into the base branch
+    /// while this job is queued or executing shift the walk to start from
+    /// that newer tip, selecting a baseline whose changes are absent from
+    /// what was actually tested. Returns `None` when the lookback is zero,
+    /// so callers don't pay for a PR fetch that would go unused.
+    pub async fn resolve_baseline_anchor(&self) -> Result<Option<BaselineAnchor>> {
         if self.config.baseline_commit_lookback == 0 {
             return Ok(None);
         }
 
         let client = Client::new();
-        let base_branch = self.fetch_pr_base_branch(&client).await?;
+        let url = format!(
+            "{}/repos/{}/pulls/{}",
+            self.config.api_base_url, self.config.repo, self.config.pr_number
+        );
+        let pr = self.get_json(&client, &url, &[], "pull request").await?;
+        let base_ref = pr["base"]["ref"]
+            .as_str()
+            .map(str::to_string)
+            .ok_or_else(|| anyhow!("pull request response did not include base.ref"))?;
+        let base_sha = pr["base"]["sha"]
+            .as_str()
+            .map(str::to_string)
+            .ok_or_else(|| anyhow!("pull request response did not include base.sha"))?;
+        Ok(Some(BaselineAnchor { base_ref, base_sha }))
+    }
+
+    /// Fetches the baseline report to diff against: the payload embedded in
+    /// the sticky report comment of the most recently merged PR on the base
+    /// branch. Walks the base branch history from `anchor` commit by
+    /// commit, matching each commit to a merged PR by `merge_commit_sha`
+    /// rather than GitHub's commit-to-PR association endpoint, which only
+    /// reports merged PRs for commits reachable from the repository's
+    /// default branch and would otherwise miss every PR merged into a
+    /// non-default base. Commits without a matching merged PR (direct
+    /// pushes) and PRs without a readable report (failed perf job, predates
+    /// the embedded payload) are skipped in favor of an older baseline.
+    /// Returns `None` when nothing is found within the lookback window; a
+    /// missing baseline only degrades the report to absolute numbers, so
+    /// callers can treat errors the same way.
+    pub async fn fetch_baseline(&self, anchor: &BaselineAnchor) -> Result<Option<BaselineReport>> {
+        let client = Client::new();
         // TODO: lookbacks above 100 are silently capped by the GitHub API,
         // which serves at most one page of commits; paginate to support
         // larger windows.
@@ -236,7 +273,7 @@ impl GithubPrReporter {
             .get_json_array(
                 &client,
                 &commits_url,
-                &[("sha", base_branch.as_str()), ("per_page", &lookback)],
+                &[("sha", anchor.base_sha.as_str()), ("per_page", &lookback)],
                 "base branch commits",
             )
             .await?;
@@ -259,7 +296,7 @@ impl GithubPrReporter {
                 &client,
                 &pulls_url,
                 &[
-                    ("base", base_branch.as_str()),
+                    ("base", anchor.base_ref.as_str()),
                     ("state", "closed"),
                     ("sort", "updated"),
                     ("direction", "desc"),
@@ -366,19 +403,6 @@ impl GithubPrReporter {
     /// Returns the hidden HTML comment that identifies the sticky comment.
     fn hidden_marker(&self) -> String {
         format!("<!-- {} -->", self.config.marker)
-    }
-
-    /// Returns the base branch of the PR the report is posted on.
-    async fn fetch_pr_base_branch(&self, client: &Client) -> Result<String> {
-        let url = format!(
-            "{}/repos/{}/pulls/{}",
-            self.config.api_base_url, self.config.repo, self.config.pr_number
-        );
-        let pr = self.get_json(client, &url, &[], "pull request").await?;
-        pr["base"]["ref"]
-            .as_str()
-            .map(str::to_string)
-            .ok_or_else(|| anyhow!("pull request response did not include base.ref"))
     }
 
     fn comments_url(&self, pr_number: u64) -> String {

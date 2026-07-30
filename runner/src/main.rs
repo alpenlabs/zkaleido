@@ -21,6 +21,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|github| github.reporter(COMMENT_MARKER))
         .transpose()?;
 
+    // Resolve the baseline anchor before running benchmarks: doing it after
+    // would let a PR merging into the base branch during this (potentially
+    // long) run shift the walk to a commit whose changes are absent from
+    // what was actually tested.
+    let mut baseline_lookup_failed = false;
+    let baseline_anchor = match &reporter {
+        Some(reporter) => match reporter.resolve_baseline_anchor().await {
+            Ok(anchor) => anchor,
+            Err(err) => {
+                eprintln!("warning: failed to resolve baseline anchor: {err:#}");
+                baseline_lookup_failed = true;
+                None
+            }
+        },
+        None => None,
+    };
+
     let mut results: Vec<ZkVmResults> = Vec::new();
 
     #[cfg(feature = "sp1")]
@@ -38,9 +55,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // A missing baseline only degrades the report to absolute numbers, so
     // fetch failures must not block posting it, but the reported header
     // should still say the lookup failed rather than implying a clean miss.
-    let mut baseline_lookup_failed = false;
-    let baseline = match &reporter {
-        Some(reporter) => match reporter.fetch_baseline().await {
+    let baseline = match (&reporter, baseline_anchor) {
+        (Some(reporter), Some(anchor)) => match reporter.fetch_baseline(&anchor).await {
             Ok(baseline) => baseline,
             Err(err) => {
                 eprintln!("warning: failed to fetch baseline report: {err:#}");
@@ -48,7 +64,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
                 None
             }
         },
-        None => None,
+        _ => None,
     };
 
     // Print results
