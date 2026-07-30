@@ -259,6 +259,19 @@ pub struct GithubPrReporterConfig {
     /// forge a fake report by posting a comment starting with the hidden
     /// marker. See [`DEFAULT_EXPECTED_COMMENT_AUTHOR`].
     pub expected_comment_author: String,
+    /// The PR head commit this run tested, taken from the triggering
+    /// event. `None` disables the supersession check when posting (e.g.
+    /// outside CI).
+    ///
+    /// Concurrency cancellation in the workflow only cancels *overlapping*
+    /// runs; it doesn't stop a manual re-run of an older, already-completed
+    /// run after a newer push has been tested and posted. Recording and
+    /// checking the tested head directly closes that gap: a run whose
+    /// tested head no longer matches the PR's current head knows it has
+    /// been superseded and skips posting, rather than overwriting a
+    /// fresher report with stale results that share the same base_sha and
+    /// would otherwise pass baseline validation undetected.
+    pub head_sha: Option<String>,
 }
 
 impl Default for GithubPrReporterConfig {
@@ -275,6 +288,7 @@ impl Default for GithubPrReporterConfig {
             base_ref: None,
             base_sha: None,
             expected_comment_author: DEFAULT_EXPECTED_COMMENT_AUTHOR.to_string(),
+            head_sha: None,
         }
     }
 }
@@ -293,6 +307,7 @@ impl fmt::Debug for GithubPrReporterConfig {
             .field("base_ref", &self.base_ref)
             .field("base_sha", &self.base_sha)
             .field("expected_comment_author", &self.expected_comment_author)
+            .field("head_sha", &self.head_sha)
             .finish()
     }
 }
@@ -551,6 +566,23 @@ impl GithubPrReporter {
         // fails on its own. Acceptable for now: this is expected to run in
         // CI, where the job-level timeout covers it.
         let client = Client::new();
+
+        // A concurrent push, or a manual re-run of an older completed
+        // workflow run, can post after a newer push has already been
+        // tested and posted; the workflow's concurrency cancellation only
+        // cancels *overlapping* runs, so it doesn't catch either case. If
+        // the PR has since moved past the commit this run tested, these
+        // results are superseded, and posting them would silently
+        // overwrite a fresher report with stale data sharing the same
+        // base_sha (undetectable by baseline validation, which doesn't
+        // track head identity).
+        if let Some(tested_head) = &self.config.head_sha {
+            let current_head = self.fetch_pr_head(&client, self.config.pr_number).await?;
+            if &current_head != tested_head {
+                return Ok(());
+            }
+        }
+
         let comments = self.fetch_comments(&client, self.config.pr_number).await?;
         let sticky_comment = find_sticky_comment(
             &comments,
@@ -602,6 +634,19 @@ impl GithubPrReporter {
     async fn fetch_comments(&self, client: &Client, pr_number: u64) -> Result<Vec<Value>> {
         self.get_json_array(client, &self.comments_url(pr_number), &[], "PR comments")
             .await
+    }
+
+    /// Fetches the PR's current head commit sha, live.
+    async fn fetch_pr_head(&self, client: &Client, pr_number: u64) -> Result<String> {
+        let url = format!(
+            "{}/repos/{}/pulls/{pr_number}",
+            self.config.api_base_url, self.config.repo
+        );
+        let pr = self.get_json(client, &url, &[], "pull request").await?;
+        pr["head"]["sha"]
+            .as_str()
+            .map(str::to_string)
+            .ok_or_else(|| anyhow!("pull request response did not include head.sha"))
     }
 
     /// Returns the number of commits `merge_commit` actually landed on the
