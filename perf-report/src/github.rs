@@ -324,6 +324,9 @@ impl GithubPrReporter {
         if config.api_base_url.trim().is_empty() {
             bail!("github API base url is required");
         }
+        if config.expected_comment_author.trim().is_empty() {
+            bail!("expected comment author is required");
+        }
         config.api_base_url = config.api_base_url.trim_end_matches('/').to_string();
         Ok(Self { config })
     }
@@ -761,6 +764,18 @@ impl GithubPrReporter {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn rejects_a_blank_expected_comment_author() {
+        let config = GithubPrReporterConfig {
+            repo: "owner/repo".to_string(),
+            token: "token".to_string(),
+            marker: "marker".to_string(),
+            expected_comment_author: "  ".to_string(),
+            ..Default::default()
+        };
+        assert!(GithubPrReporter::new(config).is_err());
+    }
 
     #[test]
     fn finds_sticky_comment_by_marker_and_author() {
