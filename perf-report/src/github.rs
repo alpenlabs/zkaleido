@@ -65,16 +65,40 @@ fn find_pr_for_merge_commit(merged_pulls: &[Value], sha: &str) -> Option<u64> {
         .and_then(|pull| pull["number"].as_u64())
 }
 
+/// Returns whether `merge_commit` unambiguously landed as a single commit
+/// on the base branch, regardless of how many source commits the PR had:
+///
+/// - A two-parent commit is a standard merge commit, where `parents[0]` is always the base tip
+///   immediately before the merge.
+/// - A message containing `(#<pr_number>)` matches GitHub's default squash-commit title (`<PR
+///   title> (#<number>)`), which also always lands as a single commit no matter how many commits
+///   the PR had.
+///
+/// Only when neither holds does the PR's own source commit count become
+/// relevant, for the remaining case: rebase-and-merge, which replays every
+/// source commit individually.
+fn merge_landed_as_one_commit(merge_commit: &Value, pr_number: u64) -> bool {
+    let is_standard_merge = merge_commit["parents"]
+        .as_array()
+        .is_some_and(|parents| parents.len() == 2);
+    let squash_marker = format!("(#{pr_number})");
+    let looks_like_squash = merge_commit["commit"]["message"]
+        .as_str()
+        .is_some_and(|message| message.contains(&squash_marker));
+    is_standard_merge || looks_like_squash
+}
+
 /// Returns whether `payload` was tested against exactly the base state the
 /// candidate's commit span landed on.
 ///
 /// Walks back exactly `commit_count` first-parent hops from `merge_sha`
 /// (the candidate's merge commit) -- one hop per commit this PR actually
-/// contributed, whether that's a single squash/merge commit or every
-/// commit replayed by rebase-and-merge -- and checks whether the resulting
-/// commit is `payload.base_sha`. `parent_of` should map each base-branch
-/// commit's sha to its first parent's sha, built from the already-fetched
-/// commit history.
+/// landed on the base branch. Callers should pass 1 when
+/// [`merge_landed_as_one_commit`] holds and the PR's own source commit
+/// count only otherwise, for rebase-and-merge, which replays every source
+/// commit individually. `parent_of` should map each base-branch commit's
+/// sha to its first parent's sha, built from the already-fetched commit
+/// history.
 ///
 /// The walk must stop at exactly `commit_count` hops rather than
 /// continuing until *some* match turns up: the base branch's history is
@@ -392,12 +416,20 @@ impl GithubPrReporter {
             else {
                 continue;
             };
-            // Skip the extra API call below when there's nothing to
-            // validate against anyway.
+            // Skip the extra work below when there's nothing to validate
+            // against anyway.
             if payload.base_sha.is_none() {
                 continue;
             }
-            let commit_count = self.fetch_pr_commit_count(&client, pr_number).await?;
+            // The PR's own source commit count only matters for
+            // rebase-and-merge; skip that extra API call for the much
+            // more common squash/standard-merge case, where exactly one
+            // commit lands regardless of source commit count.
+            let commit_count = if merge_landed_as_one_commit(commit, pr_number) {
+                1
+            } else {
+                self.fetch_pr_commit_count(&client, pr_number).await?
+            };
             if !baseline_is_fresh(sha, commit_count, &parent_of, &payload) {
                 continue;
             }
@@ -644,6 +676,35 @@ mod tests {
             base_sha: base_sha.map(str::to_string),
             zkvms: Vec::new(),
         }
+    }
+
+    #[test]
+    fn merge_landed_as_one_commit_for_a_two_parent_merge() {
+        let commit = json!({
+            "parents": [{"sha": "base1"}, {"sha": "head1"}],
+            "commit": {"message": "Merge pull request #42 from user/branch"},
+        });
+        assert!(merge_landed_as_one_commit(&commit, 42));
+    }
+
+    #[test]
+    fn merge_landed_as_one_commit_for_githubs_default_squash_message() {
+        let commit = json!({
+            "parents": [{"sha": "base1"}],
+            "commit": {"message": "some change (#42)"},
+        });
+        assert!(merge_landed_as_one_commit(&commit, 42));
+    }
+
+    #[test]
+    fn merge_did_not_land_as_one_commit_for_a_rebased_commit() {
+        // One parent, and the message doesn't reference this PR at all
+        // (it's the original commit message carried over by the rebase).
+        let commit = json!({
+            "parents": [{"sha": "rebased2"}],
+            "commit": {"message": "some change"},
+        });
+        assert!(!merge_landed_as_one_commit(&commit, 42));
     }
 
     #[test]
