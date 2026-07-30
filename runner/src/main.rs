@@ -55,8 +55,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // A missing baseline only degrades the report to absolute numbers, so
     // fetch failures must not block posting it, but the reported header
     // should still say the lookup failed rather than implying a clean miss.
-    let baseline = match (&reporter, baseline_anchor) {
-        (Some(reporter), Some(anchor)) => match reporter.fetch_baseline(&anchor).await {
+    let baseline = match (&reporter, &baseline_anchor) {
+        (Some(reporter), Some(anchor)) => match reporter.fetch_baseline(anchor).await {
             Ok(baseline) => baseline,
             Err(err) => {
                 eprintln!("warning: failed to fetch baseline report: {err:#}");
@@ -79,7 +79,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Post to GitHub PR
     if let Some(reporter) = reporter {
         reporter
-            .post_report(&results, baseline.as_ref(), baseline_lookup_failed)
+            .post_report(
+                &results,
+                baseline.as_ref(),
+                baseline_lookup_failed,
+                baseline_anchor.as_ref(),
+            )
             .await?;
     }
 

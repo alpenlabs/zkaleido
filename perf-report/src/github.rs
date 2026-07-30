@@ -65,6 +65,35 @@ fn find_pr_for_merge_commit(merged_pulls: &[Value], sha: &str) -> Option<u64> {
         .and_then(|pull| pull["number"].as_u64())
 }
 
+/// Returns whether `payload` was tested against exactly the base state
+/// `commit` (the candidate's merge commit) landed on, i.e. `payload.base_sha`
+/// matches `commit`'s first parent.
+///
+/// If the base branch advanced after the candidate PR's last CI run but
+/// before it merged, `payload.base_sha` names a commit that is no longer
+/// the merge's parent; using such a payload as a baseline would silently
+/// attribute the base branch's intervening changes to whichever PR is
+/// compared against it next. A payload with no `base_sha` (e.g. posted
+/// before this field existed) can't be verified and is treated as stale.
+///
+/// This assumes the merge landed as a squash or a standard two-parent
+/// merge commit, where `parents[0]` is the base tip immediately before the
+/// merge.
+///
+/// TODO: rebase-and-merge instead replays the PR's commits individually,
+/// so `parents[0]` of the last one is another of the PR's own commits, not
+/// the pre-merge base; this check would then reject even a fresh candidate
+/// on repositories using that merge strategy.
+fn baseline_is_fresh(commit: &Value, payload: &ReportPayload) -> bool {
+    let Some(tested_base_sha) = payload.base_sha.as_deref() else {
+        return false;
+    };
+    let Some(base_parent_sha) = commit["parents"][0]["sha"].as_str() else {
+        return false;
+    };
+    tested_base_sha == base_parent_sha
+}
+
 /// Returns the first 8 characters of a commit hash.
 fn short_hash(hash: &str) -> String {
     hash.chars().take(8).collect()
@@ -333,6 +362,9 @@ impl GithubPrReporter {
             else {
                 continue;
             };
+            if !baseline_is_fresh(commit, &payload) {
+                continue;
+            }
             return Ok(Some(BaselineReport {
                 pr_number,
                 commit_hash: sha.to_string(),
@@ -344,9 +376,12 @@ impl GithubPrReporter {
 
     /// Renders the results and posts them to the PR, updating the existing
     /// sticky comment if one is found, with per-program deltas when a
-    /// `baseline` is given. The posted comment also embeds the results as a
-    /// hidden machine-readable payload, which is what later runs read back
-    /// as their baseline.
+    /// `baseline` is given. The posted comment also embeds the results,
+    /// along with the base commit resolved by `anchor`, as a hidden
+    /// machine-readable payload; this is what later runs read back as
+    /// their baseline, and `anchor`'s base commit is what lets them detect
+    /// a candidate whose base branch moved after it was tested (see
+    /// [`Self::fetch_baseline`]).
     ///
     /// `baseline_lookup_failed` should be set when the caller's
     /// [`Self::fetch_baseline`] call returned `Err` rather than `Ok(None)`,
@@ -357,6 +392,7 @@ impl GithubPrReporter {
         results: &[ZkVmResults],
         baseline: Option<&BaselineReport>,
         baseline_lookup_failed: bool,
+        anchor: Option<&BaselineAnchor>,
     ) -> Result<()> {
         let no_baseline_reason = if baseline_lookup_failed {
             NoBaselineReason::LookupFailed
@@ -370,7 +406,8 @@ impl GithubPrReporter {
             baseline,
             no_baseline_reason,
         );
-        let payload = ReportPayload::from(results).embed()?;
+        let payload =
+            ReportPayload::new(results, anchor.map(|anchor| anchor.base_sha.clone())).embed()?;
         let report = render_report(results, baseline.map(|baseline| &baseline.payload));
         let report_text = format!("{header}\n{report}\n{payload}");
         self.post(&report_text).await
@@ -549,5 +586,42 @@ mod tests {
         assert_eq!(find_pr_for_merge_commit(&merged_pulls, "abc123"), Some(3));
         assert_eq!(find_pr_for_merge_commit(&merged_pulls, "def456"), Some(2));
         assert_eq!(find_pr_for_merge_commit(&merged_pulls, "missing"), None);
+    }
+
+    fn payload_with_base_sha(base_sha: Option<&str>) -> ReportPayload {
+        ReportPayload {
+            base_sha: base_sha.map(str::to_string),
+            zkvms: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn baseline_is_fresh_when_tested_base_matches_merge_parent() {
+        let commit = json!({"sha": "merge1", "parents": [{"sha": "base1"}]});
+        let payload = payload_with_base_sha(Some("base1"));
+        assert!(baseline_is_fresh(&commit, &payload));
+    }
+
+    #[test]
+    fn baseline_is_stale_when_base_advanced_before_merge() {
+        // The candidate was last tested against `base1`, but by the time it
+        // merged the base branch had moved on to `base2`.
+        let commit = json!({"sha": "merge1", "parents": [{"sha": "base2"}]});
+        let payload = payload_with_base_sha(Some("base1"));
+        assert!(!baseline_is_fresh(&commit, &payload));
+    }
+
+    #[test]
+    fn baseline_is_stale_without_a_tested_base_sha() {
+        let commit = json!({"sha": "merge1", "parents": [{"sha": "base1"}]});
+        let payload = payload_with_base_sha(None);
+        assert!(!baseline_is_fresh(&commit, &payload));
+    }
+
+    #[test]
+    fn baseline_is_stale_without_commit_parents() {
+        let commit = json!({"sha": "merge1", "parents": []});
+        let payload = payload_with_base_sha(Some("base1"));
+        assert!(!baseline_is_fresh(&commit, &payload));
     }
 }

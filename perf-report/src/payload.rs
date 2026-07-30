@@ -17,6 +17,17 @@ const DATA_MARKER_SUFFIX: &str = "-->";
 /// fails to decode is treated as "no baseline".
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReportPayload {
+    /// The base branch commit this report was actually tested against
+    /// (from the resolved baseline anchor), `None` if the anchor couldn't
+    /// be resolved. A later baseline walk uses this to detect a candidate
+    /// whose base branch advanced after it was last benchmarked but before
+    /// it merged: the payload would then describe a tree that never
+    /// existed in the branch's history, silently attributing the base's
+    /// intervening changes to whichever PR is compared against it next.
+    /// `#[serde(default)]` so a payload posted before this field existed
+    /// still decodes, as `None`.
+    #[serde(default)]
+    pub base_sha: Option<String>,
     /// Per-zkVM results.
     pub zkvms: Vec<ZkVmPayload>,
 }
@@ -70,9 +81,17 @@ impl ZkVmPayload {
     }
 }
 
-impl From<&[ZkVmResults]> for ReportPayload {
-    fn from(results: &[ZkVmResults]) -> Self {
+impl ReportPayload {
+    /// Builds the payload embedded in a posted report. `base_sha` should be
+    /// the base commit resolved by the run's [`BaselineAnchor`], `None` if
+    /// no anchor was resolved (lookup disabled or failed), which makes this
+    /// payload unusable as a future baseline since there is nothing to
+    /// validate it against.
+    ///
+    /// [`BaselineAnchor`]: crate::BaselineAnchor
+    pub fn new(results: &[ZkVmResults], base_sha: Option<String>) -> Self {
         Self {
+            base_sha,
             zkvms: results
                 .iter()
                 .map(|zkvm_results| ZkVmPayload {
@@ -98,6 +117,7 @@ mod tests {
 
     fn sample_payload() -> ReportPayload {
         ReportPayload {
+            base_sha: Some("abc123".to_string()),
             zkvms: vec![ZkVmPayload {
                 zkvm: "SP1".to_string(),
                 results: vec![
