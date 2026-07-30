@@ -150,6 +150,13 @@ pub struct GithubPrReporterConfig {
     /// [`DEFAULT_BASELINE_COMMIT_LOOKBACK`] for how the window relates to
     /// the repository's merge strategy.
     pub baseline_commit_lookback: usize,
+    /// Base branch ref name to anchor the baseline commit walk to, taken
+    /// from the triggering event rather than resolved live. `None` falls
+    /// back to a live lookup of the PR's current base, e.g. outside CI.
+    pub base_ref: Option<String>,
+    /// Base branch commit SHA to anchor the baseline commit walk to. See
+    /// [`Self::base_ref`].
+    pub base_sha: Option<String>,
 }
 
 impl Default for GithubPrReporterConfig {
@@ -163,6 +170,8 @@ impl Default for GithubPrReporterConfig {
             api_base_url: DEFAULT_API_BASE_URL.to_string(),
             commit_hash: None,
             baseline_commit_lookback: DEFAULT_BASELINE_COMMIT_LOOKBACK,
+            base_ref: None,
+            base_sha: None,
         }
     }
 }
@@ -178,6 +187,8 @@ impl fmt::Debug for GithubPrReporterConfig {
             .field("api_base_url", &self.api_base_url)
             .field("commit_hash", &self.commit_hash)
             .field("baseline_commit_lookback", &self.baseline_commit_lookback)
+            .field("base_ref", &self.base_ref)
+            .field("base_sha", &self.base_sha)
             .finish()
     }
 }
@@ -214,19 +225,27 @@ impl GithubPrReporter {
     }
 
     /// Resolves the anchor for the baseline commit walk: the PR's base
-    /// branch and the commit it currently points to. Call this before doing
-    /// any long-running work (e.g. before running benchmarks) and pass the
+    /// branch and the commit to walk back from. Call this before doing any
+    /// long-running work (e.g. before running benchmarks) and pass the
     /// result to [`Self::fetch_baseline`] once that work is done.
     ///
-    /// Resolving this late instead (i.e. inside `fetch_baseline`, after
-    /// benchmarks run) would let another PR merging into the base branch
-    /// while this job is queued or executing shift the walk to start from
-    /// that newer tip, selecting a baseline whose changes are absent from
-    /// what was actually tested. Returns `None` when the lookback is zero,
-    /// so callers don't pay for a PR fetch that would go unused.
+    /// Prefers `config.base_ref`/`config.base_sha`, sourced from the
+    /// triggering event and fixed for the run, over a live PR lookup:
+    /// resolving live is racy even when done up front, since the base
+    /// branch can advance between the event firing (what `GITHUB_SHA` was
+    /// actually built from) and this call running. The live lookup remains
+    /// as a fallback for non-CI use. Returns `None` when the lookback is
+    /// zero, so callers don't pay for a PR fetch that would go unused.
     pub async fn resolve_baseline_anchor(&self) -> Result<Option<BaselineAnchor>> {
         if self.config.baseline_commit_lookback == 0 {
             return Ok(None);
+        }
+
+        if let (Some(base_ref), Some(base_sha)) = (&self.config.base_ref, &self.config.base_sha) {
+            return Ok(Some(BaselineAnchor {
+                base_ref: base_ref.clone(),
+                base_sha: base_sha.clone(),
+            }));
         }
 
         let client = Client::new();

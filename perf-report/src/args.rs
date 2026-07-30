@@ -1,7 +1,8 @@
-use std::{env, fmt};
+use std::{env, fmt, fs};
 
 use anyhow::{Context, Result};
 use clap::Args;
+use serde_json::Value;
 
 use crate::github::{
     DEFAULT_API_BASE_URL, DEFAULT_BASELINE_COMMIT_LOOKBACK, GithubPrReporter,
@@ -42,6 +43,44 @@ fn default_api_base_url() -> String {
         .ok()
         .filter(|url| !url.trim().is_empty())
         .unwrap_or_else(|| DEFAULT_API_BASE_URL.to_string())
+}
+
+/// Returns `pull_request.base.<field>` from the webhook payload at
+/// `GITHUB_EVENT_PATH` (set by GitHub Actions for every trigger), empty if
+/// the env var is unset, the file can't be read, or the trigger wasn't
+/// `pull_request`.
+///
+/// This is the base commit/branch GitHub actually resolved when the event
+/// fired, fixed for the lifetime of the run. A live API lookup of the PR's
+/// base is a poor substitute: the base branch can advance between the event
+/// firing and the lookup running, silently anchoring to a commit newer than
+/// what `GITHUB_SHA` was actually built from.
+fn default_pull_request_base_field(field: &str) -> String {
+    let Ok(event_path) = env::var("GITHUB_EVENT_PATH") else {
+        return String::new();
+    };
+    let Ok(contents) = fs::read_to_string(event_path) else {
+        return String::new();
+    };
+    let Ok(event) = serde_json::from_str::<Value>(&contents) else {
+        return String::new();
+    };
+    event["pull_request"]["base"][field]
+        .as_str()
+        .map(str::to_string)
+        .unwrap_or_default()
+}
+
+/// Returns the base branch ref name from the triggering event. See
+/// [`default_pull_request_base_field`].
+fn default_base_ref() -> String {
+    default_pull_request_base_field("ref")
+}
+
+/// Returns the base branch commit SHA from the triggering event. See
+/// [`default_pull_request_base_field`].
+fn default_base_sha() -> String {
+    default_pull_request_base_field("sha")
 }
 
 /// CLI arguments for posting a performance report to a GitHub PR.
@@ -89,6 +128,23 @@ pub struct GithubReportArgs {
     /// span many commits, so a larger window may be needed.
     #[arg(long, default_value_t = DEFAULT_BASELINE_COMMIT_LOOKBACK)]
     pub baseline_commit_lookback: usize,
+
+    /// Base branch ref name to anchor the baseline commit walk to.
+    ///
+    /// Defaults to the base ref of the triggering pull_request event.
+    /// Falls back to a live lookup of the PR's current base outside of CI.
+    #[arg(long, default_value_t = default_base_ref())]
+    pub base_ref: String,
+
+    /// Base branch commit SHA to anchor the baseline commit walk to.
+    ///
+    /// Defaults to the base SHA of the triggering pull_request event: the
+    /// commit GitHub actually resolved the PR's base to when the event
+    /// fired. Falls back to a live lookup of the PR's current base tip
+    /// outside of CI, which is racy if the base branch advances before the
+    /// lookup runs.
+    #[arg(long, default_value_t = default_base_sha())]
+    pub base_sha: String,
 }
 
 impl GithubReportArgs {
@@ -112,6 +168,10 @@ impl GithubReportArgs {
             // falls back to "Local execution".
             commit_hash: Some(self.commit_hash.clone()).filter(|hash| !hash.trim().is_empty()),
             baseline_commit_lookback: self.baseline_commit_lookback,
+            // Empty (e.g. outside CI or a non-pull_request trigger) means
+            // unset, so the baseline anchor falls back to a live lookup.
+            base_ref: Some(self.base_ref.clone()).filter(|s| !s.trim().is_empty()),
+            base_sha: Some(self.base_sha.clone()).filter(|s| !s.trim().is_empty()),
             ..Default::default()
         })
     }
@@ -126,6 +186,8 @@ impl fmt::Debug for GithubReportArgs {
             .field("api_base_url", &self.api_base_url)
             .field("commit_hash", &self.commit_hash)
             .field("baseline_commit_lookback", &self.baseline_commit_lookback)
+            .field("base_ref", &self.base_ref)
+            .field("base_sha", &self.base_sha)
             .finish()
     }
 }
