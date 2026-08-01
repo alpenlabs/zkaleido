@@ -1,9 +1,13 @@
-use std::{env, fmt};
+use std::{env, fmt, fs};
 
 use anyhow::{Context, Result};
 use clap::Args;
+use serde_json::Value;
 
-use crate::github::{DEFAULT_API_BASE_URL, GithubPrReporter, GithubPrReporterConfig};
+use crate::github::{
+    DEFAULT_API_BASE_URL, DEFAULT_BASELINE_COMMIT_LOOKBACK, DEFAULT_EXPECTED_COMMENT_AUTHOR,
+    GithubPrReporter, GithubPrReporterConfig,
+};
 
 /// Returns the PR number parsed from the `GITHUB_REF` env var set by GitHub
 /// Actions (`refs/pull/<number>/merge` on pull_request-triggered runs),
@@ -39,6 +43,52 @@ fn default_api_base_url() -> String {
         .ok()
         .filter(|url| !url.trim().is_empty())
         .unwrap_or_else(|| DEFAULT_API_BASE_URL.to_string())
+}
+
+/// Returns `pull_request.<path>` from the webhook payload at
+/// `GITHUB_EVENT_PATH` (set by GitHub Actions for every trigger), empty if
+/// the env var is unset, the file can't be read, or the trigger wasn't
+/// `pull_request`.
+///
+/// This reflects what GitHub actually resolved when the event fired, fixed
+/// for the lifetime of the run. A live API lookup is a poor substitute for
+/// values that can change over time (the base branch can advance, the PR
+/// head can get new commits): resolving live would silently pick up
+/// whatever the PR looks like when the lookup happens to run, not what
+/// `GITHUB_SHA` was actually built from.
+fn default_pull_request_field(path: &[&str]) -> String {
+    let Ok(event_path) = env::var("GITHUB_EVENT_PATH") else {
+        return String::new();
+    };
+    let Ok(contents) = fs::read_to_string(event_path) else {
+        return String::new();
+    };
+    let Ok(event) = serde_json::from_str::<Value>(&contents) else {
+        return String::new();
+    };
+    let mut value = &event["pull_request"];
+    for segment in path {
+        value = &value[*segment];
+    }
+    value.as_str().map(str::to_string).unwrap_or_default()
+}
+
+/// Returns the base branch ref name from the triggering event. See
+/// [`default_pull_request_field`].
+fn default_base_ref() -> String {
+    default_pull_request_field(&["base", "ref"])
+}
+
+/// Returns the base branch commit SHA from the triggering event. See
+/// [`default_pull_request_field`].
+fn default_base_sha() -> String {
+    default_pull_request_field(&["base", "sha"])
+}
+
+/// Returns the PR head commit SHA from the triggering event. See
+/// [`default_pull_request_field`].
+fn default_head_sha() -> String {
+    default_pull_request_field(&["head", "sha"])
 }
 
 /// CLI arguments for posting a performance report to a GitHub PR.
@@ -77,6 +127,56 @@ pub struct GithubReportArgs {
     /// Defaults to the commit that triggered the CI run.
     #[arg(long, default_value_t = default_commit_hash())]
     pub commit_hash: String,
+
+    /// How many base branch commits to walk back when looking for the
+    /// baseline report. Zero disables the lookup.
+    ///
+    /// The window counts commits, not PRs: with squash merges the two
+    /// coincide, but with rebase or merge-commit merges a single PR can
+    /// span many commits, so a larger window may be needed.
+    #[arg(long, default_value_t = DEFAULT_BASELINE_COMMIT_LOOKBACK)]
+    pub baseline_commit_lookback: usize,
+
+    /// Base branch ref name to anchor the baseline commit walk to.
+    ///
+    /// Defaults to the base ref of the triggering pull_request event.
+    /// Falls back to a live lookup of the PR's current base outside of CI.
+    #[arg(long, default_value_t = default_base_ref())]
+    pub base_ref: String,
+
+    /// Base branch commit SHA to anchor the baseline commit walk to.
+    ///
+    /// Defaults to the base SHA of the triggering pull_request event: the
+    /// commit GitHub actually resolved the PR's base to when the event
+    /// fired. Falls back to a live lookup of the PR's current base tip
+    /// outside of CI, which is racy if the base branch advances before the
+    /// lookup runs.
+    #[arg(long, default_value_t = default_base_sha())]
+    pub base_sha: String,
+
+    /// Expected GitHub login of the sticky report comment's author.
+    ///
+    /// A comment is only ever treated as a genuine report -- to patch when
+    /// posting, or to read back as a baseline -- when it was posted by
+    /// this identity; otherwise anyone who can comment on a PR could forge
+    /// a fake report. Defaults to the identity GitHub attributes comments
+    /// to when posted with the default `GITHUB_TOKEN`; override this if
+    /// posting with a different token (a custom bot account, a GitHub App
+    /// installation, or a PAT).
+    #[arg(long, default_value = DEFAULT_EXPECTED_COMMENT_AUTHOR)]
+    pub expected_comment_author: String,
+
+    /// PR head commit SHA this run is testing.
+    ///
+    /// Defaults to the head SHA of the triggering pull_request event.
+    /// Before posting, this is checked against the PR's current head; a
+    /// mismatch means a newer push has already been tested (concurrency
+    /// cancellation only catches *overlapping* runs, not a re-run of an
+    /// older completed one), so the report is skipped instead of
+    /// overwriting a fresher one. Empty (e.g. outside CI) disables the
+    /// check.
+    #[arg(long, default_value_t = default_head_sha())]
+    pub head_sha: String,
 }
 
 impl GithubReportArgs {
@@ -99,6 +199,13 @@ impl GithubReportArgs {
             // An empty hash (e.g. outside CI) means unset, so the header
             // falls back to "Local execution".
             commit_hash: Some(self.commit_hash.clone()).filter(|hash| !hash.trim().is_empty()),
+            baseline_commit_lookback: self.baseline_commit_lookback,
+            // Empty (e.g. outside CI or a non-pull_request trigger) means
+            // unset, so the baseline anchor falls back to a live lookup.
+            base_ref: Some(self.base_ref.clone()).filter(|s| !s.trim().is_empty()),
+            base_sha: Some(self.base_sha.clone()).filter(|s| !s.trim().is_empty()),
+            expected_comment_author: self.expected_comment_author.clone(),
+            head_sha: Some(self.head_sha.clone()).filter(|s| !s.trim().is_empty()),
             ..Default::default()
         })
     }
@@ -112,6 +219,11 @@ impl fmt::Debug for GithubReportArgs {
             .field("github_repo", &self.github_repo)
             .field("api_base_url", &self.api_base_url)
             .field("commit_hash", &self.commit_hash)
+            .field("baseline_commit_lookback", &self.baseline_commit_lookback)
+            .field("base_ref", &self.base_ref)
+            .field("base_sha", &self.base_sha)
+            .field("expected_comment_author", &self.expected_comment_author)
+            .field("head_sha", &self.head_sha)
             .finish()
     }
 }
