@@ -25,9 +25,6 @@ pub(crate) const COMPRESSED_POSITIVE: u8 = 0b10 << 6;
 /// Flag indicating the “negative” y‐coordinate branch of a compressed G1 point.
 pub(crate) const COMPRESSED_NEGATIVE: u8 = 0b11 << 6;
 
-/// Flag indicating the "point at infinity" in a compressed G2 representation.
-pub(crate) const COMPRESSED_INFINITY: u8 = 0b01 << 6;
-
 /// Size of a u32 in bytes (for num_k)
 pub(crate) const U32_SIZE: usize = size_of::<u32>();
 

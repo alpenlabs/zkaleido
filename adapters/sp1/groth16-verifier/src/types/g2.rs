@@ -5,7 +5,7 @@ use bn::{AffineG2, Fq, Fq2, G2, Group};
 use crate::{
     error::{BufferLengthError, InvalidDataFormatError, InvalidPointError, SerializationError},
     types::constant::{
-        COMPRESSED_INFINITY, COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, FQ_SIZE, G2_COMPRESSED_SIZE,
+        COMPRESSED_NEGATIVE, COMPRESSED_POSITIVE, FQ_SIZE, G2_COMPRESSED_SIZE,
         G2_UNCOMPRESSED_SIZE, MASK,
     },
 };
@@ -29,9 +29,11 @@ impl SAffineG2 {
     /// Deserialize from GNARK-compressed bytes (64 bytes: x-coordinate (Fq2) with flag bits).
     ///
     /// Uses the GNARK compression scheme where the first two bits of the first byte encode a flag:
-    /// - `COMPRESSED_POSITIVE` / `COMPRESSED_NEGATIVE`: choose the appropriate y‐coordinate branch.
-    /// - `COMPRESSED_INFINITY`: rejected. The point at infinity is not representable as an affine
-    ///   point and never appears in a valid Groth16 proof or verifying key.
+    /// - `COMPRESSED_POSITIVE`: use the lexicographically smaller of (y, -y) as y.
+    /// - `COMPRESSED_NEGATIVE`: use the lexicographically larger of (y, -y) as y.
+    ///
+    /// Any other flag value, including `COMPRESSED_INFINITY`, is rejected: the point at infinity
+    /// has no affine representation and never appears in a valid Groth16 proof or verifying key.
     pub(crate) fn from_gnark_compressed_bytes(bytes: &[u8]) -> Result<Self, SerializationError> {
         if bytes.len() != G2_COMPRESSED_SIZE {
             return Err(BufferLengthError {
@@ -44,12 +46,6 @@ impl SAffineG2 {
 
         // Extract the two-bit flag from the first byte.
         let flag = bytes[0] & MASK;
-
-        // Reject the infinity flag: the point at infinity has no affine representation, and
-        // decoding it to any concrete point would silently substitute a different point.
-        if flag == COMPRESSED_INFINITY {
-            return Err(InvalidDataFormatError.into());
-        }
 
         // Reconstruct x1 (imaginary part of Fq2) with flags cleared.
         let mut x1_bytes = [0u8; FQ_SIZE];
@@ -209,15 +205,24 @@ impl fmt::Debug for SAffineG2 {
 mod tests {
     use bn::{AffineG2, G2, Group};
 
-    use crate::types::{
-        constant::{COMPRESSED_INFINITY, G2_COMPRESSED_SIZE},
-        g2::SAffineG2,
-    };
+    use crate::types::{constant::MASK, g2::SAffineG2};
+
+    // Gnark's compressed-point flag value for "point at infinity" (see `MASK` for the
+    // encoding). Declared here rather than in `constant.rs` since only this test needs it.
+    const COMPRESSED_INFINITY: u8 = 0b01 << 6;
 
     #[test]
     fn test_compressed_g2_rejects_infinity_flag() {
-        let mut bytes = [0u8; G2_COMPRESSED_SIZE];
-        bytes[0] = COMPRESSED_INFINITY;
+        // Use a genuinely on-curve x-coordinate (from a real point) so this exercises the
+        // flag-rejection branch specifically, rather than incidentally failing the on-curve
+        // check with an unrelated x-coordinate.
+        let mut rng = rand::thread_rng();
+        let mut g2 = G2::random(&mut rng);
+        g2.normalize();
+        let g2: SAffineG2 = AffineG2::new(g2.x(), g2.y()).unwrap().into();
+
+        let mut bytes = g2.to_gnark_compressed_bytes();
+        bytes[0] = (bytes[0] & !MASK) | COMPRESSED_INFINITY;
 
         let result = SAffineG2::from_gnark_compressed_bytes(&bytes);
 
