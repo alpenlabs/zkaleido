@@ -10138,7 +10138,7 @@ dependencies = [
  "bincode",
  "hex",
  "k256",
- "rand_core 0.6.4",
+ "rand_core 0.10.1",
  "serde",
  "zkaleido",
 ]
