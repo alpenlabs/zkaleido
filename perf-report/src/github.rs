@@ -177,7 +177,7 @@ fn short_hash(hash: &str) -> String {
 /// Why no baseline is available, used by [`format_header`] to describe a
 /// missing baseline accurately instead of always reading as a clean miss.
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub enum NoBaselineReason {
+pub(crate) enum NoBaselineReason {
     /// Baseline lookup is disabled (`baseline_commit_lookback == 0`).
     LookupDisabled,
     /// The lookup ran to completion and found nothing within the window.
