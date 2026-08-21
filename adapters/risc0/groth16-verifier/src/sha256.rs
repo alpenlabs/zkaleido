@@ -23,10 +23,7 @@ use risc0_zkp::core::{
     digest::{DIGEST_WORDS, Digest},
     hash::sha::{Block, SHA256_INIT, Sha256},
 };
-use sha2::{
-    Digest as _,
-    digest::generic_array::{GenericArray, typenum::U64},
-};
+use sha2::{Digest as _, block_api::compress256};
 
 /// A CPU-based [Sha256] implementation.
 #[derive(Default, Clone)]
@@ -64,13 +61,12 @@ impl Sha256 for Impl {
         }
         let (blocks, remainder) = u8s.as_chunks::<64>();
         for block in blocks {
-            sha2::compress256(&mut state, slice::from_ref(GenericArray::from_slice(block)));
+            compress256(&mut state, slice::from_ref(block));
         }
         if !remainder.is_empty() {
-            let mut last_block: GenericArray<u8, U64> = GenericArray::default();
-            bytemuck::cast_slice_mut(last_block.as_mut_slice())[..remainder.len()]
-                .clone_from_slice(remainder);
-            sha2::compress256(&mut state, slice::from_ref(&last_block));
+            let mut last_block = [0u8; 64];
+            last_block[..remainder.len()].clone_from_slice(remainder);
+            compress256(&mut state, slice::from_ref(&last_block));
         }
         for word in state.iter_mut() {
             *word = word.to_be();
@@ -92,12 +88,12 @@ impl Sha256 for Impl {
         }
 
         // Half-blocks may not be contiguous so they must be copied here.
-        let mut block: GenericArray<u8, U64> = GenericArray::default();
+        let mut block = [0u8; 64];
         for i in 0..8 {
-            set_word(block.as_mut_slice(), i, block_half1.as_words()[i]);
-            set_word(block.as_mut_slice(), 8 + i, block_half2.as_words()[i]);
+            set_word(&mut block, i, block_half1.as_words()[i]);
+            set_word(&mut block, 8 + i, block_half2.as_words()[i]);
         }
-        sha2::compress256(&mut state, slice::from_ref(&block));
+        compress256(&mut state, slice::from_ref(&block));
 
         // Convert the state from big-endian to native byte order.
         for word in state.iter_mut() {
@@ -114,11 +110,11 @@ impl Sha256 for Impl {
             *word = word.to_be();
         }
 
-        // Reinterpret the RISC Zero blocks as GenericArray<u8, U64>.
+        // Reinterpret the RISC Zero blocks as [u8; 64].
         // SAFETY: We know that the two types have the same memory layout, so this
         // conversion is known to be safe.
-        match unsafe { blocks.align_to::<GenericArray<u8, U64>>() } {
-            (&[], aligned_blocks, &[]) => sha2::compress256(&mut state, aligned_blocks),
+        match unsafe { blocks.align_to::<[u8; 64]>() } {
+            (&[], aligned_blocks, &[]) => compress256(&mut state, aligned_blocks),
             _ => unreachable!("alignment will always be satisfied for block conversion"),
         };
 
