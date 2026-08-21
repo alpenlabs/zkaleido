@@ -34,8 +34,8 @@ jobs:
         run: cargo install cargo-audit --force --locked
 
       - name: Check for audit warnings
-        run: cargo audit -D warnings --file audit.toml
+        run: cargo audit -D warnings
         continue-on-error: true
 
       - name: Check for vulnerabilities
-        run: cargo audit --file audit.toml
+        run: cargo audit
