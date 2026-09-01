@@ -58,7 +58,7 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@9903ab6feadaec33945de535fe9d181b91802a55 # v2.50.0
         with:
-          tool: cargo-llvm-cov
+          tool: cargo-llvm-cov@0.6.16
       - uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
         with:
           cache-on-failure: true
