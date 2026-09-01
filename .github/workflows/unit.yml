@@ -58,7 +58,10 @@ jobs:
       - name: Install cargo-llvm-cov
         uses: taiki-e/install-action@5b4d68e2e660441203ab128a23676f1e4faf1532 # v2.86.3
         with:
-          tool: cargo-llvm-cov
+          # NOTE: Locked to 0.6.16 because of SP1. Newer versions' coverage flags propagate into
+          # the RISC0/SP1 guest toolchains, which lack profiler_builtins, producing E0463. The
+          # missing JUnit report is only a cascading error.
+          tool: cargo-llvm-cov@0.6.16
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           cache-on-failure: true
