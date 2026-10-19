@@ -17,4 +17,13 @@ ignore = [
   # Upgrade blocked until upstream moves to an object release that uses ruzstd >= 0.9.1.
   # Low risk: only reached when parsing compressed sections of our own guest and host binaries.
   "RUSTSEC-2026-0344",
+
+  # RUSTSEC-2026-0367, RUSTSEC-2026-0368, RUSTSEC-2026-0369 (zip 2.4.2)
+  # Pulled in via risc0-circuit-recursion (risc0-zkvm).
+  # Upgrade blocked until risc0 moves to zip >= 9.0.0 (risc0 main still requires zip 2.1).
+  # Low risk: all three affect extracting archives to disk; risc0 only reads its embedded,
+  # hash-pinned zkr archive in memory and never calls `extract()`.
+  "RUSTSEC-2026-0367",
+  "RUSTSEC-2026-0368",
+  "RUSTSEC-2026-0369",
 ]
