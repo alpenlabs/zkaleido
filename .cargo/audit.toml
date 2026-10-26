@@ -26,4 +26,12 @@ ignore = [
   "RUSTSEC-2026-0367",
   "RUSTSEC-2026-0368",
   "RUSTSEC-2026-0369",
+
+  # RUSTSEC-2026-0387 (crypto-bigint 0.5.5)
+  # Pulled in via k256 0.13 (our native adapter, sp1, and alloy in sp1-sdk).
+  # The fix is only in crypto-bigint >= 0.7.6, which needs k256 0.14.
+  # Upgrade blocked until alloy moves to k256 0.14 (alloy-signer 2.5.0 still requires 0.13).
+  # Risk: timing leaks on secret scalars. Secret keys only reach it when the native adapter
+  # signs public values and when sp1-sdk signs prover network requests.
+  "RUSTSEC-2026-0387",
 ]
