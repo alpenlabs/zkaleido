@@ -18,7 +18,7 @@ pub const DEFAULT_BASELINE_COMMIT_LOOKBACK: usize = 20;
 
 /// A performance report recovered from an earlier PR, used as the baseline
 /// to diff a new report against: either a PR already merged into the base
-/// branch, or the open PR the new one is stacked on.
+/// branch, or the PR the new one is stacked on.
 #[derive(Debug, Clone)]
 pub struct BaselineReport {
     /// Number of the PR the baseline report was posted on.
@@ -78,10 +78,10 @@ fn find_pr_for_merge_commit<'a>(merged_pulls: &'a [Value], sha: &str) -> Option<
         .find(|pull| !pull["merged_at"].is_null() && pull["merge_commit_sha"].as_str() == Some(sha))
 }
 
-/// Returns the open pull request in `open_pulls` whose head is exactly
-/// `base_sha`, i.e. the PR a stacked PR with that base is built on.
-fn find_stacked_parent<'a>(open_pulls: &'a [Value], base_sha: &str) -> Option<&'a Value> {
-    open_pulls
+/// Returns the pull request in `pulls` whose head is exactly `base_sha`,
+/// i.e. the PR a stacked PR with that base is built on.
+fn find_stacked_parent<'a>(pulls: &'a [Value], base_sha: &str) -> Option<&'a Value> {
+    pulls
         .iter()
         .find(|pull| pull["head"]["sha"].as_str() == Some(base_sha))
 }
@@ -428,7 +428,7 @@ impl GithubPrReporter {
 
     /// Fetches the baseline report to diff against.
     ///
-    /// A stacked PR, whose base branch is another open PR's head branch,
+    /// A stacked PR, whose base branch is another PR's head branch,
     /// first tries that parent PR's own report. It is the best baseline
     /// there is: it measured exactly the code this PR is based on. See
     /// [`Self::fetch_stacked_parent_baseline`].
@@ -575,8 +575,8 @@ impl GithubPrReporter {
         Ok(None)
     }
 
-    /// Fetches the report of the open PR whose head is the anchor's base
-    /// commit, when this PR is stacked on one.
+    /// Fetches the report of the PR whose head is the anchor's base commit,
+    /// when this PR is stacked on one.
     ///
     /// Nothing has been merged into a stacked PR's base branch yet, so the
     /// merged-PR walk in [`Self::fetch_baseline`] finds nothing for it. The
@@ -589,6 +589,9 @@ impl GithubPrReporter {
     /// CI benchmarks the parent merged with its base, so a parent behind
     /// its base was measured with base commits this PR does not have.
     /// Those commits would show up as this PR's own changes.
+    ///
+    /// The parent is looked up in any state. It may be merged or closed
+    /// while this PR's benchmarks run, and its report is still valid then.
     ///
     /// Only parents in this repository are found, since the `head` filter
     /// is scoped to the repository owner. That covers stacks, whose
@@ -606,20 +609,20 @@ impl GithubPrReporter {
             "{}/repos/{}/pulls",
             self.config.api_base_url, self.config.repo
         );
-        let open_pulls = self
+        let pulls = self
             .get_json_array(
                 client,
                 &pulls_url,
                 &[
                     ("head", head.as_str()),
-                    ("state", "open"),
+                    ("state", "all"),
                     ("per_page", "100"),
                 ],
-                "open pull requests",
+                "stacked parent pull requests",
             )
             .await?;
-        let Some(pr_number) = find_stacked_parent(&open_pulls, &anchor.base_sha)
-            .and_then(|pull| pull["number"].as_u64())
+        let Some(pr_number) =
+            find_stacked_parent(&pulls, &anchor.base_sha).and_then(|pull| pull["number"].as_u64())
         else {
             return Ok(None);
         };
@@ -1065,12 +1068,12 @@ mod tests {
 
     #[test]
     fn finds_stacked_parent_by_head_sha() {
-        let open_pulls = vec![
+        let pulls = vec![
             json!({"number": 1, "head": {"sha": "head1"}}),
             json!({"number": 2, "head": {"sha": "base1"}}),
         ];
         assert_eq!(
-            find_stacked_parent(&open_pulls, "base1").and_then(|pull| pull["number"].as_u64()),
+            find_stacked_parent(&pulls, "base1").and_then(|pull| pull["number"].as_u64()),
             Some(2)
         );
     }
@@ -1079,8 +1082,8 @@ mod tests {
     fn ignores_stacked_parent_pushed_past_the_base() {
         // The parent was pushed again after this PR's base was resolved, so
         // its head no longer is the code this PR is built on.
-        let open_pulls = vec![json!({"number": 1, "head": {"sha": "head2"}})];
-        assert!(find_stacked_parent(&open_pulls, "base1").is_none());
+        let pulls = vec![json!({"number": 1, "head": {"sha": "head2"}})];
+        assert!(find_stacked_parent(&pulls, "base1").is_none());
     }
 
     #[test]
