@@ -12,9 +12,11 @@ pub type ZkVmResult<T> = Result<T, ZkVmError>;
 /// General ZkVM error types.
 #[derive(Debug, Error)]
 pub enum ZkVmError {
-    /// This error is returned when execution fails for any reason.
+    /// This error is returned when execution fails.
+    /// It wraps the underlying [`ZkVmExecutionError`], which says whether the
+    /// guest or the host is at fault.
     #[error("Execution failed: {0}")]
-    ExecutionError(String),
+    ExecutionError(#[from] ZkVmExecutionError),
 
     /// Network (or RPC) error that can occur while using prover network.
     #[error("Network error: {0}")]
@@ -39,16 +41,16 @@ pub enum ZkVmError {
 
     /// This error occurs if the verification key is invalid.
     /// It wraps the underlying [`ZkVmVerifyingKeyError`].
-    #[error("Invalid Verification Key")]
+    #[error("Invalid verification key: {0}")]
     InvalidVerifyingKey(#[from] ZkVmVerifyingKeyError),
 
     /// This error occurs if the proof receipt is invalid.
     /// It wraps the underlying [`ZkVmProofError`].
-    #[error("Invalid proof receipt")]
+    #[error("Invalid proof receipt: {0}")]
     InvalidProofReceipt(#[from] ZkVmProofError),
 
     /// This error is returned when the output extraction process fails.
-    #[error("Output extraction failed")]
+    #[error("Output extraction failed: {source}")]
     OutputExtractionError {
         /// The source of the failure, typically related to a data format issue.
         #[source]
@@ -62,6 +64,25 @@ pub enum ZkVmError {
     /// A general catch-all variant for errors not covered by the other variants.
     #[error("{0}")]
     Other(String),
+}
+
+/// Why a program's execution failed.
+///
+/// The split tells callers whether retrying can help. A guest failure is a
+/// property of the program and its input, so it repeats on every run. A host
+/// failure comes from the machine running the executor, so a later run may
+/// succeed.
+#[derive(Debug, Error)]
+pub enum ZkVmExecutionError {
+    /// The guest program failed, e.g. it panicked or hit an invalid
+    /// instruction. Retrying the same input fails the same way.
+    #[error("guest error: {0}")]
+    Guest(String),
+
+    /// The host could not run the guest to completion, e.g. the executor
+    /// process crashed or ran out of resources. Retrying may succeed.
+    #[error("host error: {0}")]
+    Host(String),
 }
 
 /// Errors related to data formatting and serialization/deserialization.
@@ -98,15 +119,15 @@ pub enum DataFormatError {
 #[derive(Debug, Error)]
 pub enum ZkVmInputError {
     /// An input data format issue occurred.
-    #[error("Input data format error")]
+    #[error("Input data format error: {0}")]
     DataFormat(#[source] DataFormatError),
 
     /// An input proof receipt issue occurred.
-    #[error("Input proof receipt error")]
+    #[error("Input proof receipt error: {0}")]
     ProofReceipt(#[source] ZkVmProofError),
 
     /// An input verification key issue occurred.
-    #[error("Input verification key error")]
+    #[error("Input verification key error: {0}")]
     VerifyingKey(#[source] ZkVmVerifyingKeyError),
 
     /// An input build process error occurred.
@@ -118,11 +139,11 @@ pub enum ZkVmInputError {
 #[derive(Debug, Error)]
 pub enum ZkVmVerifyingKeyError {
     /// An error occurred due to a verification key data format issue.
-    #[error("Verification Key format error")]
+    #[error("Verification key format error: {0}")]
     DataFormat(#[source] DataFormatError),
 
     /// The provided verification key is of an invalid size.
-    #[error("Verification Key size error")]
+    #[error("Verification key size error")]
     InvalidVerifyingKeySize,
 }
 
@@ -143,7 +164,7 @@ where
 #[derive(Debug, Error)]
 pub enum ZkVmProofError {
     /// An error occurred due to a proof data format issue.
-    #[error("Input data format error")]
+    #[error("Proof data format error: {0}")]
     DataFormat(#[source] DataFormatError),
 
     /// The proof type provided does not match the expected proof type.
@@ -163,7 +184,7 @@ pub enum ZkVmProofError {
 #[derive(Debug, Error)]
 pub enum InvalidVerifyingKeySource {
     /// A verification key data format issue occurred.
-    #[error("Verification Key format error")]
+    #[error("Verification key format error: {0}")]
     DataFormat(#[from] DataFormatError),
 }
 
