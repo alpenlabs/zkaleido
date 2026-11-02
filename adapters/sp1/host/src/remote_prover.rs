@@ -19,7 +19,7 @@ use zkaleido::{
 use crate::{
     SP1Host,
     proof::SP1ProofReceipt,
-    prover::{ensure_clean_exit, to_sp1_mode},
+    prover::{classify_execution_error, ensure_clean_exit, to_sp1_mode},
 };
 
 /// A typed proof identifier for the SP1 network prover.
@@ -86,7 +86,7 @@ impl ZkVmRemoteProver for SP1Host {
             .execute(elf, input.clone())
             .into_future()
             .await
-            .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
+            .map_err(classify_execution_error)?;
         if self.config.require_success {
             ensure_clean_exit(&report)?;
         }

@@ -2,8 +2,8 @@ use std::env::{set_var, var};
 
 use risc0_zkvm::{ProverOpts, default_executor, default_prover};
 use zkaleido::{
-    ExecutionSummary, ProgramId, ProofType, PublicValues, ZkVmError, ZkVmExecutor,
-    ZkVmInputBuilder, ZkVmProver, ZkVmResult,
+    ExecutionSummary, ProgramId, ProofType, PublicValues, ZkVmError, ZkVmExecutionError,
+    ZkVmExecutor, ZkVmInputBuilder, ZkVmProver, ZkVmResult,
 };
 
 use crate::{Risc0Host, input::Risc0ProofInputBuilder, proof::Risc0ProofReceipt};
@@ -17,9 +17,13 @@ impl ZkVmExecutor for Risc0Host {
     ) -> ZkVmResult<ExecutionSummary> {
         let executor = default_executor();
 
+        // TODO: split host faults out of this. RISC Zero returns untyped
+        // `anyhow` errors and reports a guest panic as an `Err` too, so for now
+        // every failure is treated as the guest's fault, which callers do not
+        // retry. A host fault (e.g. the r0vm process dying) is then misreported.
         let session_info = executor
             .execute(prover_input, self.get_elf())
-            .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
+            .map_err(|e| ZkVmError::from(ZkVmExecutionError::Guest(e.to_string())))?;
 
         let cycles = session_info.cycles();
         let public_values = PublicValues::new(session_info.journal.bytes);

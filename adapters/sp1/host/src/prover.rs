@@ -3,7 +3,7 @@ use std::{
     future::{Future, IntoFuture},
 };
 
-use sp1_core_executor::ExecutionReport;
+use sp1_core_executor::{ExecutionError, ExecutionReport};
 use sp1_sdk::{HashableKey, ProveRequest, Prover, ProvingKey, SP1ProofMode, env::EnvProver};
 use tokio::{
     runtime::{Handle, Runtime},
@@ -12,7 +12,7 @@ use tokio::{
 };
 use zkaleido::{
     ExecutionSummary, ProgramId, ProofType, PublicValues, RemoteProofStatus, ZkVmError,
-    ZkVmExecutor, ZkVmInputBuilder, ZkVmProver, ZkVmRemoteProver, ZkVmResult,
+    ZkVmExecutionError, ZkVmExecutor, ZkVmInputBuilder, ZkVmProver, ZkVmRemoteProver, ZkVmResult,
 };
 
 use crate::{SP1Host, input::SP1ProofInputBuilder, proof::SP1ProofReceipt};
@@ -25,7 +25,7 @@ impl ZkVmExecutor for SP1Host {
     ) -> ZkVmResult<ExecutionSummary> {
         let elf = self.proving_key.elf().clone();
         let (output, report) = block_on_async(self.client.execute(elf, prover_input).into_future())
-            .map_err(|e| ZkVmError::ExecutionError(e.to_string()))?;
+            .map_err(classify_execution_error)?;
 
         if self.config.require_success {
             ensure_clean_exit(&report)?;
@@ -154,7 +154,57 @@ where
     }
 }
 
-/// Converts an [`ExecutionReport`] with a non-zero `exit_code` into
+/// Messages of the SP1 executor errors that are the guest's fault. Each one is
+/// the fixed start of an [`ExecutionError`] variant's `Display` text, or of a
+/// message SP1 builds around the guest ELF.
+///
+/// A failed run reaches us as [`ExecutionError::Other`] holding only the
+/// message, because the SDK flattens the typed error with `to_string()` (see
+/// `ExecuteRequest::into_future` in sp1-sdk). So the message is all we can
+/// classify on. The tests pin this list against the real variants, so an SP1
+/// bump that changes the wording fails them.
+///
+/// TODO: match on the typed variants once the SDK stops flattening its
+/// execution errors. String matching breaks silently if SP1 rewords a message
+/// the tests do not cover.
+const GUEST_ERROR_PREFIXES: &[&str] = &[
+    "invalid memory access for opcode ",
+    "invalid memory access for untrusted program at address ",
+    "unimplemented syscall ",
+    "breakpoint encountered",
+    "exceeded cycle limit of ",
+    "syscall called in unconstrained mode",
+    "got unimplemented as opcode",
+    "program ended in unconstrained mode",
+    "unconstrained cycle limit exceeded",
+    "Unexpected exit code: ",
+    "Instruction not found, page protect/ untrusted program set to off",
+    "Trap occurred without proper handling",
+    "SP1 program consumes too much memory",
+    "failed to dissassemble program",
+];
+
+/// Converts an SP1 executor error into [`ZkVmError::ExecutionError`], deciding
+/// whether the guest or the host is at fault.
+///
+/// Only errors that come from the program and its input count as guest
+/// errors. Everything else is a host error, including executor crashes such as
+/// the SIGBUS SP1's native executor raises when `/dev/shm` is full. Defaulting
+/// to host means an unknown error gets retried rather than failing for good.
+pub(crate) fn classify_execution_error(err: ExecutionError) -> ZkVmError {
+    let msg = err.to_string();
+    let err = if GUEST_ERROR_PREFIXES
+        .iter()
+        .any(|prefix| msg.starts_with(prefix))
+    {
+        ZkVmExecutionError::Guest(msg)
+    } else {
+        ZkVmExecutionError::Host(msg)
+    };
+    err.into()
+}
+
+/// Converts an [`ExecutionReport`] with a non-zero `exit_code` into a guest
 /// [`ZkVmError::ExecutionError`].
 ///
 /// The SP1 executor returns `Ok((pv, report))` even when the guest halted
@@ -171,18 +221,82 @@ where
 /// [`ExecutionReport`] (no panic-message field exists in SP1 6.2).
 pub(crate) fn ensure_clean_exit(report: &ExecutionReport) -> ZkVmResult<()> {
     if report.exit_code != 0 {
-        return Err(ZkVmError::ExecutionError(format!(
+        return Err(ZkVmExecutionError::Guest(format!(
             "guest exited with non-zero exit code {} after {} instructions",
             report.exit_code,
             report.total_instruction_count(),
-        )));
+        ))
+        .into());
     }
     Ok(())
 }
 
 #[cfg(test)]
 mod tests {
+    use sp1_core_executor::{Opcode, TrapError};
+
     use super::*;
+
+    fn is_guest(err: ExecutionError) -> bool {
+        match classify_execution_error(err) {
+            ZkVmError::ExecutionError(ZkVmExecutionError::Guest(_)) => true,
+            ZkVmError::ExecutionError(ZkVmExecutionError::Host(_)) => false,
+            other => panic!("expected ExecutionError, got {other:?}"),
+        }
+    }
+
+    /// Checks both the typed variant and the flattened form the SDK hands us.
+    fn assert_guest(err: ExecutionError) {
+        let flattened = ExecutionError::Other(err.to_string());
+        assert!(is_guest(err.clone()), "typed {err:?} must be guest");
+        assert!(is_guest(flattened), "flattened {err:?} must be guest");
+    }
+
+    fn assert_host(err: ExecutionError) {
+        let flattened = ExecutionError::Other(err.to_string());
+        assert!(!is_guest(err.clone()), "typed {err:?} must be host");
+        assert!(!is_guest(flattened), "flattened {err:?} must be host");
+    }
+
+    #[test]
+    fn guest_faults_classify_as_guest() {
+        assert_guest(ExecutionError::InvalidMemoryAccess(Opcode::LD, 0x10));
+        assert_guest(ExecutionError::InvalidMemoryAccessUntrustedProgram(0x11));
+        assert_guest(ExecutionError::UnsupportedSyscall(7));
+        assert_guest(ExecutionError::Breakpoint());
+        assert_guest(ExecutionError::ExceededCycleLimit(100));
+        assert_guest(ExecutionError::InvalidSyscallUsage(3));
+        assert_guest(ExecutionError::Unimplemented());
+        assert_guest(ExecutionError::EndInUnconstrained());
+        assert_guest(ExecutionError::UnconstrainedCycleLimitExceeded(100));
+        assert_guest(ExecutionError::UnexpectedExitCode(1));
+        assert_guest(ExecutionError::InstructionNotFound());
+        assert_guest(ExecutionError::UnhandledTrap(
+            TrapError::PagePermissionViolation(1),
+        ));
+        assert_guest(ExecutionError::TooMuchMemory());
+        assert_guest(ExecutionError::Other(
+            "failed to dissassemble program: bad elf".into(),
+        ));
+    }
+
+    #[test]
+    fn host_faults_classify_as_host() {
+        assert_host(ExecutionError::KilledByMemoryMonitor(1024));
+        assert_host(ExecutionError::ChildKilled());
+        assert_host(ExecutionError::InvalidShardingState());
+        // Messages SP1's native runner builds when the child executor dies.
+        // The first is what a full /dev/shm (SIGBUS) produces.
+        assert_host(ExecutionError::Other(
+            "Child native executor terminated abnormally, code: None, signal: Some(7)".into(),
+        ));
+        assert_host(ExecutionError::Other(
+            "Child native executor crashed, details: ...".into(),
+        ));
+        assert_host(ExecutionError::Other(
+            "failed to spawn child process: No such file or directory".into(),
+        ));
+    }
 
     #[test]
     fn ensure_clean_exit_rejects_non_zero_exit_code() {
@@ -190,11 +304,11 @@ mod tests {
         report.exit_code = 1;
         let err = ensure_clean_exit(&report).expect_err("non-zero exit must error");
         match err {
-            ZkVmError::ExecutionError(msg) => {
+            ZkVmError::ExecutionError(ZkVmExecutionError::Guest(msg)) => {
                 assert!(msg.contains("exit code 1"), "got: {msg}");
                 assert!(msg.contains("instructions"), "got: {msg}");
             }
-            other => panic!("expected ExecutionError, got {other:?}"),
+            other => panic!("expected guest ExecutionError, got {other:?}"),
         }
     }
 

@@ -28,8 +28,8 @@ pub struct SP1HostConfig {
     pub network_poll_interval: Duration,
     /// When `true`, [`crate::SP1Host`]'s execute path and the pre-flight
     /// inside its start_proving / prove_inner paths reject guests that
-    /// halted with a non-zero `report.exit_code` (panicked), returning
-    /// [`zkaleido::ZkVmError::ExecutionError`]. Mirrors `require_success`
+    /// halted with a non-zero `report.exit_code` (panicked), returning a
+    /// guest [`zkaleido::ZkVmError::ExecutionError`]. Mirrors `require_success`
     /// on `SP1Groth16Verifier` in the `zkaleido-sp1-groth16-verifier`
     /// crate.
     ///
