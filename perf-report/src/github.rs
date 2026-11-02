@@ -16,8 +16,9 @@ use crate::{format::render_report, payload::ReportPayload, report::ZkVmResults};
 /// configure a larger lookback in such repositories.
 pub const DEFAULT_BASELINE_COMMIT_LOOKBACK: usize = 20;
 
-/// A performance report recovered from an already-merged PR, used as the
-/// baseline to diff a new report against.
+/// A performance report recovered from an earlier PR, used as the baseline
+/// to diff a new report against: either a PR already merged into the base
+/// branch, or the PR the new one is stacked on.
 #[derive(Debug, Clone)]
 pub struct BaselineReport {
     /// Number of the PR the baseline report was posted on.
@@ -75,6 +76,24 @@ fn find_pr_for_merge_commit<'a>(merged_pulls: &'a [Value], sha: &str) -> Option<
     merged_pulls
         .iter()
         .find(|pull| !pull["merged_at"].is_null() && pull["merge_commit_sha"].as_str() == Some(sha))
+}
+
+/// Returns the pull request in `pulls` whose head is exactly `base_sha`,
+/// i.e. the PR a stacked PR with that base is built on.
+fn find_stacked_parent<'a>(pulls: &'a [Value], base_sha: &str) -> Option<&'a Value> {
+    pulls
+        .iter()
+        .find(|pull| pull["head"]["sha"].as_str() == Some(base_sha))
+}
+
+/// Returns whether a compare response for `base...head` shows that `base`
+/// is already in `head`'s history.
+///
+/// CI benchmarks the PR's merge with its base, not its head alone. When
+/// the base is already in the head's history, that merge has the same
+/// code as the head, so the report measured the head itself.
+fn base_is_in_head(compare: &Value) -> bool {
+    matches!(compare["status"].as_str(), Some("ahead" | "identical"))
 }
 
 /// Returns whether `payload_head_sha` (a candidate's tested head, from its
@@ -407,11 +426,18 @@ impl GithubPrReporter {
         Ok(Some(BaselineAnchor { base_ref, base_sha }))
     }
 
-    /// Fetches the baseline report to diff against: the payload embedded in
-    /// the sticky report comment of the most recently merged PR on the base
-    /// branch. Walks the base branch history from `anchor` commit by
-    /// commit, matching each commit to a merged PR by `merge_commit_sha`
-    /// rather than GitHub's commit-to-PR association endpoint, which only
+    /// Fetches the baseline report to diff against.
+    ///
+    /// A stacked PR, whose base branch is another PR's head branch,
+    /// first tries that parent PR's own report. It is the best baseline
+    /// there is: it measured exactly the code this PR is based on. See
+    /// [`Self::fetch_stacked_parent_baseline`].
+    ///
+    /// Otherwise, it uses the payload embedded in the sticky report comment
+    /// of the most recently merged PR on the base branch. Walks the base
+    /// branch history from `anchor` commit by commit, matching each commit
+    /// to a merged PR by `merge_commit_sha` rather than GitHub's
+    /// commit-to-PR association endpoint, which only
     /// reports merged PRs for commits reachable from the repository's
     /// default branch and would otherwise miss every PR merged into a
     /// non-default base. Commits without a matching merged PR (direct
@@ -422,6 +448,10 @@ impl GithubPrReporter {
     /// callers can treat errors the same way.
     pub async fn fetch_baseline(&self, anchor: &BaselineAnchor) -> Result<Option<BaselineReport>> {
         let client = Client::new();
+        if let Some(baseline) = self.fetch_stacked_parent_baseline(&client, anchor).await? {
+            return Ok(Some(baseline));
+        }
+
         let lookback = self.config.baseline_commit_lookback;
         let commits_url = format!(
             "{}/repos/{}/commits",
@@ -499,14 +529,7 @@ impl GithubPrReporter {
             let Some(pr_number) = pull["number"].as_u64() else {
                 continue;
             };
-            let comments = self.fetch_comments(&client, pr_number).await?;
-            let Some(payload) = find_sticky_comment(
-                &comments,
-                &self.hidden_marker(),
-                &self.config.expected_comment_author,
-            )
-            .and_then(|comment| comment["body"].as_str())
-            .and_then(ReportPayload::extract) else {
+            let Some(payload) = self.fetch_report_payload(&client, pr_number).await? else {
                 continue;
             };
             // Skip the extra work below when there's nothing to validate
@@ -550,6 +573,96 @@ impl GithubPrReporter {
             }));
         }
         Ok(None)
+    }
+
+    /// Fetches the report of the PR whose head is the anchor's base commit,
+    /// when this PR is stacked on one.
+    ///
+    /// Nothing has been merged into a stacked PR's base branch yet, so the
+    /// merged-PR walk in [`Self::fetch_baseline`] finds nothing for it. The
+    /// parent PR's report is only used when it was made for exactly the
+    /// anchor's base commit. A parent pushed again since its last report
+    /// (or whose run for the new head has not posted yet) would otherwise
+    /// diff against numbers for code this PR is not built on.
+    ///
+    /// The parent's tested base must also already be in the parent's head.
+    /// CI benchmarks the parent merged with its base, so a parent behind
+    /// its base was measured with base commits this PR does not have.
+    /// Those commits would show up as this PR's own changes.
+    ///
+    /// The parent is looked up in any state. It may be merged or closed
+    /// while this PR's benchmarks run, and its report is still valid then.
+    ///
+    /// Only parents in this repository are found, since the `head` filter
+    /// is scoped to the repository owner. That covers stacks, whose
+    /// branches all live in one repository.
+    async fn fetch_stacked_parent_baseline(
+        &self,
+        client: &Client,
+        anchor: &BaselineAnchor,
+    ) -> Result<Option<BaselineReport>> {
+        let Some((owner, _)) = self.config.repo.split_once('/') else {
+            return Ok(None);
+        };
+        let head = format!("{owner}:{}", anchor.base_ref);
+        let pulls_url = format!(
+            "{}/repos/{}/pulls",
+            self.config.api_base_url, self.config.repo
+        );
+        let pulls = self
+            .get_json_array(
+                client,
+                &pulls_url,
+                &[
+                    ("head", head.as_str()),
+                    ("state", "all"),
+                    ("per_page", "100"),
+                ],
+                "stacked parent pull requests",
+            )
+            .await?;
+        let Some(pr_number) =
+            find_stacked_parent(&pulls, &anchor.base_sha).and_then(|pull| pull["number"].as_u64())
+        else {
+            return Ok(None);
+        };
+        let Some(payload) = self.fetch_report_payload(client, pr_number).await? else {
+            return Ok(None);
+        };
+        if !tested_correct_head(payload.head_sha.as_deref(), &anchor.base_sha) {
+            return Ok(None);
+        }
+        let Some(parent_base_sha) = payload.base_sha.as_deref() else {
+            return Ok(None);
+        };
+        if !self
+            .base_is_in_head(client, parent_base_sha, &anchor.base_sha)
+            .await?
+        {
+            return Ok(None);
+        }
+        Ok(Some(BaselineReport {
+            pr_number,
+            commit_hash: anchor.base_sha.clone(),
+            payload,
+        }))
+    }
+
+    /// Fetches the payload embedded in PR `pr_number`'s sticky report
+    /// comment, if it has a readable one.
+    async fn fetch_report_payload(
+        &self,
+        client: &Client,
+        pr_number: u64,
+    ) -> Result<Option<ReportPayload>> {
+        let comments = self.fetch_comments(client, pr_number).await?;
+        Ok(find_sticky_comment(
+            &comments,
+            &self.hidden_marker(),
+            &self.config.expected_comment_author,
+        )
+        .and_then(|comment| comment["body"].as_str())
+        .and_then(ReportPayload::extract))
     }
 
     /// Renders the results and posts them to the PR, updating the existing
@@ -763,6 +876,19 @@ impl GithubPrReporter {
             .await
     }
 
+    /// Returns whether commit `base` is already in commit `head`'s history.
+    /// See [`base_is_in_head`].
+    async fn base_is_in_head(&self, client: &Client, base: &str, head: &str) -> Result<bool> {
+        let url = format!(
+            "{}/repos/{}/compare/{base}...{head}",
+            self.config.api_base_url, self.config.repo
+        );
+        let compare = self
+            .get_json(client, &url, &[], "commit comparison")
+            .await?;
+        Ok(base_is_in_head(&compare))
+    }
+
     /// Fetches the `commit.author` object of a single commit.
     async fn fetch_commit_author(&self, client: &Client, sha: &str) -> Result<Value> {
         let url = format!(
@@ -938,6 +1064,41 @@ mod tests {
             Some(2)
         );
         assert!(find_pr_for_merge_commit(&merged_pulls, "missing").is_none());
+    }
+
+    #[test]
+    fn finds_stacked_parent_by_head_sha() {
+        let pulls = vec![
+            json!({"number": 1, "head": {"sha": "head1"}}),
+            json!({"number": 2, "head": {"sha": "base1"}}),
+        ];
+        assert_eq!(
+            find_stacked_parent(&pulls, "base1").and_then(|pull| pull["number"].as_u64()),
+            Some(2)
+        );
+    }
+
+    #[test]
+    fn ignores_stacked_parent_pushed_past_the_base() {
+        // The parent was pushed again after this PR's base was resolved, so
+        // its head no longer is the code this PR is built on.
+        let pulls = vec![json!({"number": 1, "head": {"sha": "head2"}})];
+        assert!(find_stacked_parent(&pulls, "base1").is_none());
+    }
+
+    #[test]
+    fn base_is_in_head_when_head_is_ahead_or_identical() {
+        assert!(base_is_in_head(&json!({"status": "ahead"})));
+        assert!(base_is_in_head(&json!({"status": "identical"})));
+    }
+
+    #[test]
+    fn base_is_not_in_head_when_head_is_behind_or_diverged() {
+        // The parent's report then measured base commits that a PR stacked
+        // on the parent's head does not have.
+        assert!(!base_is_in_head(&json!({"status": "behind"})));
+        assert!(!base_is_in_head(&json!({"status": "diverged"})));
+        assert!(!base_is_in_head(&json!({})));
     }
 
     #[test]
