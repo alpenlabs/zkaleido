@@ -12,6 +12,9 @@ jobs:
   format:
     name: Update nightly Rustc
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to create commits
+      pull-requests: write # Needed to create a PR
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
