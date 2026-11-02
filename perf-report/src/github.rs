@@ -86,6 +86,16 @@ fn find_stacked_parent<'a>(open_pulls: &'a [Value], base_sha: &str) -> Option<&'
         .find(|pull| pull["head"]["sha"].as_str() == Some(base_sha))
 }
 
+/// Returns whether a compare response for `base...head` shows that `base`
+/// is already in `head`'s history.
+///
+/// CI benchmarks the PR's merge with its base, not its head alone. When
+/// the base is already in the head's history, that merge has the same
+/// code as the head, so the report measured the head itself.
+fn base_is_in_head(compare: &Value) -> bool {
+    matches!(compare["status"].as_str(), Some("ahead" | "identical"))
+}
+
 /// Returns whether `payload_head_sha` (a candidate's tested head, from its
 /// embedded payload) matches `merged_head_sha` (that PR's own recorded
 /// `head.sha`).
@@ -575,6 +585,11 @@ impl GithubPrReporter {
     /// (or whose run for the new head has not posted yet) would otherwise
     /// diff against numbers for code this PR is not built on.
     ///
+    /// The parent's tested base must also already be in the parent's head.
+    /// CI benchmarks the parent merged with its base, so a parent behind
+    /// its base was measured with base commits this PR does not have.
+    /// Those commits would show up as this PR's own changes.
+    ///
     /// Only parents in this repository are found, since the `head` filter
     /// is scoped to the repository owner. That covers stacks, whose
     /// branches all live in one repository.
@@ -612,6 +627,15 @@ impl GithubPrReporter {
             return Ok(None);
         };
         if !tested_correct_head(payload.head_sha.as_deref(), &anchor.base_sha) {
+            return Ok(None);
+        }
+        let Some(parent_base_sha) = payload.base_sha.as_deref() else {
+            return Ok(None);
+        };
+        if !self
+            .base_is_in_head(client, parent_base_sha, &anchor.base_sha)
+            .await?
+        {
             return Ok(None);
         }
         Ok(Some(BaselineReport {
@@ -849,6 +873,19 @@ impl GithubPrReporter {
             .await
     }
 
+    /// Returns whether commit `base` is already in commit `head`'s history.
+    /// See [`base_is_in_head`].
+    async fn base_is_in_head(&self, client: &Client, base: &str, head: &str) -> Result<bool> {
+        let url = format!(
+            "{}/repos/{}/compare/{base}...{head}",
+            self.config.api_base_url, self.config.repo
+        );
+        let compare = self
+            .get_json(client, &url, &[], "commit comparison")
+            .await?;
+        Ok(base_is_in_head(&compare))
+    }
+
     /// Fetches the `commit.author` object of a single commit.
     async fn fetch_commit_author(&self, client: &Client, sha: &str) -> Result<Value> {
         let url = format!(
@@ -1044,6 +1081,21 @@ mod tests {
         // its head no longer is the code this PR is built on.
         let open_pulls = vec![json!({"number": 1, "head": {"sha": "head2"}})];
         assert!(find_stacked_parent(&open_pulls, "base1").is_none());
+    }
+
+    #[test]
+    fn base_is_in_head_when_head_is_ahead_or_identical() {
+        assert!(base_is_in_head(&json!({"status": "ahead"})));
+        assert!(base_is_in_head(&json!({"status": "identical"})));
+    }
+
+    #[test]
+    fn base_is_not_in_head_when_head_is_behind_or_diverged() {
+        // The parent's report then measured base commits that a PR stacked
+        // on the parent's head does not have.
+        assert!(!base_is_in_head(&json!({"status": "behind"})));
+        assert!(!base_is_in_head(&json!({"status": "diverged"})));
+        assert!(!base_is_in_head(&json!({})));
     }
 
     #[test]
