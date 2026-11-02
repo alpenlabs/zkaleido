@@ -1,3 +1,4 @@
 [codespell]
 skip = .git,target,Cargo.toml,Cargo.lock,mutants*
-ignore-words-list = crate,ser,ment
+# "dissassemble" is how SP1 spells it in an error message we match on.
+ignore-words-list = crate,ser,ment,dissassemble
