@@ -51,29 +51,14 @@ jobs:
           fi
       - name: Create Pull Request
         if: env.changes_made == 'true'
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
         env:
-          GH_TOKEN: ${{ github.token }}
           NIGHTLY_DATE: ${{ env.nightly_date }}
-          BRANCH: create-pull-request/automated-nightly-update
-        run: |
-          set -xe
-
-          # The checkout step does not persist credentials, so let git push with GH_TOKEN.
-          gh auth setup-git
-
-          git config user.name "Update Nightly Rustc Bot"
-          git config user.email "no-reply@alpenlabs.io"
-
-          git switch -c "$BRANCH"
-          git commit -am "Automated update to Rust nightly-$NIGHTLY_DATE"
-          git push --force origin "$BRANCH"
-
-          # Reuse the open PR from an earlier run, since the push above already updated it.
-          if [ -z "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
-              gh pr create \
-                --head "$BRANCH" \
-                --title "Automated update to rustc (to nightly-$NIGHTLY_DATE)" \
-                --body "Automated update to Rust nightly by the \`cron-nightly-rust\` workflow."
-          else
-              gh pr edit "$BRANCH" --title "Automated update to rustc (to nightly-$NIGHTLY_DATE)"
-          fi
+        with:
+          author: Update Nightly Rustc Bot <no-reply@alpenlabs.io>
+          committer: Update Nightly Rustc Bot <no-reply@alpenlabs.io>
+          title: Automated update to rustc (to nightly-$NIGHTLY_DATE)
+          body: |
+            Automated update to Rust nightly by [create-pull-request](https://github.com/peter-evans/create-pull-request) GitHub action
+          commit-message: Automated update to Rust nightly-$NIGHTLY_DATE
+          branch: create-pull-request/automated-nightly-update
