@@ -10,6 +10,22 @@ use crate::{ProofType, ZkVm};
 pub type ZkVmResult<T> = Result<T, ZkVmError>;
 
 /// General ZkVM error types.
+///
+/// Every error is either permanent or transient, and
+/// [`is_permanent`](Self::is_permanent) says which. The rule is:
+///
+/// - **Permanent**: the cause is in the request, meaning the program, its input, or the requested
+///   proof. The same request fails the same way on any healthy machine, so retrying cannot help.
+/// - **Transient**: the cause is in the environment, meaning the machine, its resources, the
+///   network, or a remote prover. A later attempt may succeed.
+///
+/// An error is permanent only when we know its cause is in the request. If we
+/// cannot tell, it is transient. A wrong transient costs a few retries, which
+/// the caller's retry budget bounds. A wrong permanent drops a request that
+/// would have succeeded and needs a manual fix.
+///
+/// A fault in the environment that does not go away, such as a missing API
+/// key, is still transient. It uses up the retry budget and then fails.
 #[derive(Debug, Error)]
 pub enum ZkVmError {
     /// This error is returned when execution fails.
@@ -66,6 +82,27 @@ pub enum ZkVmError {
     Other(String),
 }
 
+impl ZkVmError {
+    /// Returns `true` if retrying the same request cannot succeed.
+    ///
+    /// See [`ZkVmError`] for the rule.
+    pub fn is_permanent(&self) -> bool {
+        match self {
+            Self::ExecutionError(err) => err.is_permanent(),
+            Self::InvalidInput(_)
+            | Self::InvalidELF(_)
+            | Self::InvalidVerifyingKey(_)
+            | Self::InvalidProofReceipt(_)
+            | Self::ProofVerificationError(_)
+            | Self::OutputExtractionError { .. } => true,
+            // Mostly prover faults. Adapters report the guest faults they can
+            // spot as a guest `ExecutionError` instead.
+            Self::ProofGenerationError(_) => false,
+            Self::NetworkRetryableError(_) | Self::ProofNotReady | Self::Other(_) => false,
+        }
+    }
+}
+
 /// Why a program's execution failed.
 ///
 /// The split tells callers whether retrying can help. A guest failure is a
@@ -83,6 +120,13 @@ pub enum ZkVmExecutionError {
     /// process crashed or ran out of resources. Retrying may succeed.
     #[error("host error: {0}")]
     Host(String),
+}
+
+impl ZkVmExecutionError {
+    /// Returns `true` for a guest failure. See [`ZkVmError`] for the rule.
+    pub fn is_permanent(&self) -> bool {
+        matches!(self, Self::Guest(_))
+    }
 }
 
 /// Errors related to data formatting and serialization/deserialization.
@@ -219,5 +263,38 @@ impl From<BorshIoError> for ZkVmInputError {
 impl From<ssz::DecodeError> for DataFormatError {
     fn from(err: ssz::DecodeError) -> Self {
         DataFormatError::Ssz { source: err }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn request_faults_are_permanent() {
+        let permanent = [
+            ZkVmExecutionError::Guest("panic".into()).into(),
+            ZkVmError::InvalidELF("bad elf".into()),
+            ZkVmError::InvalidVerifyingKey(ZkVmVerifyingKeyError::InvalidVerifyingKeySize),
+            ZkVmError::InvalidProofReceipt(ZkVmProofError::InvalidProofType(ProofType::Core)),
+            ZkVmError::ProofVerificationError("bad proof".into()),
+        ];
+        for err in permanent {
+            assert!(err.is_permanent(), "{err:?} must be permanent");
+        }
+    }
+
+    #[test]
+    fn environment_faults_are_transient() {
+        let transient = [
+            ZkVmExecutionError::Host("SIGBUS".into()).into(),
+            ZkVmError::NetworkRetryableError("503".into()),
+            ZkVmError::ProofGenerationError("out of memory".into()),
+            ZkVmError::ProofNotReady,
+            ZkVmError::Other("???".into()),
+        ];
+        for err in transient {
+            assert!(!err.is_permanent(), "{err:?} must be transient");
+        }
     }
 }

@@ -31,9 +31,8 @@ pub enum RemoteProofStatus {
 /// Categorized reason a remote proof request failed.
 ///
 /// Backends may surface failures with finer-grained semantics than a single
-/// "failed" state. Callers can branch on these variants to decide whether a
-/// failure is worth retrying (e.g. [`Expired`](Self::Expired)) versus terminal
-/// (e.g. [`Unexecutable`](Self::Unexecutable)).
+/// "failed" state. [`is_permanent`](Self::is_permanent) says whether a new
+/// request for the same proof can succeed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[cfg_attr(feature = "borsh", derive(BorshSerialize, BorshDeserialize))]
@@ -52,6 +51,18 @@ pub enum RemoteProofFailureReason {
     Expired,
     /// An uncategorized failure with a backend-provided description.
     Other(String),
+}
+
+impl RemoteProofFailureReason {
+    /// Returns `true` if a new request for the same proof cannot succeed.
+    ///
+    /// Follows the same rule as [`ZkVmError::is_permanent`](crate::ZkVmError::is_permanent).
+    /// Only [`Unexecutable`](Self::Unexecutable) is the program's fault. The
+    /// rest come from the backend, including [`Other`](Self::Other), whose
+    /// cause is unknown.
+    pub fn is_permanent(&self) -> bool {
+        matches!(self, Self::Unexecutable)
+    }
 }
 
 impl Display for RemoteProofFailureReason {
@@ -104,4 +115,22 @@ pub trait ZkVmRemoteProver: ZkVmProver {
     /// Returns an error if the proof is not ready. Callers should check
     /// [`get_status`](Self::get_status) first.
     async fn get_proof(&self, id: &Self::ProofId) -> ZkVmResult<ProofReceiptWithMetadata>;
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_unexecutable_is_permanent() {
+        assert!(RemoteProofFailureReason::Unexecutable.is_permanent());
+        for reason in [
+            RemoteProofFailureReason::Unfulfillable,
+            RemoteProofFailureReason::Reverted,
+            RemoteProofFailureReason::Expired,
+            RemoteProofFailureReason::Other("unspecified fulfillment status".into()),
+        ] {
+            assert!(!reason.is_permanent(), "{reason:?} must be transient");
+        }
+    }
 }
