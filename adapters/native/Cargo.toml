@@ -13,7 +13,6 @@ async-trait = { workspace = true, optional = true }
 bincode.workspace = true
 hex = { workspace = true, optional = true }
 k256.workspace = true
-rand_core.workspace = true
 serde.workspace = true
 
 [features]

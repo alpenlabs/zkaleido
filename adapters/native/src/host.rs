@@ -2,11 +2,13 @@ use std::{env, fmt, sync::Arc};
 
 #[cfg(feature = "remote-prover")]
 use async_trait::async_trait;
-use k256::schnorr::{
-    Signature, SigningKey,
-    signature::{Signer, Verifier},
+use k256::{
+    elliptic_curve::Generate,
+    schnorr::{
+        Signature, SigningKey,
+        signature::{Signer, Verifier},
+    },
 };
-use rand_core::OsRng;
 use serde::{Serialize, de::DeserializeOwned};
 use zkaleido::{
     DataFormatError, ExecutionSummary, ProgramId, Proof, ProofMetadata, ProofReceipt,
@@ -84,7 +86,7 @@ impl NativeHost {
     where
         F: Fn(&NativeMachine) + Send + Sync + 'static,
     {
-        Self::new(SigningKey::random(&mut OsRng), process_fn)
+        Self::new(SigningKey::generate(), process_fn)
     }
 
     /// Creates a new [`NativeHost`] with a freshly generated Schnorr signing key and a fallible
@@ -98,7 +100,7 @@ impl NativeHost {
     where
         F: Fn(&NativeMachine) -> ZkVmResult<()> + Send + Sync + 'static,
     {
-        Self::new_fallible(SigningKey::random(&mut OsRng), process_fn)
+        Self::new_fallible(SigningKey::generate(), process_fn)
     }
 }
 
