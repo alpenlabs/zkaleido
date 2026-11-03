@@ -20,12 +20,13 @@ pub type ZkVmResult<T> = Result<T, ZkVmError>;
 ///   network, or a remote prover. A later attempt may succeed.
 ///
 /// An error is permanent only when we know its cause is in the request. If we
-/// cannot tell, it is transient. A wrong transient costs a few retries, which
-/// the caller's retry budget bounds. A wrong permanent drops a request that
-/// would have succeeded and needs a manual fix.
+/// cannot tell, it is transient. A wrong permanent drops a request that would
+/// have succeeded and needs a manual fix. A wrong transient only costs retries,
+/// as long as the caller bounds them.
 ///
-/// A fault in the environment that does not go away, such as a missing API
-/// key, is still transient. It uses up the retry budget and then fails.
+/// Callers should therefore cap how often they retry a transient error. A
+/// fault in the environment that does not go away, such as a missing API key,
+/// is still transient, and without a cap it is retried forever.
 #[derive(Debug, Error)]
 pub enum ZkVmError {
     /// This error is returned when execution fails.
