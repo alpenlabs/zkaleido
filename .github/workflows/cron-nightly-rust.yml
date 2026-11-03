@@ -22,6 +22,7 @@ jobs:
       - name: Install nightly Rust
         run: rustup toolchain install nightly
       - name: Update rust-toolchain.toml to use latest nightly
+        id: update
         run: |
           set -xe
 
@@ -37,28 +38,25 @@ jobs:
           echo "Updating rust-toolchain.toml to use nightly-$TODAY"
           sed -i "s/^channel = \"nightly-.*\"/channel = \"nightly-$TODAY\"/" rust-toolchain.toml
 
-          # Update the nightly date in the environment.
-          echo "nightly_date=${TODAY}" >> "$GITHUB_ENV"
+          echo "nightly_date=${TODAY}" >> "$GITHUB_OUTPUT"
 
           # Maybe there is no new nightly.
           # In this case don't make an empty PR.
           if ! git diff --exit-code > /dev/null; then
               echo "Updated nightly. Opening PR."
-              echo "changes_made=true" >> "$GITHUB_ENV"
+              echo "changes_made=true" >> "$GITHUB_OUTPUT"
           else
               echo "Attempted to update nightly but the latest-nightly date did not change. Not opening any PR."
-              echo "changes_made=false" >> "$GITHUB_ENV"
+              echo "changes_made=false" >> "$GITHUB_OUTPUT"
           fi
       - name: Create Pull Request
-        if: env.changes_made == 'true'
+        if: steps.update.outputs.changes_made == 'true'
         uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8.1.1
-        env:
-          NIGHTLY_DATE: ${{ env.nightly_date }}
         with:
           author: Update Nightly Rustc Bot <no-reply@alpenlabs.io>
           committer: Update Nightly Rustc Bot <no-reply@alpenlabs.io>
-          title: Automated update to rustc (to nightly-$NIGHTLY_DATE)
+          title: Automated update to rustc (to nightly-${{ steps.update.outputs.nightly_date }})
           body: |
             Automated update to Rust nightly by [create-pull-request](https://github.com/peter-evans/create-pull-request) GitHub action
-          commit-message: Automated update to Rust nightly-$NIGHTLY_DATE
+          commit-message: Automated update to Rust nightly-${{ steps.update.outputs.nightly_date }}
           branch: create-pull-request/automated-nightly-update
