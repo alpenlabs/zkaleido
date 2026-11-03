@@ -11,8 +11,9 @@ use tokio::{
     time::sleep,
 };
 use zkaleido::{
-    ExecutionSummary, ProgramId, ProofType, PublicValues, RemoteProofStatus, ZkVmError,
-    ZkVmExecutionError, ZkVmExecutor, ZkVmInputBuilder, ZkVmProver, ZkVmRemoteProver, ZkVmResult,
+    ExecutionSummary, ProgramId, ProofType, PublicValues, RemoteProofFailureReason,
+    RemoteProofStatus, ZkVmError, ZkVmExecutionError, ZkVmExecutor, ZkVmInputBuilder, ZkVmProver,
+    ZkVmRemoteProver, ZkVmResult,
 };
 
 use crate::{SP1Host, input::SP1ProofInputBuilder, proof::SP1ProofReceipt};
@@ -106,6 +107,9 @@ impl SP1Host {
         loop {
             match self.get_status(&id).await? {
                 RemoteProofStatus::Completed => break,
+                RemoteProofStatus::Failed(reason @ RemoteProofFailureReason::Unexecutable) => {
+                    return Err(ZkVmExecutionError::Guest(reason.to_string()).into());
+                }
                 RemoteProofStatus::Failed(reason) => {
                     return Err(ZkVmError::ProofGenerationError(reason.to_string()));
                 }
