@@ -2908,7 +2908,7 @@ dependencies = [
  "libc",
  "option-ext",
  "redox_users 0.5.3",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3273,7 +3273,7 @@ checksum = "0ce92ff622d6dadf7349484f42c93271a0d49b7cc4d466a936405bacbe10aa78"
 dependencies = [
  "cfg-if",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4964,7 +4964,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -8790,8 +8790,8 @@ dependencies = [
 
 [[package]]
 name = "ssz"
-version = "0.17.1"
-source = "git+https://github.com/alpenlabs/ssz-gen?tag=v0.18.0#618393350a25580032a8ef03b807c6c3d70858bb"
+version = "0.18.1"
+source = "git+https://github.com/alpenlabs/ssz-gen?tag=v0.18.1#3f9a465c5f7474d465ffab9f045fb247371428e9"
 dependencies = [
  "itertools 0.15.0",
  "smallvec",
@@ -8801,8 +8801,8 @@ dependencies = [
 
 [[package]]
 name = "ssz_primitives"
-version = "0.17.1"
-source = "git+https://github.com/alpenlabs/ssz-gen?tag=v0.18.0#618393350a25580032a8ef03b807c6c3d70858bb"
+version = "0.18.1"
+source = "git+https://github.com/alpenlabs/ssz-gen?tag=v0.18.1#3f9a465c5f7474d465ffab9f045fb247371428e9"
 dependencies = [
  "hex",
  "rand 0.8.8",
