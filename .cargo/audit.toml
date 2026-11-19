@@ -29,6 +29,16 @@ ignore = [
   "RUSTSEC-2026-0369",
   "RUSTSEC-2026-0429",
 
+  # RUSTSEC-2026-0548, RUSTSEC-2026-0545 (zip 2.6.1 via risc0-circuit-recursion)
+  # Same upstream zip 2.x constraint as above; fixes require zip >= 9.0.5.
+  # 0548: risc0 reads the hash-pinned embedded archive with ZipArchive::by_name;
+  # it does not use ZipStreamReader or extract entries to disk.
+  # 0545: zip's aes-crypto feature is disabled (only deflate is enabled), and
+  # risc0 does not use password-based decryption.
+  # Revisit when risc0 upgrades zip or its archive handling/features change.
+  "RUSTSEC-2026-0548",
+  "RUSTSEC-2026-0545",
+
   # RUSTSEC-2026-0387 (crypto-bigint 0.5.5)
   # Pulled in via k256 0.13 (sp1 and alloy in sp1-sdk).
   # The fix is only in crypto-bigint >= 0.7.6, which needs k256 0.14.
