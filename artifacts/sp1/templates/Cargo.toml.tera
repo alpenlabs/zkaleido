@@ -14,6 +14,8 @@ mock-verify = ["zkaleido-sp1-guest-env/mock-verify"]
 zkvm-verify = ["zkaleido-sp1-guest-env/zkvm-verify"]
 
 [patch.crates-io]
+# SP1 still uses sha2 0.10, while the workspace uses 0.11.
 sha2 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", tag = "patch-sha2-0.10.9-sp1-6.0.0" }
+sha2-011 = { git = "https://github.com/sp1-patches/RustCrypto-hashes", package = "sha2", tag = "patch-sha2-0.11.0-sp1-6.10.0" }
 secp256k1 = { git = "https://github.com/sp1-patches/rust-secp256k1", tag = "patch-0.29.1-sp1-6.0.0" }
 substrate-bn = { git = "https://github.com/sp1-patches/bn", tag = "patch-0.6.0-sp1-6.0.0-substrate-bn" }
