@@ -16,9 +16,13 @@ pub enum ZkVmError {
     #[error("Execution failed: {0}")]
     ExecutionError(String),
 
-    /// Network (or RPC) error that can occur while using prover network.
-    #[error("Network error: {0}")]
-    NetworkRetryableError(String),
+    /// An error returned by a remote prover operation (submission, status
+    /// polling, or proof retrieval). Covers transport-level RPC failures
+    /// and operational errors that escape any backend-internal retry.
+    /// Carries no implicit retry contract — callers decide whether to
+    /// retry based on context.
+    #[error("Remote prover error: {0}")]
+    RemoteProverError(String),
 
     /// This error is returned when proof generation fails for any reason.
     #[error("Proof generation failed: {0}")]
